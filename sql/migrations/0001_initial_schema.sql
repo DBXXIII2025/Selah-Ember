@@ -1,17 +1,32 @@
--- Initial Selah Ember schema draft.
--- RLS policies will be added in the auth phase.
+-- Initial Selah Ember schema.
+-- This migration is intentionally additive/idempotent for safe early project setup.
 
 create extension if not exists "pgcrypto";
 
 create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid unique,
+  user_id uuid unique references auth.users(id) on delete cascade,
   display_name text not null,
   avatar_url text,
   bio text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.table_constraints
+    where constraint_schema = 'public'
+      and table_name = 'profiles'
+      and constraint_name = 'profiles_user_id_fkey'
+  ) then
+    alter table public.profiles
+      add constraint profiles_user_id_fkey
+      foreign key (user_id) references auth.users(id) on delete cascade;
+  end if;
+end $$;
 
 create table if not exists public.churches (
   id uuid primary key default gen_random_uuid(),
@@ -70,3 +85,61 @@ create table if not exists public.events (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists set_profiles_updated_at on public.profiles;
+create trigger set_profiles_updated_at
+before update on public.profiles
+for each row execute function public.set_updated_at();
+
+drop trigger if exists set_churches_updated_at on public.churches;
+create trigger set_churches_updated_at
+before update on public.churches
+for each row execute function public.set_updated_at();
+
+drop trigger if exists set_study_groups_updated_at on public.study_groups;
+create trigger set_study_groups_updated_at
+before update on public.study_groups
+for each row execute function public.set_updated_at();
+
+drop trigger if exists set_prayer_requests_updated_at on public.prayer_requests;
+create trigger set_prayer_requests_updated_at
+before update on public.prayer_requests
+for each row execute function public.set_updated_at();
+
+drop trigger if exists set_events_updated_at on public.events;
+create trigger set_events_updated_at
+before update on public.events
+for each row execute function public.set_updated_at();
+
+alter table public.profiles enable row level security;
+alter table public.churches enable row level security;
+alter table public.study_groups enable row level security;
+alter table public.group_memberships enable row level security;
+alter table public.prayer_requests enable row level security;
+alter table public.events enable row level security;
+
+drop policy if exists "Profiles are readable by owner" on public.profiles;
+create policy "Profiles are readable by owner"
+on public.profiles for select
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "Profiles are editable by owner" on public.profiles;
+create policy "Profiles are editable by owner"
+on public.profiles for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+-- Service-role server code creates the profile row after signup.
+-- Church, group, prayer, and event policies will be added with their features.

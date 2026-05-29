@@ -41,13 +41,13 @@ export default function Home() {
             </p>
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
               <a
-                href="#"
+                href="/signup"
                 className="inline-flex items-center justify-center rounded-full bg-[#cf5f2b] px-6 py-3 text-base font-semibold text-white shadow-lg shadow-[#cf5f2b]/25 transition hover:bg-[#b94f22]"
               >
                 Create Community
               </a>
               <a
-                href="#groups"
+                href="/signin"
                 className="inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 bg-white/70 px-6 py-3 text-base font-semibold text-[#2f2722] shadow-sm backdrop-blur transition hover:bg-white"
               >
                 Explore Groups
