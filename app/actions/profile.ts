@@ -16,17 +16,6 @@ export type CurrentUserProfile = {
   avatar_url: string | null;
 };
 
-type ProfileRow = {
-  id: string;
-  user_id: string;
-  display_name: string;
-  bio: string | null;
-  avatar_url: string | null;
-  username?: string | null;
-  favorite_verse?: string | null;
-  church_name?: string | null;
-};
-
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -48,11 +37,6 @@ async function getCurrentUser() {
   }
 
   return user;
-}
-
-function getMetadataString(metadata: Record<string, unknown>, key: string) {
-  const value = metadata[key];
-  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 export async function getCurrentUserProfile(): Promise<CurrentUserProfile> {
@@ -84,7 +68,7 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile> {
 
   const { data, error } = await admin
     .from("profiles")
-    .select("id,user_id,display_name,bio,avatar_url")
+    .select("id,user_id,display_name,username,bio,favorite_verse,church_name,avatar_url")
     .eq("user_id", user.id)
     .single();
 
@@ -92,19 +76,7 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile> {
     throw new Error(error.message);
   }
 
-  const profile = data as ProfileRow;
-
-  return {
-    id: profile.id,
-    user_id: profile.user_id,
-    display_name: profile.display_name,
-    bio: profile.bio,
-    avatar_url: profile.avatar_url,
-    username: profile.username ?? getMetadataString(user.user_metadata, "username"),
-    favorite_verse:
-      profile.favorite_verse ?? getMetadataString(user.user_metadata, "favorite_verse"),
-    church_name: profile.church_name ?? getMetadataString(user.user_metadata, "church_name"),
-  };
+  return data;
 }
 
 export async function updateCurrentUserProfile(formData: FormData) {
@@ -120,7 +92,10 @@ export async function updateCurrentUserProfile(formData: FormData) {
     .from("profiles")
     .update({
       display_name: displayName,
+      username: nullableFormString(formData, "username"),
       bio: nullableFormString(formData, "bio"),
+      favorite_verse: nullableFormString(formData, "favorite_verse"),
+      church_name: nullableFormString(formData, "church_name"),
       avatar_url: nullableFormString(formData, "avatar_url"),
     })
     .eq("user_id", user.id);
@@ -129,19 +104,12 @@ export async function updateCurrentUserProfile(formData: FormData) {
     redirect(`/profile?message=${encodeURIComponent(error.message)}`);
   }
 
-  const { error: metadataError } = await admin.auth.admin.updateUserById(user.id, {
+  await admin.auth.admin.updateUserById(user.id, {
     user_metadata: {
       ...user.user_metadata,
       display_name: displayName,
-      username: nullableFormString(formData, "username"),
-      favorite_verse: nullableFormString(formData, "favorite_verse"),
-      church_name: nullableFormString(formData, "church_name"),
     },
   });
-
-  if (metadataError) {
-    redirect(`/profile?message=${encodeURIComponent(metadataError.message)}`);
-  }
 
   revalidatePath("/profile");
   revalidatePath("/dashboard");
