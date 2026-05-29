@@ -1,4 +1,5 @@
 import { CalendarDays, Flame, HeartHandshake, UsersRound } from "lucide-react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 const dashboardCards = [
@@ -40,6 +41,14 @@ export default async function DashboardPage() {
         <p className="mt-4 max-w-2xl leading-7 text-[#67564c]">
           This is the first protected Selah Ember area. Auth is wired, profiles are created, and the next phase can build real community workflows here.
         </p>
+        <div className="mt-8">
+          <Link
+            href="/profile"
+            className="inline-flex items-center justify-center rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+          >
+            Edit profile
+          </Link>
+        </div>
 
         <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {dashboardCards.map((card) => {

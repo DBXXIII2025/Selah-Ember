@@ -39,9 +39,19 @@ export default async function ProtectedLayout({
     <main className="min-h-screen bg-[#fff8ed] text-[#211b17]">
       <header className="border-b border-[#ead6c5] bg-white/75">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-10 lg:px-16">
-          <Link href="/dashboard" className="text-lg font-semibold">
-            Selah Ember
-          </Link>
+          <div className="flex items-center gap-8">
+            <Link href="/dashboard" className="text-lg font-semibold">
+              Selah Ember
+            </Link>
+            <nav className="flex items-center gap-4 text-sm font-semibold text-[#67564c]">
+              <Link href="/dashboard" className="transition hover:text-[#b94f22]">
+                Dashboard
+              </Link>
+              <Link href="/profile" className="transition hover:text-[#b94f22]">
+                Profile
+              </Link>
+            </nav>
+          </div>
           <form action={signOut}>
             <button
               type="submit"
