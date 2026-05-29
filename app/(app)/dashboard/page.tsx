@@ -66,6 +66,12 @@ export default async function DashboardPage() {
           >
             View groups
           </Link>
+          <Link
+            href="/events"
+            className="inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 bg-white/70 px-5 py-3 text-sm font-semibold text-[#2f2722] transition hover:bg-white"
+          >
+            View events
+          </Link>
         </div>
 
         <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
