@@ -53,6 +53,9 @@ export default async function ProtectedLayout({
               <Link href="/communities" className="transition hover:text-[#b94f22]">
                 Communities
               </Link>
+              <Link href="/prayer" className="transition hover:text-[#b94f22]">
+                Prayer
+              </Link>
             </nav>
           </div>
           <form action={signOut}>
