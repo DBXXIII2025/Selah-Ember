@@ -13,11 +13,25 @@ export type Community = {
   location: string | null;
   banner_url: string | null;
   created_by: string | null;
+  member_count: number;
 };
 
 export type CommunityMembership = {
   role: string;
   community: Community;
+};
+
+export type CommunityMembershipStatus = {
+  isSignedIn: boolean;
+  isMember: boolean;
+  isOwner: boolean;
+  role: string | null;
+};
+
+type Profile = {
+  id: string;
+  user_id: string;
+  display_name: string;
 };
 
 function getFormString(formData: FormData, key: string) {
@@ -53,8 +67,31 @@ async function getCurrentUser() {
   return user;
 }
 
-async function getCurrentProfile() {
+async function getOptionalUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return user;
+}
+
+async function getCurrentProfile(): Promise<Profile> {
   const user = await getCurrentUser();
+  return getProfileForUser(user);
+}
+
+async function getOptionalProfile(): Promise<Profile | null> {
+  const user = await getOptionalUser();
+
+  if (!user) {
+    return null;
+  }
+
+  return getProfileForUser(user);
+}
+
+async function getProfileForUser(user: Awaited<ReturnType<typeof getCurrentUser>>): Promise<Profile> {
   const admin = createAdminClient();
   const displayName =
     typeof user.user_metadata.display_name === "string"
@@ -87,6 +124,47 @@ async function getCurrentProfile() {
   }
 
   return data;
+}
+
+async function getMembershipCounts(communityIds: string[]) {
+  if (communityIds.length === 0) {
+    return new Map<string, number>();
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("church_memberships")
+    .select("church_id")
+    .in("church_id", communityIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const counts = new Map<string, number>();
+
+  for (const membership of data || []) {
+    const churchId = typeof membership.church_id === "string" ? membership.church_id : "";
+
+    if (churchId) {
+      counts.set(churchId, (counts.get(churchId) || 0) + 1);
+    }
+  }
+
+  return counts;
+}
+
+function normalizeCommunity(row: Record<string, unknown>, memberCount = 0): Community {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    slug: String(row.slug),
+    description: typeof row.description === "string" ? row.description : null,
+    location: typeof row.location === "string" ? row.location : null,
+    banner_url: typeof row.banner_url === "string" ? row.banner_url : null,
+    created_by: typeof row.created_by === "string" ? row.created_by : null,
+    member_count: memberCount,
+  };
 }
 
 async function getAvailableSlug(name: string) {
@@ -169,12 +247,22 @@ export async function getCurrentUserCommunities(): Promise<CommunityMembership[]
     throw new Error(error.message);
   }
 
-  return (data || [])
-    .filter((membership) => membership.churches)
-    .map((membership) => ({
-      role: membership.role,
-      community: membership.churches as unknown as Community,
-    }));
+  const rows = ((data || []) as unknown as Record<string, unknown>[]).filter(
+    (membership) => membership.churches,
+  );
+  const communityIds = rows
+    .map((membership) => (membership.churches as Record<string, unknown>).id)
+    .filter((id): id is string => typeof id === "string");
+  const counts = await getMembershipCounts(communityIds);
+
+  return rows.map((membership) => {
+    const community = membership.churches as Record<string, unknown>;
+
+    return {
+      role: typeof membership.role === "string" ? membership.role : "member",
+      community: normalizeCommunity(community, counts.get(String(community.id)) || 0),
+    };
+  });
 }
 
 export async function getPublicCommunityBySlug(slug: string): Promise<Community | null> {
@@ -190,5 +278,153 @@ export async function getPublicCommunityBySlug(slug: string): Promise<Community 
     throw new Error(error.message);
   }
 
-  return data;
+  if (!data) {
+    return null;
+  }
+
+  const counts = await getMembershipCounts([data.id]);
+
+  return normalizeCommunity(data as unknown as Record<string, unknown>, counts.get(data.id) || 0);
+}
+
+export async function getDiscoverCommunities(): Promise<Community[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("churches")
+    .select("id,name,slug,description,location,banner_url,created_by")
+    .eq("is_published", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rows = (data || []) as unknown as Record<string, unknown>[];
+  const communityIds = rows
+    .map((community) => community.id)
+    .filter((id): id is string => typeof id === "string");
+  const counts = await getMembershipCounts(communityIds);
+
+  return rows.map((community) =>
+    normalizeCommunity(community, counts.get(String(community.id)) || 0),
+  );
+}
+
+export async function getCommunityMembershipStatus(
+  communityId: string,
+): Promise<CommunityMembershipStatus> {
+  const profile = await getOptionalProfile();
+
+  if (!profile) {
+    return {
+      isSignedIn: false,
+      isMember: false,
+      isOwner: false,
+      role: null,
+    };
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("church_memberships")
+    .select("role")
+    .eq("church_id", communityId)
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const role = typeof data?.role === "string" ? data.role : null;
+
+  return {
+    isSignedIn: true,
+    isMember: Boolean(role),
+    isOwner: role === "owner",
+    role,
+  };
+}
+
+export async function joinCommunity(formData: FormData) {
+  const communityId = getFormString(formData, "community_id");
+  const slug = getFormString(formData, "slug");
+
+  if (!communityId || !slug) {
+    redirect("/discover");
+  }
+
+  const profile = await getOptionalProfile();
+
+  if (!profile) {
+    redirect("/signin");
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("church_memberships").upsert(
+    {
+      church_id: communityId,
+      profile_id: profile.id,
+      role: "member",
+    },
+    {
+      onConflict: "church_id,profile_id",
+      ignoreDuplicates: true,
+    },
+  );
+
+  if (error) {
+    redirect(`/c/${slug}?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/discover");
+  revalidatePath("/communities");
+  revalidatePath(`/c/${slug}`);
+  redirect(`/c/${slug}`);
+}
+
+export async function leaveCommunity(formData: FormData) {
+  const communityId = getFormString(formData, "community_id");
+  const slug = getFormString(formData, "slug");
+
+  if (!communityId || !slug) {
+    redirect("/communities");
+  }
+
+  const profile = await getCurrentProfile();
+  const admin = createAdminClient();
+  const { data: membership, error: membershipError } = await admin
+    .from("church_memberships")
+    .select("role")
+    .eq("church_id", communityId)
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+
+  if (membershipError) {
+    redirect(`/c/${slug}?message=${encodeURIComponent(membershipError.message)}`);
+  }
+
+  if (!membership) {
+    redirect(`/c/${slug}`);
+  }
+
+  if (membership.role === "owner") {
+    redirect(`/c/${slug}?message=Community owners cannot leave their own community.`);
+  }
+
+  const { error } = await admin
+    .from("church_memberships")
+    .delete()
+    .eq("church_id", communityId)
+    .eq("profile_id", profile.id)
+    .neq("role", "owner");
+
+  if (error) {
+    redirect(`/c/${slug}?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/discover");
+  revalidatePath("/communities");
+  revalidatePath(`/c/${slug}`);
+  redirect(`/c/${slug}`);
 }

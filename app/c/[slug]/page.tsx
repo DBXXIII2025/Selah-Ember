@@ -1,21 +1,38 @@
 import { MapPin, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPublicCommunityBySlug } from "@/app/actions/communities";
+import {
+  getCommunityMembershipStatus,
+  getPublicCommunityBySlug,
+} from "@/app/actions/communities";
+import { CommunityMembershipForm } from "@/components/church/community-membership-form";
 
 type PublicCommunityPageProps = {
   params: Promise<{
     slug: string;
   }>;
+  searchParams: Promise<{
+    message?: string;
+  }>;
 };
 
-export default async function PublicCommunityPage({ params }: PublicCommunityPageProps) {
+function formatMemberCount(count: number) {
+  return `${count} ${count === 1 ? "member" : "members"}`;
+}
+
+export default async function PublicCommunityPage({
+  params,
+  searchParams,
+}: PublicCommunityPageProps) {
   const { slug } = await params;
+  const { message } = await searchParams;
   const community = await getPublicCommunityBySlug(slug);
 
   if (!community) {
     notFound();
   }
+
+  const status = await getCommunityMembershipStatus(community.id);
 
   return (
     <main className="min-h-screen bg-[#fff8ed] text-[#211b17]">
@@ -25,9 +42,14 @@ export default async function PublicCommunityPage({ params }: PublicCommunityPag
           <Link href="/" className="text-lg font-semibold">
             Selah Ember
           </Link>
-          <Link href="/signin" className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
-            Sign in
-          </Link>
+          <div className="flex items-center gap-4 text-sm font-semibold">
+            <Link href="/discover" className="text-[#67564c] hover:text-[#b94f22]">
+              Discover
+            </Link>
+            <Link href="/signin" className="text-[#8a3f1e] hover:text-[#b94f22]">
+              Sign in
+            </Link>
+          </div>
         </nav>
 
         <div className="mx-auto mt-14 grid max-w-7xl gap-10 lg:grid-cols-[1fr_0.85fr] lg:items-center">
@@ -45,6 +67,18 @@ export default async function PublicCommunityPage({ params }: PublicCommunityPag
                 {community.location}
               </p>
             ) : null}
+            <p className="mt-4 flex items-center gap-2 font-medium text-[#594a42]">
+              <UsersRound aria-hidden="true" className="h-5 w-5 text-[#b94f22]" />
+              {formatMemberCount(community.member_count)}
+            </p>
+            {message ? (
+              <p className="mt-6 max-w-xl rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
+                {message}
+              </p>
+            ) : null}
+            <div className="mt-8">
+              <CommunityMembershipForm community={community} status={status} />
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/45 bg-[#211b17]/90 shadow-2xl shadow-[#3b2117]/30">

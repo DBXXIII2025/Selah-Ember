@@ -2,6 +2,10 @@ import { MapPin, Plus, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { getCurrentUserCommunities } from "@/app/actions/communities";
 
+function formatMemberCount(count: number) {
+  return `${count} ${count === 1 ? "member" : "members"}`;
+}
+
 export default async function CommunitiesPage() {
   const memberships = await getCurrentUserCommunities();
 
@@ -69,6 +73,10 @@ export default async function CommunitiesPage() {
                       {community.location}
                     </p>
                   ) : null}
+                  <p className="mt-3 flex items-center gap-2 text-sm text-[#67564c]">
+                    <UsersRound aria-hidden="true" className="h-4 w-4 text-[#b94f22]" />
+                    {formatMemberCount(community.member_count)}
+                  </p>
                   <Link
                     href={`/c/${community.slug}`}
                     className="mt-6 inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]"

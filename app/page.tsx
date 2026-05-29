@@ -47,10 +47,10 @@ export default function Home() {
                 Create Community
               </a>
               <a
-                href="/signin"
+                href="/discover"
                 className="inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 bg-white/70 px-6 py-3 text-base font-semibold text-[#2f2722] shadow-sm backdrop-blur transition hover:bg-white"
               >
-                Explore Groups
+                Discover Communities
               </a>
             </div>
           </div>
