@@ -14,6 +14,12 @@ function getAppUrl() {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 }
 
+function getSignInErrorMessage(message: string) {
+  return message.toLowerCase().includes("email not confirmed")
+    ? "Please confirm your email before signing in."
+    : message;
+}
+
 export async function signUp(formData: FormData) {
   const email = getFormString(formData, "email");
   const password = getFormString(formData, "password");
@@ -71,7 +77,7 @@ export async function signIn(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/signin?message=${encodeURIComponent(error.message)}`);
+    redirect(`/signin?message=${encodeURIComponent(getSignInErrorMessage(error.message))}`);
   }
 
   revalidatePath("/", "layout");
