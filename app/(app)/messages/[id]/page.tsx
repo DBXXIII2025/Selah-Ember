@@ -5,6 +5,7 @@ import {
   sendDirectMessage,
 } from "@/app/actions/messages";
 import { SafeLink } from "@/components/media/safe-link";
+import { MessageComposer } from "@/components/messages/message-composer";
 
 type ConversationPageProps = {
   params: Promise<{
@@ -14,9 +15,6 @@ type ConversationPageProps = {
     message?: string;
   }>;
 };
-
-const inputClassName =
-  "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
 
 function formatMessageDate(value: string) {
   const date = new Date(value);
@@ -195,44 +193,7 @@ export default async function ConversationPage({ params, searchParams }: Convers
           )}
         </div>
 
-        <form action={sendDirectMessage} className="mt-6 rounded-2xl border border-[#ead6c5] bg-white/70 p-5 shadow-sm">
-          <input type="hidden" name="conversation_id" value={conversation.id} />
-          <label className="block">
-            <span className="text-sm font-medium text-[#3b312b]">Message</span>
-            <textarea
-              name="body"
-              rows={4}
-              maxLength={5000}
-              className={inputClassName}
-            />
-          </label>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-medium text-[#3b312b]">Image or video</span>
-              <input
-                name="attachment"
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
-                className={inputClassName}
-              />
-            </label>
-            <label className="block">
-              <span className="text-sm font-medium text-[#3b312b]">Link</span>
-              <input name="link_url" type="url" placeholder="https://example.com" className={inputClassName} />
-            </label>
-          </div>
-          <div className="mt-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <p className="text-sm text-[#67564c]">
-              Text up to 5000 characters. Images: JPG, PNG, WebP, GIF up to 10MB. Videos: MP4, WebM, MOV up to 250MB.
-            </p>
-            <button
-              type="submit"
-              className="rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
-            >
-              Send
-            </button>
-          </div>
-        </form>
+        <MessageComposer conversationId={conversation.id} action={sendDirectMessage} />
       </div>
     </section>
   );
