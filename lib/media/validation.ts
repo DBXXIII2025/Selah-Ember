@@ -4,8 +4,8 @@ export const MEDIA_LIMITS = {
   avatarImageBytes: 5 * 1024 * 1024,
   postImageBytes: 10 * 1024 * 1024,
   betaVideoBytes: 250 * 1024 * 1024,
-  allowedImageMimeTypes: ["image/jpeg", "image/png", "image/webp"],
-  allowedImageExtensions: ["jpg", "jpeg", "png", "webp"],
+  allowedImageMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  allowedImageExtensions: ["jpg", "jpeg", "png", "webp", "gif"],
   allowedVideoMimeTypes: ["video/mp4", "video/webm", "video/quicktime"],
   allowedVideoExtensions: ["mp4", "webm", "mov"],
 };
@@ -40,11 +40,11 @@ export function validateImageFile(
   const maxBytes = options.maxBytes || MEDIA_LIMITS.postImageBytes;
 
   if (!MEDIA_LIMITS.allowedImageMimeTypes.includes(file.type)) {
-    return { ok: false, message: "Use a JPG, PNG, or WebP image." };
+    return { ok: false, message: "Use a JPG, PNG, WebP, or GIF image." };
   }
 
   if (!MEDIA_LIMITS.allowedImageExtensions.includes(getExtension(file.name))) {
-    return { ok: false, message: "Image filenames must end in JPG, PNG, or WebP." };
+    return { ok: false, message: "Image filenames must end in JPG, PNG, WebP, or GIF." };
   }
 
   if (file.size <= 0) {

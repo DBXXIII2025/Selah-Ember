@@ -4,11 +4,32 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/app/actions/notifications";
 import { assertNotBanned } from "@/lib/moderation/bans";
+import {
+  isSafeHttpUrl,
+  MEDIA_LIMITS,
+  validateImageFile,
+  validateVideoFile,
+} from "@/lib/media/validation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const MESSAGE_MAX_LENGTH = 5000;
+const MESSAGE_MEDIA_BUCKET = "message-media";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export type MessageAttachment = {
+  id: string;
+  message_id: string;
+  conversation_id: string;
+  uploader_id: string;
+  kind: "image" | "video" | "link" | "file";
+  url: string;
+  signed_url: string | null;
+  filename: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  created_at: string;
+};
 
 export type MessageParticipant = {
   user_id: string;
@@ -39,6 +60,7 @@ export type ConversationDetail = ConversationSummary & {
     body: string;
     created_at: string;
     deleted_at: string | null;
+    attachments: MessageAttachment[];
   }>;
 };
 
@@ -58,6 +80,39 @@ function getFormString(formData: FormData, key: string) {
 function previewMessage(body: string) {
   const compact = body.replace(/\s+/g, " ").trim();
   return compact.length > 120 ? `${compact.slice(0, 117)}...` : compact;
+}
+
+function getOptionalFile(formData: FormData, key: string) {
+  const value = formData.get(key);
+
+  if (!(value instanceof File) || value.size <= 0 || !value.name) {
+    return null;
+  }
+
+  return value;
+}
+
+function sanitizeFilename(name: string) {
+  const fallback = "message-media";
+  const sanitized = name
+    .replace(/[/\\]/g, "-")
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 120);
+
+  return sanitized || fallback;
+}
+
+function getAttachmentKind(file: File): "image" | "video" | null {
+  if (MEDIA_LIMITS.allowedImageMimeTypes.includes(file.type)) {
+    return "image";
+  }
+
+  if (MEDIA_LIMITS.allowedVideoMimeTypes.includes(file.type)) {
+    return "video";
+  }
+
+  return null;
 }
 
 function isUuid(value: string) {
@@ -291,6 +346,126 @@ export async function insertDirectMessage(conversationId: string, senderId: stri
   return String(message.id);
 }
 
+async function createSignedAttachmentUrl(attachment: MessageAttachment) {
+  if (attachment.kind !== "image" && attachment.kind !== "video") {
+    return attachment;
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin.storage
+    .from(MESSAGE_MEDIA_BUCKET)
+    .createSignedUrl(attachment.url, 60 * 60);
+
+  if (error) {
+    logMessageIssue("message_media_signed_url_failed", {
+      conversationId: attachment.conversation_id,
+      userId: attachment.uploader_id,
+      code: error.name,
+      message: error.message,
+    });
+    return attachment;
+  }
+
+  return {
+    ...attachment,
+    signed_url: data.signedUrl,
+  };
+}
+
+async function getAttachmentsForMessages(messageIds: string[]) {
+  const validMessageIds = messageIds.filter(isUuid);
+
+  if (validMessageIds.length === 0) {
+    return new Map<string, MessageAttachment[]>();
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("message_attachments")
+    .select("id,message_id,conversation_id,uploader_id,kind,url,filename,mime_type,size_bytes,created_at")
+    .in("message_id", validMessageIds)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    logMessageIssue("message_attachment_lookup_failed", {
+      code: error.code,
+      message: error.message,
+    });
+    return new Map<string, MessageAttachment[]>();
+  }
+
+  const attachments = await Promise.all(
+    (data || []).map(async (row) =>
+      createSignedAttachmentUrl({
+        id: String(row.id),
+        message_id: String(row.message_id),
+        conversation_id: String(row.conversation_id),
+        uploader_id: String(row.uploader_id),
+        kind: ["image", "video", "link", "file"].includes(String(row.kind))
+          ? (String(row.kind) as MessageAttachment["kind"])
+          : "file",
+        url: String(row.url),
+        signed_url: null,
+        filename: typeof row.filename === "string" ? row.filename : null,
+        mime_type: typeof row.mime_type === "string" ? row.mime_type : null,
+        size_bytes:
+          typeof row.size_bytes === "number"
+            ? row.size_bytes
+            : typeof row.size_bytes === "string"
+              ? Number(row.size_bytes)
+              : null,
+        created_at: String(row.created_at),
+      }),
+    ),
+  );
+
+  const attachmentsByMessage = new Map<string, MessageAttachment[]>();
+
+  for (const attachment of attachments) {
+    attachmentsByMessage.set(attachment.message_id, [
+      ...(attachmentsByMessage.get(attachment.message_id) || []),
+      attachment,
+    ]);
+  }
+
+  return attachmentsByMessage;
+}
+
+async function insertMessageAttachmentRows(
+  messageId: string,
+  conversationId: string,
+  uploaderId: string,
+  attachments: Array<{
+    kind: "image" | "video" | "link";
+    url: string;
+    filename?: string | null;
+    mime_type?: string | null;
+    size_bytes?: number | null;
+  }>,
+) {
+  if (attachments.length === 0) {
+    return;
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("message_attachments").insert(
+    attachments.map((attachment) => ({
+      message_id: messageId,
+      conversation_id: conversationId,
+      uploader_id: uploaderId,
+      kind: attachment.kind,
+      url: attachment.url,
+      filename: attachment.filename || null,
+      mime_type: attachment.mime_type || null,
+      size_bytes: attachment.size_bytes || null,
+    })),
+  );
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function getUnreadMessageCount() {
   const conversations = await getConversations();
   return conversations.reduce((total, conversation) => total + conversation.unread_count, 0);
@@ -411,6 +586,7 @@ async function buildConversationSummaries(conversationIds: string[], currentUser
         body: String(row.body),
         created_at: String(row.created_at),
         deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
+        attachments: [],
       },
     ]);
   }
@@ -499,14 +675,21 @@ export async function getConversation(conversationId: string): Promise<Conversat
     return null;
   }
 
+  const messages = (data || []).map((row) => ({
+    id: String(row.id),
+    sender_id: String(row.sender_id),
+    body: String(row.body),
+    created_at: String(row.created_at),
+    deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
+    attachments: [],
+  }));
+  const attachmentsByMessage = await getAttachmentsForMessages(messages.map((message) => message.id));
+
   return {
     ...summary,
-    messages: (data || []).map((row) => ({
-      id: String(row.id),
-      sender_id: String(row.sender_id),
-      body: String(row.body),
-      created_at: String(row.created_at),
-      deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
+    messages: messages.map((message) => ({
+      ...message,
+      attachments: attachmentsByMessage.get(message.id) || [],
     })),
   };
 }
@@ -572,12 +755,143 @@ export async function sendDirectMessage(formData: FormData) {
   await assertNotBanned(user.id, "/messages?message=Your account cannot send messages right now.");
   const conversationId = getFormString(formData, "conversation_id");
   const body = getFormString(formData, "body");
+  const linkUrl = getFormString(formData, "link_url");
+  const file = getOptionalFile(formData, "attachment");
 
   if (!conversationId) {
     redirect("/messages?message=Conversation not found.");
   }
 
-  await insertDirectMessage(conversationId, user.id, body);
+  if (body.length > MESSAGE_MAX_LENGTH) {
+    redirect(`/messages/${conversationId}?message=Message must be 5000 characters or fewer.`);
+  }
+
+  if (linkUrl && !isSafeHttpUrl(linkUrl)) {
+    redirect(`/messages/${conversationId}?message=Use a safe HTTP or HTTPS link.`);
+  }
+
+  let fileKind: "image" | "video" | null = null;
+
+  if (file) {
+    fileKind = getAttachmentKind(file);
+
+    if (!fileKind) {
+      redirect(`/messages/${conversationId}?message=Use a JPG, PNG, WebP, GIF, MP4, WebM, or MOV file.`);
+    }
+
+    const validation =
+      fileKind === "image"
+        ? validateImageFile(file, { maxBytes: MEDIA_LIMITS.postImageBytes })
+        : validateVideoFile(file);
+
+    if (!validation.ok) {
+      redirect(`/messages/${conversationId}?message=${encodeURIComponent(validation.message || "Invalid upload.")}`);
+    }
+  }
+
+  if (!body && !linkUrl && !file) {
+    redirect(`/messages/${conversationId}?message=Enter a message, link, image, or video.`);
+  }
+
+  const participantIds = await requireConversationParticipant(conversationId, user.id);
+  const admin = createAdminClient();
+  const uploadAttachments: Array<{
+    kind: "image" | "video" | "link";
+    url: string;
+    filename?: string | null;
+    mime_type?: string | null;
+    size_bytes?: number | null;
+  }> = [];
+
+  if (file && fileKind) {
+    const safeName = sanitizeFilename(file.name);
+    const path = `${conversationId}/${user.id}/${Date.now()}-${safeName}`;
+    const { error: uploadError } = await admin.storage
+      .from(MESSAGE_MEDIA_BUCKET)
+      .upload(path, file, {
+        cacheControl: "3600",
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      logMessageIssue("message_media_upload_failed", {
+        conversationId,
+        userId: user.id,
+        code: uploadError.name,
+        message: uploadError.message,
+      });
+      redirect(`/messages/${conversationId}?message=Upload failed. Try again.`);
+    }
+
+    uploadAttachments.push({
+      kind: fileKind,
+      url: path,
+      filename: safeName,
+      mime_type: file.type,
+      size_bytes: file.size,
+    });
+  }
+
+  if (linkUrl) {
+    uploadAttachments.push({
+      kind: "link",
+      url: linkUrl,
+    });
+  }
+
+  const messageBody =
+    body ||
+    (linkUrl
+      ? linkUrl
+      : fileKind === "video"
+        ? "Shared a video."
+        : fileKind === "image"
+          ? "Shared an image."
+          : "Shared an attachment.");
+
+  const { data: message, error } = await admin
+    .from("direct_messages")
+    .insert({
+      conversation_id: conversationId,
+      sender_id: user.id,
+      body: messageBody,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await insertMessageAttachmentRows(String(message.id), conversationId, user.id, uploadAttachments);
+
+  const recipients = participantIds.filter((userId) => userId !== user.id);
+
+  await Promise.all(
+    recipients.map((recipientId) =>
+      createNotification({
+        userId: recipientId,
+        actorUserId: user.id,
+        type: "direct_message",
+        title: "New message",
+        body: previewMessage(messageBody),
+        href: `/messages/${conversationId}`,
+      }),
+    ),
+  );
+
+  const now = new Date().toISOString();
+  await admin
+    .from("conversation_participants")
+    .update({ last_read_at: now })
+    .eq("conversation_id", conversationId)
+    .eq("user_id", user.id);
+
+  revalidatePath("/messages");
+  revalidatePath(`/messages/${conversationId}`);
+  revalidatePath("/notifications");
+  revalidatePath("/", "layout");
   redirect(`/messages/${conversationId}`);
 }
 

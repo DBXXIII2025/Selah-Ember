@@ -4,6 +4,7 @@ import {
   markConversationRead,
   sendDirectMessage,
 } from "@/app/actions/messages";
+import { SafeLink } from "@/components/media/safe-link";
 
 type ConversationPageProps = {
   params: Promise<{
@@ -28,6 +29,86 @@ function formatMessageDate(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function MessageBody({ body }: Readonly<{ body: string }>) {
+  const urlPattern = /(https?:\/\/[^\s<>"']+)/g;
+  const parts = body.split(urlPattern);
+
+  return (
+    <p className="mt-3 whitespace-pre-wrap break-words leading-7 text-[#3b312b]">
+      {parts.map((part, index) => {
+        if (urlPattern.test(part)) {
+          urlPattern.lastIndex = 0;
+          return (
+            <SafeLink key={`${part}-${index}`} href={part} className="font-semibold text-[#8a3f1e] underline">
+              {part}
+            </SafeLink>
+          );
+        }
+
+        urlPattern.lastIndex = 0;
+        return <span key={`${part}-${index}`}>{part}</span>;
+      })}
+    </p>
+  );
+}
+
+function MessageAttachments({
+  attachments,
+}: Readonly<{
+  attachments: NonNullable<Awaited<ReturnType<typeof getConversation>>>["messages"][number]["attachments"];
+}>) {
+  if (attachments.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-4 space-y-3">
+      {attachments.map((attachment) => {
+        if (attachment.kind === "image") {
+          return attachment.signed_url ? (
+            <img
+              key={attachment.id}
+              src={attachment.signed_url}
+              alt={attachment.filename || "Message image"}
+              className="max-h-[28rem] max-w-full rounded-xl border border-[#ead6c5] object-contain"
+            />
+          ) : (
+            <p key={attachment.id} className="text-sm text-[#67564c]">
+              Image unavailable.
+            </p>
+          );
+        }
+
+        if (attachment.kind === "video") {
+          return attachment.signed_url ? (
+            <video
+              key={attachment.id}
+              src={attachment.signed_url}
+              controls
+              preload="metadata"
+              className="max-h-[28rem] max-w-full rounded-xl border border-[#ead6c5]"
+            />
+          ) : (
+            <p key={attachment.id} className="text-sm text-[#67564c]">
+              Video unavailable.
+            </p>
+          );
+        }
+
+        return (
+          <SafeLink
+            key={attachment.id}
+            href={attachment.url}
+            className="inline-flex break-all rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-white"
+          >
+            {attachment.filename || attachment.url}
+          </SafeLink>
+        );
+      })}
+    </div>
+  );
 }
 
 function ConversationUnavailable() {
@@ -105,9 +186,8 @@ export default async function ConversationPage({ params, searchParams }: Convers
                       <p className="font-semibold">{sender?.display_name || "Selah Ember Member"}</p>
                       <p className="text-sm text-[#8a3f1e]">{formatMessageDate(message.created_at)}</p>
                     </div>
-                    <p className="mt-3 whitespace-pre-wrap break-words leading-7 text-[#3b312b]">
-                      {message.deleted_at ? "Message deleted" : message.body}
-                    </p>
+                    <MessageBody body={message.deleted_at ? "Message deleted" : message.body} />
+                    {!message.deleted_at ? <MessageAttachments attachments={message.attachments} /> : null}
                   </article>
                 );
               })}
@@ -123,12 +203,28 @@ export default async function ConversationPage({ params, searchParams }: Convers
               name="body"
               rows={4}
               maxLength={5000}
-              required
               className={inputClassName}
             />
           </label>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium text-[#3b312b]">Image or video</span>
+              <input
+                name="attachment"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+                className={inputClassName}
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium text-[#3b312b]">Link</span>
+              <input name="link_url" type="url" placeholder="https://example.com" className={inputClassName} />
+            </label>
+          </div>
           <div className="mt-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <p className="text-sm text-[#67564c]">Text only. Maximum 5000 characters.</p>
+            <p className="text-sm text-[#67564c]">
+              Text up to 5000 characters. Images: JPG, PNG, WebP, GIF up to 10MB. Videos: MP4, WebM, MOV up to 250MB.
+            </p>
             <button
               type="submit"
               className="rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
