@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createNotification } from "@/app/actions/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -361,6 +362,17 @@ export async function joinCommunity(formData: FormData) {
   }
 
   const admin = createAdminClient();
+  const { data: existingMembership, error: existingMembershipError } = await admin
+    .from("church_memberships")
+    .select("id")
+    .eq("church_id", communityId)
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+
+  if (existingMembershipError) {
+    redirect(`/c/${slug}?message=${encodeURIComponent(existingMembershipError.message)}`);
+  }
+
   const { error } = await admin.from("church_memberships").upsert(
     {
       church_id: communityId,
@@ -375,6 +387,32 @@ export async function joinCommunity(formData: FormData) {
 
   if (error) {
     redirect(`/c/${slug}?message=${encodeURIComponent(error.message)}`);
+  }
+
+  if (!existingMembership) {
+    const { data: ownerMemberships, error: ownerError } = await admin
+      .from("church_memberships")
+      .select("profiles:profile_id(user_id)")
+      .eq("church_id", communityId)
+      .eq("role", "owner");
+
+    if (ownerError) {
+      throw new Error(ownerError.message);
+    }
+
+    await Promise.all(
+      ((ownerMemberships || []) as unknown as Record<string, unknown>[]).map((membership) => {
+        const ownerProfile = membership.profiles as { user_id?: string } | null | undefined;
+        return createNotification({
+          userId: ownerProfile?.user_id,
+          actorUserId: profile.user_id,
+          type: "community_joined",
+          title: "Community joined",
+          body: "Someone joined your community.",
+          href: `/leader/communities/${communityId}`,
+        });
+      }),
+    );
   }
 
   revalidatePath("/discover");

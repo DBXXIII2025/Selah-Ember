@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createNotification } from "@/app/actions/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -139,10 +140,40 @@ export async function createPrayerRequest(formData: FormData) {
     payload.community_id = communityId;
   }
 
-  const { error } = await admin.from("prayer_requests").insert(payload);
+  const { data: prayerRequest, error } = await admin
+    .from("prayer_requests")
+    .insert(payload)
+    .select("id")
+    .single();
 
   if (error) {
     redirect(`/prayer/new?message=${encodeURIComponent(error.message)}`);
+  }
+
+  if (communityId && !payload.is_private) {
+    const { data: ownerMemberships, error: ownerError } = await admin
+      .from("church_memberships")
+      .select("profiles:profile_id(user_id)")
+      .eq("church_id", communityId)
+      .eq("role", "owner");
+
+    if (ownerError) {
+      throw new Error(ownerError.message);
+    }
+
+    await Promise.all(
+      ((ownerMemberships || []) as unknown as Record<string, unknown>[]).map((membership) => {
+        const ownerProfile = membership.profiles as { user_id?: string } | null | undefined;
+        return createNotification({
+          userId: ownerProfile?.user_id,
+          actorUserId: profile.user_id,
+          type: "community_prayer_request",
+          title: "New community prayer request",
+          body: "A public prayer request was shared in your community.",
+          href: `/prayer${prayerRequest?.id ? `#${prayerRequest.id}` : ""}`,
+        });
+      }),
+    );
   }
 
   revalidatePath("/prayer");

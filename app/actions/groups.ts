@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createNotification } from "@/app/actions/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -421,6 +422,17 @@ export async function joinGroup(formData: FormData) {
   }
 
   const admin = createAdminClient();
+  const { data: existingMembership, error: existingMembershipError } = await admin
+    .from("group_memberships")
+    .select("id")
+    .eq("group_id", groupId)
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+
+  if (existingMembershipError) {
+    redirect(`/groups/${groupId}?message=${encodeURIComponent(existingMembershipError.message)}`);
+  }
+
   const { error } = await admin.from("group_memberships").upsert(
     {
       group_id: groupId,
@@ -435,6 +447,44 @@ export async function joinGroup(formData: FormData) {
 
   if (error) {
     redirect(`/groups/${groupId}?message=${encodeURIComponent(error.message)}`);
+  }
+
+  if (!existingMembership) {
+    const { data: group, error: groupError } = await admin
+      .from("study_groups")
+      .select("title,name")
+      .eq("id", groupId)
+      .maybeSingle();
+
+    if (groupError) {
+      throw new Error(groupError.message);
+    }
+
+    const groupTitle =
+      typeof group?.title === "string" ? group.title : typeof group?.name === "string" ? group.name : "your group";
+    const { data: ownerMemberships, error: ownerError } = await admin
+      .from("group_memberships")
+      .select("profiles:profile_id(user_id)")
+      .eq("group_id", groupId)
+      .in("role", ["owner", "leader"]);
+
+    if (ownerError) {
+      throw new Error(ownerError.message);
+    }
+
+    await Promise.all(
+      ((ownerMemberships || []) as unknown as Record<string, unknown>[]).map((membership) => {
+        const ownerProfile = membership.profiles as { user_id?: string } | null | undefined;
+        return createNotification({
+          userId: ownerProfile?.user_id,
+          actorUserId: profile.user_id,
+          type: "group_joined",
+          title: "Group joined",
+          body: `Someone joined ${groupTitle}.`,
+          href: `/groups/${groupId}`,
+        });
+      }),
+    );
   }
 
   revalidatePath("/groups");

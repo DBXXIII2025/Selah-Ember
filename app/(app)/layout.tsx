@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signOut } from "@/app/actions/auth";
+import { getUnreadNotificationCount } from "@/app/actions/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -69,6 +70,8 @@ export default async function ProtectedLayout({
     },
   );
 
+  const unreadNotificationCount = await getUnreadNotificationCount();
+
   return (
     <main className="min-h-screen bg-[#fff8ed] text-[#211b17]">
       <header className="border-b border-[#ead6c5] bg-white/75">
@@ -101,6 +104,10 @@ export default async function ProtectedLayout({
               </Link>
               <Link href="/events" className="transition hover:text-[#b94f22]">
                 Events
+              </Link>
+              <Link href="/notifications" className="transition hover:text-[#b94f22]">
+                Notifications
+                {unreadNotificationCount > 0 ? ` (${unreadNotificationCount})` : ""}
               </Link>
             </nav>
           </div>

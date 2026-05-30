@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createNotification } from "@/app/actions/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -438,6 +439,29 @@ export async function setEventRsvp(formData: FormData) {
   if (error) {
     redirect(`/events/${eventId}?message=${encodeURIComponent(error.message)}`);
   }
+
+  const { data: event, error: eventError } = await admin
+    .from("events")
+    .select("title,created_by,profiles:created_by(user_id)")
+    .eq("id", eventId)
+    .maybeSingle();
+
+  if (eventError) {
+    throw new Error(eventError.message);
+  }
+
+  const ownerProfile = (event as unknown as { profiles?: { user_id?: string } | null })?.profiles;
+  const eventTitle =
+    typeof event?.title === "string" ? event.title : "your event";
+
+  await createNotification({
+    userId: ownerProfile?.user_id,
+    actorUserId: user.id,
+    type: "event_rsvp",
+    title: "Event RSVP",
+    body: `Someone marked ${status} for ${eventTitle}.`,
+    href: `/events/${eventId}`,
+  });
 
   revalidatePath("/events");
   revalidatePath(`/events/${eventId}`);
