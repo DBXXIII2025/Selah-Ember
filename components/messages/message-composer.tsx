@@ -7,6 +7,7 @@ import { isSafeHttpUrl, MEDIA_LIMITS, validateImageFile, validateVideoFile } fro
 
 type MessageComposerProps = {
   conversationId: string;
+  returnTo?: string;
 };
 
 const imageAccept = "image/jpeg,image/png,image/webp,image/gif";
@@ -33,7 +34,7 @@ function fileKindLabel(file: SelectedFile | null) {
   return "File";
 }
 
-export function MessageComposer({ conversationId }: MessageComposerProps) {
+export function MessageComposer({ conversationId, returnTo }: MessageComposerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [linkPanelOpen, setLinkPanelOpen] = useState(false);
@@ -90,6 +91,7 @@ export function MessageComposer({ conversationId }: MessageComposerProps) {
     <form action={sendDirectMessage} encType="multipart/form-data" className="mt-6">
       <input type="hidden" name="conversation_id" value={conversationId} />
       <input type="hidden" name="link_url" value={selectedLink} />
+      {returnTo ? <input type="hidden" name="return_to" value={returnTo} /> : null}
 
       {(selectedFile || selectedLink) ? (
         <div className="mb-3 flex flex-wrap gap-2">

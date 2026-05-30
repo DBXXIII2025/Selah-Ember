@@ -2,8 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createOrGetDirectConversation, insertDirectMessage } from "@/app/actions/messages";
-import { assertNotBanned } from "@/lib/moderation/bans";
+import {
+  createOrGetDirectConversation,
+  getConversation,
+  getConversations,
+  insertDirectMessage,
+  markConversationRead,
+} from "@/app/actions/messages";
+import { assertNotBanned, getActiveBanForUser } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePlatformEngineer } from "@/lib/platform/auth";
 import { isSafeHttpUrl } from "@/lib/media/validation";
@@ -66,6 +72,24 @@ export type PlatformDashboardData = {
   }>;
 };
 
+export type PlatformMessageUser = PlatformProfileSummary & {
+  active_ban: {
+    id: string;
+    reason: string;
+    expires_at: string;
+  } | null;
+};
+
+export type PlatformMessagesData = {
+  conversations: Awaited<ReturnType<typeof getConversations>>;
+  users: PlatformMessageUser[];
+};
+
+export type PlatformConversationData = {
+  conversation: Awaited<ReturnType<typeof getConversation>>;
+  targetUser: PlatformMessageUser | null;
+};
+
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -96,6 +120,177 @@ async function getUserEmailMap() {
   }
 
   return new Map(data.users.map((user) => [user.id, user.email || null]));
+}
+
+async function getPlatformMessageUsers(search = "") {
+  const admin = createAdminClient();
+  const term = search.trim();
+  const emailMap = await getUserEmailMap();
+  const matchingEmailUserIds = term
+    ? Array.from(emailMap.entries())
+        .filter(([, email]) => email?.toLowerCase().includes(term.toLowerCase()))
+        .map(([userId]) => userId)
+    : [];
+
+  let query = admin
+    .from("profiles")
+    .select("id,user_id,display_name,username,church_name,role,created_at")
+    .not("user_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (term) {
+    const escapedTerm = term.replace(/[,%()]/g, " ");
+    const filters = [
+      `display_name.ilike.%${escapedTerm}%`,
+      `username.ilike.%${escapedTerm}%`,
+      `church_name.ilike.%${escapedTerm}%`,
+    ];
+
+    if (matchingEmailUserIds.length > 0) {
+      filters.push(`user_id.in.(${matchingEmailUserIds.join(",")})`);
+    }
+
+    query = query.or(filters.join(","));
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const users = await Promise.all(
+    ((data || []) as unknown as Record<string, unknown>[]).map(async (profile) => {
+      const userId = String(profile.user_id);
+      const activeBan = await getActiveBanForUser(userId);
+
+      return {
+        id: String(profile.id),
+        user_id: userId,
+        display_name: String(profile.display_name),
+        username: typeof profile.username === "string" ? profile.username : null,
+        church_name: typeof profile.church_name === "string" ? profile.church_name : null,
+        role: typeof profile.role === "string" ? profile.role : "user",
+        created_at: String(profile.created_at),
+        email: emailMap.get(userId) || null,
+        active_ban: activeBan
+          ? {
+              id: activeBan.id,
+              reason: activeBan.reason,
+              expires_at: activeBan.expires_at,
+            }
+          : null,
+      };
+    }),
+  );
+
+  return users;
+}
+
+async function getPlatformMessageUserById(userId: string) {
+  const admin = createAdminClient();
+  const [emailMap, activeBan] = await Promise.all([
+    getUserEmailMap(),
+    getActiveBanForUser(userId),
+  ]);
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id,user_id,display_name,username,church_name,role,created_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    id: String(data.id),
+    user_id: String(data.user_id),
+    display_name: String(data.display_name),
+    username: typeof data.username === "string" ? data.username : null,
+    church_name: typeof data.church_name === "string" ? data.church_name : null,
+    role: typeof data.role === "string" ? data.role : "user",
+    created_at: String(data.created_at),
+    email: emailMap.get(userId) || null,
+    active_ban: activeBan
+      ? {
+          id: activeBan.id,
+          reason: activeBan.reason,
+          expires_at: activeBan.expires_at,
+        }
+      : null,
+  };
+}
+
+export async function getPlatformMessagesData(search = ""): Promise<PlatformMessagesData> {
+  await requirePlatformEngineer();
+  const [conversations, users] = await Promise.all([
+    getConversations(),
+    getPlatformMessageUsers(search),
+  ]);
+
+  return { conversations, users };
+}
+
+export async function getPlatformConversationData(conversationId: string): Promise<PlatformConversationData> {
+  const profile = await requirePlatformEngineer();
+  const conversation = await getConversation(conversationId);
+
+  if (!conversation) {
+    return { conversation: null, targetUser: null };
+  }
+
+  const targetParticipant = conversation.participants.find(
+    (participant) => participant.user_id !== profile.user_id,
+  );
+  const targetUser = targetParticipant ? await getPlatformMessageUserById(targetParticipant.user_id) : null;
+
+  await markConversationRead(conversationId);
+
+  return {
+    conversation,
+    targetUser: targetUser || null,
+  };
+}
+
+export async function startPlatformSupportConversation(formData: FormData) {
+  const profile = await requirePlatformEngineer();
+  await assertNotBanned(profile.user_id, "/platform/messages?message=Your account cannot send messages right now.");
+  const targetUserId = getFormString(formData, "target_user_id");
+
+  if (!targetUserId) {
+    redirect("/platform/messages?message=Choose a user to message.");
+  }
+
+  if (targetUserId === profile.user_id) {
+    redirect("/platform/messages?message=Choose someone other than yourself.");
+  }
+
+  const admin = createAdminClient();
+  const { data: targetProfile, error } = await admin
+    .from("profiles")
+    .select("user_id")
+    .eq("user_id", targetUserId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!targetProfile) {
+    redirect("/platform/messages?message=That user is not available.");
+  }
+
+  const conversationId = await createOrGetDirectConversation(profile.user_id, targetUserId);
+
+  revalidatePath("/platform/messages");
+  revalidatePath("/messages");
+  redirect(`/platform/messages/${conversationId}`);
 }
 
 export async function getPlatformDashboardData(search = ""): Promise<PlatformDashboardData> {

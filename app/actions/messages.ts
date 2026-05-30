@@ -92,6 +92,16 @@ function getOptionalFile(formData: FormData, key: string) {
   return value;
 }
 
+function getConversationRedirectPath(formData: FormData, conversationId: string) {
+  const returnTo = getFormString(formData, "return_to");
+
+  if (returnTo === `/messages/${conversationId}` || returnTo === `/platform/messages/${conversationId}`) {
+    return returnTo;
+  }
+
+  return `/messages/${conversationId}`;
+}
+
 function sanitizeFilename(name: string) {
   const fallback = "message-media";
   const sanitized = name
@@ -762,12 +772,14 @@ export async function sendDirectMessage(formData: FormData) {
     redirect("/messages?message=Conversation not found.");
   }
 
+  const redirectPath = getConversationRedirectPath(formData, conversationId);
+
   if (body.length > MESSAGE_MAX_LENGTH) {
-    redirect(`/messages/${conversationId}?message=Message must be 5000 characters or fewer.`);
+    redirect(`${redirectPath}?message=Message must be 5000 characters or fewer.`);
   }
 
   if (linkUrl && !isSafeHttpUrl(linkUrl)) {
-    redirect(`/messages/${conversationId}?message=Use a safe HTTP or HTTPS link.`);
+    redirect(`${redirectPath}?message=Use a safe HTTP or HTTPS link.`);
   }
 
   let fileKind: "image" | "video" | null = null;
@@ -776,7 +788,7 @@ export async function sendDirectMessage(formData: FormData) {
     fileKind = getAttachmentKind(file);
 
     if (!fileKind) {
-      redirect(`/messages/${conversationId}?message=Use a JPG, PNG, WebP, GIF, MP4, WebM, or MOV file.`);
+      redirect(`${redirectPath}?message=Use a JPG, PNG, WebP, GIF, MP4, WebM, or MOV file.`);
     }
 
     const validation =
@@ -785,12 +797,12 @@ export async function sendDirectMessage(formData: FormData) {
         : validateVideoFile(file);
 
     if (!validation.ok) {
-      redirect(`/messages/${conversationId}?message=${encodeURIComponent(validation.message || "Invalid upload.")}`);
+      redirect(`${redirectPath}?message=${encodeURIComponent(validation.message || "Invalid upload.")}`);
     }
   }
 
   if (!body && !linkUrl && !file) {
-    redirect(`/messages/${conversationId}?message=Enter a message, link, image, or video.`);
+    redirect(`${redirectPath}?message=Enter a message, link, image, or video.`);
   }
 
   const participantIds = await requireConversationParticipant(conversationId, user.id);
@@ -821,7 +833,7 @@ export async function sendDirectMessage(formData: FormData) {
         code: uploadError.name,
         message: uploadError.message,
       });
-      redirect(`/messages/${conversationId}?message=Upload failed. Try again.`);
+      redirect(`${redirectPath}?message=Upload failed. Try again.`);
     }
 
     uploadAttachments.push({
@@ -890,9 +902,11 @@ export async function sendDirectMessage(formData: FormData) {
 
   revalidatePath("/messages");
   revalidatePath(`/messages/${conversationId}`);
+  revalidatePath("/platform/messages");
+  revalidatePath(`/platform/messages/${conversationId}`);
   revalidatePath("/notifications");
   revalidatePath("/", "layout");
-  redirect(`/messages/${conversationId}`);
+  redirect(redirectPath);
 }
 
 export async function markConversationRead(conversationId: string) {

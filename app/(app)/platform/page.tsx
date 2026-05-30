@@ -1,5 +1,4 @@
 import {
-  createPlatformDirectMessageIntent,
   createTemporaryBan,
   deletePlatformAnnouncement,
   deletePlatformPlan,
@@ -10,6 +9,7 @@ import {
   sendPlatformAnnouncement,
   updatePlatformSettings,
 } from "@/app/actions/platform";
+import Link from "next/link";
 
 type PlatformPageProps = {
   searchParams: Promise<{
@@ -278,29 +278,11 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
 
           <Panel title="User messaging foundation">
             <p className="mb-5 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-              Admin-side intent only. Delivery depends on Phase 13 direct messaging.
+              Open the platform inbox to search users, start support conversations, and reply with text, links, images, or video.
             </p>
-            <form action={createPlatformDirectMessageIntent} className="space-y-5">
-              <label className="block">
-                <span className="text-sm font-medium text-[#3b312b]">User</span>
-                <select name="target_user_id" required className={inputClassName}>
-                  <option value="">Choose a user</option>
-                  {data.users.map((user) => (
-                    <option key={user.user_id} value={user.user_id}>
-                      {user.display_name} {user.email ? `(${user.email})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Field label="Subject" name="subject" required />
-              <label className="block">
-                <span className="text-sm font-medium text-[#3b312b]">Body</span>
-                <textarea name="body" rows={4} required className={inputClassName} />
-              </label>
-              <button type="submit" className={buttonClassName}>
-                Save message intent
-              </button>
-            </form>
+            <Link href="/platform/messages" className={buttonClassName}>
+              Open platform messages
+            </Link>
           </Panel>
 
           <Panel title="Moderation">
