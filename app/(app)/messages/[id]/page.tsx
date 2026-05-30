@@ -18,16 +18,53 @@ const inputClassName =
   "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
 
 function formatMessageDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown time";
+  }
+
   return new Intl.DateTimeFormat("en", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(value));
+  }).format(date);
+}
+
+function ConversationUnavailable() {
+  return (
+    <section className="px-6 py-12 sm:px-10 lg:px-16">
+      <div className="mx-auto max-w-4xl">
+        <Link href="/messages" className="text-sm font-semibold text-[#8a3f1e] transition hover:text-[#cf5f2b]">
+          Back to messages
+        </Link>
+        <div className="mt-8 rounded-2xl border border-dashed border-[#d79568] bg-white/65 p-10 text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
+            Messages
+          </p>
+          <h1 className="mt-3 text-3xl font-semibold">Conversation unavailable</h1>
+          <p className="mx-auto mt-4 max-w-xl leading-7 text-[#67564c]">
+            This conversation may have been removed, or you may not have access to it.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export default async function ConversationPage({ params, searchParams }: ConversationPageProps) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const conversation = await getConversation(id);
+
+  if (!conversation) {
+    return <ConversationUnavailable />;
+  }
+
   await markConversationRead(id);
+  const title = conversation.participants.map((participant) => participant.display_name).join(", ") || "Direct message";
+  const participantLabels =
+    conversation.participants
+      .map((participant) => participant.username ? `@${participant.username}` : participant.user_id)
+      .join(" - ") || "Participants unavailable";
 
   return (
     <section className="px-6 py-12 sm:px-10 lg:px-16">
@@ -39,14 +76,8 @@ export default async function ConversationPage({ params, searchParams }: Convers
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
             Conversation
           </p>
-          <h1 className="mt-3 text-3xl font-semibold">
-            {conversation.participants.map((participant) => participant.display_name).join(", ")}
-          </h1>
-          <p className="mt-3 text-sm text-[#67564c]">
-            {conversation.participants
-              .map((participant) => participant.username ? `@${participant.username}` : participant.user_id)
-              .join(" - ")}
-          </p>
+          <h1 className="mt-3 text-3xl font-semibold">{title}</h1>
+          <p className="mt-3 break-words text-sm text-[#67564c]">{participantLabels}</p>
         </div>
 
         {query.message ? (

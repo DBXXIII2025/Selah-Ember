@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const MESSAGE_MAX_LENGTH = 5000;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type MessageParticipant = {
   user_id: string;
@@ -59,6 +60,27 @@ function previewMessage(body: string) {
   return compact.length > 120 ? `${compact.slice(0, 117)}...` : compact;
 }
 
+function isUuid(value: string) {
+  return UUID_PATTERN.test(value);
+}
+
+function logMessageIssue(
+  event: string,
+  details: {
+    conversationId?: string;
+    userId?: string;
+    code?: string;
+    message?: string;
+  } = {},
+) {
+  console.warn("[messages]", event, {
+    conversationId: details.conversationId,
+    userId: details.userId,
+    code: details.code,
+    message: details.message,
+  });
+}
+
 async function getCurrentUser() {
   const supabase = await createClient();
   const {
@@ -104,6 +126,11 @@ async function getVisibleMessageProfile(targetUserId: string, currentUserId: str
 }
 
 async function getConversationParticipantUserIds(conversationId: string) {
+  if (!isUuid(conversationId)) {
+    logMessageIssue("invalid_conversation_id", { conversationId });
+    return null;
+  }
+
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("conversation_participants")
@@ -111,7 +138,12 @@ async function getConversationParticipantUserIds(conversationId: string) {
     .eq("conversation_id", conversationId);
 
   if (error) {
-    throw new Error(error.message);
+    logMessageIssue("participant_lookup_failed", {
+      conversationId,
+      code: error.code,
+      message: error.message,
+    });
+    return null;
   }
 
   return (data || []).map((row) => String(row.user_id));
@@ -120,7 +152,8 @@ async function getConversationParticipantUserIds(conversationId: string) {
 async function requireConversationParticipant(conversationId: string, userId: string) {
   const participantIds = await getConversationParticipantUserIds(conversationId);
 
-  if (!participantIds.includes(userId)) {
+  if (!participantIds?.includes(userId)) {
+    logMessageIssue("conversation_inaccessible", { conversationId, userId });
     redirect("/messages?message=Conversation not found.");
   }
 
@@ -264,7 +297,9 @@ export async function getUnreadMessageCount() {
 }
 
 async function buildConversationSummaries(conversationIds: string[], currentUserId: string) {
-  if (conversationIds.length === 0) {
+  const validConversationIds = conversationIds.filter(isUuid);
+
+  if (validConversationIds.length === 0) {
     return [];
   }
 
@@ -273,29 +308,41 @@ async function buildConversationSummaries(conversationIds: string[], currentUser
     admin
       .from("conversations")
       .select("id,updated_at")
-      .in("id", conversationIds)
+      .in("id", validConversationIds)
       .order("updated_at", { ascending: false }),
     admin
       .from("conversation_participants")
       .select("conversation_id,user_id,last_read_at")
-      .in("conversation_id", conversationIds),
+      .in("conversation_id", validConversationIds),
     admin
       .from("direct_messages")
       .select("id,conversation_id,sender_id,body,created_at,deleted_at")
-      .in("conversation_id", conversationIds)
+      .in("conversation_id", validConversationIds)
       .order("created_at", { ascending: false }),
   ]);
 
   if (conversationResult.error) {
-    throw new Error(conversationResult.error.message);
+    logMessageIssue("conversation_summary_lookup_failed", {
+      code: conversationResult.error.code,
+      message: conversationResult.error.message,
+    });
+    return [];
   }
 
   if (participantResult.error) {
-    throw new Error(participantResult.error.message);
+    logMessageIssue("conversation_participant_summary_lookup_failed", {
+      code: participantResult.error.code,
+      message: participantResult.error.message,
+    });
+    return [];
   }
 
   if (messageResult.error) {
-    throw new Error(messageResult.error.message);
+    logMessageIssue("conversation_message_summary_lookup_failed", {
+      code: messageResult.error.code,
+      message: messageResult.error.message,
+    });
+    return [];
   }
 
   const participantRows = participantResult.data || [];
@@ -309,15 +356,22 @@ async function buildConversationSummaries(conversationIds: string[], currentUser
       .in("user_id", participantUserIds);
 
     if (profilesError) {
-      throw new Error(profilesError.message);
-    }
-
-    for (const profile of profiles || []) {
-      profilesByUserId.set(String(profile.user_id), {
-        display_name: typeof profile.display_name === "string" ? profile.display_name : undefined,
-        username: typeof profile.username === "string" ? profile.username : null,
-        avatar_url: typeof profile.avatar_url === "string" ? profile.avatar_url : null,
+      logMessageIssue("conversation_profile_lookup_failed", {
+        code: profilesError.code,
+        message: profilesError.message,
       });
+    } else {
+      for (const profile of profiles || []) {
+        if (typeof profile.user_id !== "string") {
+          continue;
+        }
+
+        profilesByUserId.set(profile.user_id, {
+          display_name: typeof profile.display_name === "string" ? profile.display_name : undefined,
+          username: typeof profile.username === "string" ? profile.username : null,
+          avatar_url: typeof profile.avatar_url === "string" ? profile.avatar_url : null,
+        });
+      }
     }
   }
 
@@ -393,20 +447,38 @@ export async function getConversations(): Promise<ConversationSummary[]> {
     .eq("user_id", user.id);
 
   if (error) {
-    throw new Error(error.message);
+    logMessageIssue("conversation_list_lookup_failed", {
+      userId: user.id,
+      code: error.code,
+      message: error.message,
+    });
+    return [];
   }
 
   const conversationIds = (data || []).map((row) => String(row.conversation_id));
   return buildConversationSummaries(conversationIds, user.id);
 }
 
-export async function getConversation(conversationId: string): Promise<ConversationDetail> {
+export async function getConversation(conversationId: string): Promise<ConversationDetail | null> {
   const user = await getCurrentUser();
-  await requireConversationParticipant(conversationId, user.id);
+
+  if (!isUuid(conversationId)) {
+    logMessageIssue("conversation_detail_invalid_id", { conversationId, userId: user.id });
+    return null;
+  }
+
+  const participantIds = await getConversationParticipantUserIds(conversationId);
+
+  if (!participantIds?.includes(user.id)) {
+    logMessageIssue("conversation_detail_inaccessible", { conversationId, userId: user.id });
+    return null;
+  }
+
   const [summary] = await buildConversationSummaries([conversationId], user.id);
 
   if (!summary) {
-    redirect("/messages?message=Conversation not found.");
+    logMessageIssue("conversation_detail_missing_summary", { conversationId, userId: user.id });
+    return null;
   }
 
   const admin = createAdminClient();
@@ -418,7 +490,13 @@ export async function getConversation(conversationId: string): Promise<Conversat
     .limit(200);
 
   if (error) {
-    throw new Error(error.message);
+    logMessageIssue("conversation_detail_messages_failed", {
+      conversationId,
+      userId: user.id,
+      code: error.code,
+      message: error.message,
+    });
+    return null;
   }
 
   return {
@@ -505,7 +583,19 @@ export async function sendDirectMessage(formData: FormData) {
 
 export async function markConversationRead(conversationId: string) {
   const user = await getCurrentUser();
-  await requireConversationParticipant(conversationId, user.id);
+
+  if (!isUuid(conversationId)) {
+    logMessageIssue("mark_read_invalid_id", { conversationId, userId: user.id });
+    return;
+  }
+
+  const participantIds = await getConversationParticipantUserIds(conversationId);
+
+  if (!participantIds?.includes(user.id)) {
+    logMessageIssue("mark_read_inaccessible", { conversationId, userId: user.id });
+    return;
+  }
+
   const admin = createAdminClient();
   const { error } = await admin
     .from("conversation_participants")
@@ -514,10 +604,12 @@ export async function markConversationRead(conversationId: string) {
     .eq("user_id", user.id);
 
   if (error) {
-    throw new Error(error.message);
+    logMessageIssue("mark_read_failed", {
+      conversationId,
+      userId: user.id,
+      code: error.code,
+      message: error.message,
+    });
+    return;
   }
-
-  revalidatePath("/messages");
-  revalidatePath(`/messages/${conversationId}`);
-  revalidatePath("/", "layout");
 }
