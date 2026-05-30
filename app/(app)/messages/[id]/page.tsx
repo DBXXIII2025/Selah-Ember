@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   getConversation,
   markConversationRead,
-  sendDirectMessage,
 } from "@/app/actions/messages";
 import { SafeLink } from "@/components/media/safe-link";
 import { MessageComposer } from "@/components/messages/message-composer";
@@ -193,7 +192,7 @@ export default async function ConversationPage({ params, searchParams }: Convers
           )}
         </div>
 
-        <MessageComposer conversationId={conversation.id} action={sendDirectMessage} />
+        <MessageComposer conversationId={conversation.id} />
       </div>
     </section>
   );

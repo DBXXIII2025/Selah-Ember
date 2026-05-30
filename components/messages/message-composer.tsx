@@ -2,17 +2,22 @@
 
 import { Image as ImageIcon, Link as LinkIcon, Paperclip, Send, Video, X } from "lucide-react";
 import { useRef, useState } from "react";
+import { sendDirectMessage } from "@/app/actions/messages";
 import { isSafeHttpUrl } from "@/lib/media/validation";
 
 type MessageComposerProps = {
   conversationId: string;
-  action: (formData: FormData) => void | Promise<void>;
 };
 
 const imageAccept = "image/jpeg,image/png,image/webp,image/gif";
 const videoAccept = "video/mp4,video/webm,video/quicktime";
 
-function fileKindLabel(file: File | null) {
+type SelectedFile = {
+  name: string;
+  type: string;
+};
+
+function fileKindLabel(file: SelectedFile | null) {
   if (!file) {
     return null;
   }
@@ -28,14 +33,16 @@ function fileKindLabel(file: File | null) {
   return "File";
 }
 
-export function MessageComposer({ conversationId, action }: MessageComposerProps) {
+export function MessageComposer({ conversationId }: MessageComposerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [linkPanelOpen, setLinkPanelOpen] = useState(false);
+  const [fileAccept, setFileAccept] = useState(imageAccept);
   const [linkDraft, setLinkDraft] = useState("");
   const [selectedLink, setSelectedLink] = useState("");
   const [linkError, setLinkError] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [composerError, setComposerError] = useState("");
+  const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
 
   function openFilePicker(accept: string) {
     const input = fileInputRef.current;
@@ -44,9 +51,11 @@ export function MessageComposer({ conversationId, action }: MessageComposerProps
       return;
     }
 
+    setFileAccept(accept);
     input.accept = accept;
     input.click();
     setMenuOpen(false);
+    setComposerError("");
   }
 
   function chooseLink() {
@@ -78,7 +87,7 @@ export function MessageComposer({ conversationId, action }: MessageComposerProps
   }
 
   return (
-    <form action={action} className="mt-6">
+    <form action={sendDirectMessage} encType="multipart/form-data" className="mt-6">
       <input type="hidden" name="conversation_id" value={conversationId} />
       <input type="hidden" name="link_url" value={selectedLink} />
 
@@ -139,8 +148,27 @@ export function MessageComposer({ conversationId, action }: MessageComposerProps
           ref={fileInputRef}
           name="attachment"
           type="file"
+          accept={fileAccept}
           className="sr-only"
-          onChange={(event) => setSelectedFile(event.currentTarget.files?.[0] || null)}
+          onChange={(event) => {
+            const file = event.currentTarget.files?.[0] || null;
+
+            if (!file) {
+              setSelectedFile(null);
+              return;
+            }
+
+            const allowedTypes = fileAccept.split(",");
+
+            if (!allowedTypes.includes(file.type)) {
+              setComposerError("Choose an image or video from the attachment menu.");
+              removeFile();
+              return;
+            }
+
+            setComposerError("");
+            setSelectedFile({ name: file.name, type: file.type });
+          }}
         />
 
         <div className="absolute bottom-3 left-3">
@@ -237,6 +265,8 @@ export function MessageComposer({ conversationId, action }: MessageComposerProps
           {linkError ? <p className="mt-2 text-sm font-medium text-[#b42318]">{linkError}</p> : null}
         </div>
       ) : null}
+
+      {composerError ? <p className="mt-2 text-sm font-medium text-[#b42318]">{composerError}</p> : null}
 
       <p className="mt-3 text-xs leading-5 text-[#67564c]">
         Images up to 10MB. Videos up to 250MB. Links must use HTTP or HTTPS.
