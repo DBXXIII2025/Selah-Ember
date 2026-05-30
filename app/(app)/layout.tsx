@@ -70,6 +70,12 @@ export default async function ProtectedLayout({
   );
 
   const unreadNotificationCount = await getUnreadNotificationCount();
+  const { data: currentProfile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const isPlatformEngineer = currentProfile?.role === "platform_engineer";
 
   return (
     <main className="min-h-screen bg-[#f7ead7] text-[#211814]">
@@ -106,6 +112,11 @@ export default async function ProtectedLayout({
                 Notifications
                 {unreadNotificationCount > 0 ? ` (${unreadNotificationCount})` : ""}
               </Link>
+              {isPlatformEngineer ? (
+                <Link href="/platform" className="transition hover:text-[#f0a35c]">
+                  Platform
+                </Link>
+              ) : null}
             </nav>
           </div>
           <form action={signOut}>

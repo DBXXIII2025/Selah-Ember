@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/app/actions/notifications";
+import { assertNotBanned } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -96,6 +97,7 @@ async function hasColumn(table: string, column: string) {
 
 export async function getPrayerCommunityOptions(): Promise<PrayerCommunityOption[]> {
   const profile = await getCurrentProfile();
+  await assertNotBanned(profile.user_id);
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("church_memberships")

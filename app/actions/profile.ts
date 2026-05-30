@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import {
+  MEDIA_LIMITS,
+  PROFILE_AVATAR_BUCKET,
+  validateImageFile,
+} from "@/lib/media/validation";
 
 export type CurrentUserProfile = {
   id: string;
@@ -114,4 +119,51 @@ export async function updateCurrentUserProfile(formData: FormData) {
   revalidatePath("/profile");
   revalidatePath("/dashboard");
   redirect("/profile?message=Profile updated.");
+}
+
+export async function uploadCurrentUserAvatar(formData: FormData) {
+  const user = await getCurrentUser();
+  const file = formData.get("avatar");
+
+  if (!(file instanceof File)) {
+    redirect("/profile?message=Choose an image to upload.");
+  }
+
+  const validation = validateImageFile(file, { maxBytes: MEDIA_LIMITS.avatarImageBytes });
+
+  if (!validation.ok) {
+    redirect(`/profile?message=${encodeURIComponent(validation.message || "Invalid image.")}`);
+  }
+
+  const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${user.id}/avatar-${Date.now()}.${extension}`;
+  const admin = createAdminClient();
+  const { error: uploadError } = await admin.storage
+    .from(PROFILE_AVATAR_BUCKET)
+    .upload(path, file, {
+      cacheControl: "3600",
+      contentType: file.type,
+      upsert: true,
+    });
+
+  if (uploadError) {
+    redirect(`/profile?message=${encodeURIComponent(uploadError.message)}`);
+  }
+
+  const {
+    data: { publicUrl },
+  } = admin.storage.from(PROFILE_AVATAR_BUCKET).getPublicUrl(path);
+
+  const { error } = await admin
+    .from("profiles")
+    .update({ avatar_url: publicUrl })
+    .eq("user_id", user.id);
+
+  if (error) {
+    redirect(`/profile?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/profile");
+  revalidatePath("/dashboard");
+  redirect("/profile?message=Profile photo updated.");
 }

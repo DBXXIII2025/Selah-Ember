@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/app/actions/notifications";
+import { assertNotBanned } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -196,6 +197,7 @@ export async function createCommunity(formData: FormData) {
   }
 
   const profile = await getCurrentProfile();
+  await assertNotBanned(profile.user_id);
   const admin = createAdminClient();
   const slug = await getAvailableSlug(name);
 
@@ -360,6 +362,8 @@ export async function joinCommunity(formData: FormData) {
   if (!profile) {
     redirect("/signin");
   }
+
+  await assertNotBanned(profile.user_id);
 
   const admin = createAdminClient();
   const { data: existingMembership, error: existingMembershipError } = await admin

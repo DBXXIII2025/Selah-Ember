@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/app/actions/notifications";
+import { assertNotBanned } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -147,6 +148,7 @@ async function hasColumn(table: string, column: string) {
 
 export async function getEventCommunityOptions(): Promise<EventCommunityOption[]> {
   const profile = await getCurrentProfile();
+  await assertNotBanned(profile.user_id);
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("church_memberships")
@@ -423,6 +425,8 @@ export async function setEventRsvp(formData: FormData) {
     redirect("/signin");
   }
 
+  await assertNotBanned(user.id);
+
   const admin = createAdminClient();
   const { error } = await admin.from("event_rsvps").upsert(
     {
@@ -480,6 +484,8 @@ export async function removeEventRsvp(formData: FormData) {
   if (!user) {
     redirect("/signin");
   }
+
+  await assertNotBanned(user.id);
 
   const admin = createAdminClient();
   const { error } = await admin
