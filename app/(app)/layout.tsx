@@ -13,12 +13,13 @@ export default async function ProtectedLayout({
   const headerStore = await headers();
   const pathname = headerStore.get("x-selah-pathname") || "";
   const isPublicGroupDetail = /^\/groups\/[^/]+$/.test(pathname);
+  const isPublicEventDetail = /^\/events\/[^/]+$/.test(pathname);
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && !isPublicGroupDetail) {
+  if (!user && !isPublicGroupDetail && !isPublicEventDetail) {
     redirect("/signin");
   }
 
@@ -36,6 +37,9 @@ export default async function ProtectedLayout({
               </Link>
               <Link href="/discover/groups" className="transition hover:text-[#b94f22]">
                 Groups
+              </Link>
+              <Link href="/events" className="transition hover:text-[#b94f22]">
+                Events
               </Link>
               <Link href="/signin" className="transition hover:text-[#b94f22]">
                 Sign in

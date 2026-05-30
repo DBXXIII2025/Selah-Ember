@@ -17,6 +17,21 @@ export type EventRecord = {
   group_title: string | null;
   created_by: string | null;
   is_owner: boolean;
+  rsvp_counts: EventRsvpCounts;
+  user_rsvp_status: EventRsvpStatusValue | null;
+};
+
+export type EventRsvpStatusValue = "going" | "interested";
+
+export type EventRsvpCounts = {
+  going: number;
+  interested: number;
+  total: number;
+};
+
+export type EventRsvpStatus = {
+  isSignedIn: boolean;
+  status: EventRsvpStatusValue | null;
 };
 
 export type EventCommunityOption = {
@@ -58,8 +73,31 @@ async function getCurrentUser() {
   return user;
 }
 
+async function getOptionalUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return user;
+}
+
 async function getCurrentProfile(): Promise<Profile> {
   const user = await getCurrentUser();
+  return getProfileForUser(user);
+}
+
+async function getOptionalProfile(): Promise<Profile | null> {
+  const user = await getOptionalUser();
+
+  if (!user) {
+    return null;
+  }
+
+  return getProfileForUser(user);
+}
+
+async function getProfileForUser(user: Awaited<ReturnType<typeof getCurrentUser>>): Promise<Profile> {
   const admin = createAdminClient();
   const displayName =
     typeof user.user_metadata.display_name === "string"
@@ -92,6 +130,12 @@ async function getCurrentProfile(): Promise<Profile> {
   }
 
   return data;
+}
+
+async function hasTable(table: string) {
+  const admin = createAdminClient();
+  const { error } = await admin.from(table).select("id").limit(1);
+  return !error;
 }
 
 async function hasColumn(table: string, column: string) {
@@ -185,13 +229,63 @@ export async function createEvent(formData: FormData) {
   redirect("/events");
 }
 
+async function getEventRsvpData(
+  eventIds: string[],
+  userId: string | null,
+): Promise<{
+  counts: Map<string, EventRsvpCounts>;
+  statuses: Map<string, EventRsvpStatusValue>;
+}> {
+  const counts = new Map<string, EventRsvpCounts>();
+  const statuses = new Map<string, EventRsvpStatusValue>();
+
+  if (eventIds.length === 0 || !(await hasTable("event_rsvps"))) {
+    return { counts, statuses };
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("event_rsvps")
+    .select("event_id,user_id,status")
+    .in("event_id", eventIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  for (const row of (data || []) as unknown as Record<string, unknown>[]) {
+    const eventId = typeof row.event_id === "string" ? row.event_id : "";
+    const status = row.status === "going" || row.status === "interested" ? row.status : null;
+
+    if (!eventId || !status) {
+      continue;
+    }
+
+    const current = counts.get(eventId) || { going: 0, interested: 0, total: 0 };
+    current[status] += 1;
+    current.total += 1;
+    counts.set(eventId, current);
+
+    if (userId && row.user_id === userId) {
+      statuses.set(eventId, status);
+    }
+  }
+
+  return { counts, statuses };
+}
+
 function eventSelect(supportsPhase6Columns: boolean) {
   return supportsPhase6Columns
     ? "id,title,description,event_time,starts_at,location,community_id,church_id,group_id,created_by,churches:community_id(name),study_groups:group_id(id,title,name)"
     : "id,title,description,starts_at,location,church_id,group_id,created_by,churches:church_id(name),study_groups:group_id(id,name)";
 }
 
-function normalizeEvent(row: Record<string, unknown>, profileId: string): EventRecord {
+function normalizeEvent(
+  row: Record<string, unknown>,
+  profileId: string | null,
+  rsvpCounts: EventRsvpCounts = { going: 0, interested: 0, total: 0 },
+  userRsvpStatus: EventRsvpStatusValue | null = null,
+): EventRecord {
   const community = row.churches as { name?: string } | null | undefined;
   const group = row.study_groups as { title?: string; name?: string } | null | undefined;
   const eventTime = row.event_time || row.starts_at;
@@ -212,7 +306,9 @@ function normalizeEvent(row: Record<string, unknown>, profileId: string): EventR
     group_id: typeof row.group_id === "string" ? row.group_id : null,
     group_title: group?.title || group?.name || null,
     created_by: typeof row.created_by === "string" ? row.created_by : null,
-    is_owner: row.created_by === profileId,
+    is_owner: Boolean(profileId) && row.created_by === profileId,
+    rsvp_counts: rsvpCounts,
+    user_rsvp_status: userRsvpStatus,
   };
 }
 
@@ -229,13 +325,24 @@ export async function getVisibleEvents(): Promise<EventRecord[]> {
     throw new Error(error.message);
   }
 
-  return ((data || []) as unknown as Record<string, unknown>[]).map((row) =>
-    normalizeEvent(row, profile.id),
+  const rows = (data || []) as unknown as Record<string, unknown>[];
+  const eventIds = rows
+    .map((row) => row.id)
+    .filter((id): id is string => typeof id === "string");
+  const rsvps = await getEventRsvpData(eventIds, profile.user_id);
+
+  return rows.map((row) =>
+    normalizeEvent(
+      row,
+      profile.id,
+      rsvps.counts.get(String(row.id)),
+      rsvps.statuses.get(String(row.id)) || null,
+    ),
   );
 }
 
 export async function getEventById(id: string): Promise<EventRecord | null> {
-  const profile = await getCurrentProfile();
+  const profile = await getOptionalProfile();
   const admin = createAdminClient();
   const supportsPhase6Columns = await hasColumn("events", "event_time");
   const { data, error } = await admin
@@ -248,5 +355,120 @@ export async function getEventById(id: string): Promise<EventRecord | null> {
     throw new Error(error.message);
   }
 
-  return data ? normalizeEvent(data as unknown as Record<string, unknown>, profile.id) : null;
+  if (!data) {
+    return null;
+  }
+
+  const rsvps = await getEventRsvpData([id], profile?.user_id || null);
+
+  return normalizeEvent(
+    data as unknown as Record<string, unknown>,
+    profile?.id || null,
+    rsvps.counts.get(id),
+    rsvps.statuses.get(id) || null,
+  );
+}
+
+export async function getEventRsvpStatus(eventId: string): Promise<EventRsvpStatus> {
+  const user = await getOptionalUser();
+
+  if (!user) {
+    return {
+      isSignedIn: false,
+      status: null,
+    };
+  }
+
+  if (!(await hasTable("event_rsvps"))) {
+    return {
+      isSignedIn: true,
+      status: null,
+    };
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("event_rsvps")
+    .select("status")
+    .eq("event_id", eventId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return {
+    isSignedIn: true,
+    status: data?.status === "going" || data?.status === "interested" ? data.status : null,
+  };
+}
+
+export async function setEventRsvp(formData: FormData) {
+  const eventId = getFormString(formData, "event_id");
+  const status = getFormString(formData, "status");
+
+  if (!eventId) {
+    redirect("/events");
+  }
+
+  if (status !== "going" && status !== "interested") {
+    redirect(`/events/${eventId}?message=Please choose a valid RSVP.`);
+  }
+
+  const user = await getOptionalUser();
+
+  if (!user) {
+    redirect("/signin");
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("event_rsvps").upsert(
+    {
+      event_id: eventId,
+      user_id: user.id,
+      status,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      onConflict: "event_id,user_id",
+    },
+  );
+
+  if (error) {
+    redirect(`/events/${eventId}?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/events");
+  revalidatePath(`/events/${eventId}`);
+  redirect(`/events/${eventId}`);
+}
+
+export async function removeEventRsvp(formData: FormData) {
+  const eventId = getFormString(formData, "event_id");
+
+  if (!eventId) {
+    redirect("/events");
+  }
+
+  const user = await getOptionalUser();
+
+  if (!user) {
+    redirect("/signin");
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("event_rsvps")
+    .delete()
+    .eq("event_id", eventId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    redirect(`/events/${eventId}?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/events");
+  revalidatePath(`/events/${eventId}`);
+  redirect(`/events/${eventId}`);
 }

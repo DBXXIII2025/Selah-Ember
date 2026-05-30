@@ -9,6 +9,10 @@ function formatEventTime(value: string) {
   }).format(new Date(value));
 }
 
+function formatRsvpCount(count: number, label: string) {
+  return `${count} ${label}`;
+}
+
 export default async function EventsPage() {
   const events = await getVisibleEvents();
 
@@ -85,6 +89,16 @@ export default async function EventsPage() {
                     <p className="flex items-center gap-2">
                       <UsersRound aria-hidden="true" className="h-4 w-4 text-[#b94f22]" />
                       {event.group_title}
+                    </p>
+                  ) : null}
+                  <p className="flex items-center gap-2">
+                    <UsersRound aria-hidden="true" className="h-4 w-4 text-[#b94f22]" />
+                    {formatRsvpCount(event.rsvp_counts.going, "going")} ·{" "}
+                    {formatRsvpCount(event.rsvp_counts.interested, "interested")}
+                  </p>
+                  {event.user_rsvp_status ? (
+                    <p className="rounded-full bg-[#fff4e8] px-3 py-1 font-medium text-[#8a3f1e]">
+                      You are {event.user_rsvp_status}
                     </p>
                   ) : null}
                 </div>
