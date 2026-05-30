@@ -8,6 +8,7 @@ Selah Ember does not allow unlimited file uploads or unlimited video length. Unl
 - Future post/message images: JPG, PNG, or WebP only, maximum 10MB.
 - Future beta video uploads: MP4, WebM, or MOV only, maximum 250MB.
 - Larger videos should be shared through external links such as YouTube, Vimeo, or Google Drive.
+- Next.js Server Actions are capped at 250mb in `next.config.ts` so uploads can reach, but not exceed, the beta video limit before app-level validation runs.
 
 ## Link Safety
 

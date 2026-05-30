@@ -3,7 +3,7 @@
 import { Image as ImageIcon, Link as LinkIcon, Paperclip, Send, Video, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { sendDirectMessage } from "@/app/actions/messages";
-import { isSafeHttpUrl } from "@/lib/media/validation";
+import { isSafeHttpUrl, MEDIA_LIMITS, validateImageFile, validateVideoFile } from "@/lib/media/validation";
 
 type MessageComposerProps = {
   conversationId: string;
@@ -162,6 +162,16 @@ export function MessageComposer({ conversationId }: MessageComposerProps) {
 
             if (!allowedTypes.includes(file.type)) {
               setComposerError("Choose an image or video from the attachment menu.");
+              removeFile();
+              return;
+            }
+
+            const validation = MEDIA_LIMITS.allowedImageMimeTypes.includes(file.type)
+              ? validateImageFile(file, { maxBytes: MEDIA_LIMITS.postImageBytes })
+              : validateVideoFile(file);
+
+            if (!validation.ok) {
+              setComposerError(validation.message || "Choose a supported image or video.");
               removeFile();
               return;
             }
