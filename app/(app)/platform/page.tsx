@@ -343,6 +343,28 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
               ))}
             </div>
           </Panel>
+
+          <Panel title="Message reports">
+            <div className="space-y-3">
+              {data.message_reports.length === 0 ? (
+                <p className="text-sm text-[#67564c]">No message reports yet.</p>
+              ) : (
+                data.message_reports.map((report) => (
+                  <div key={report.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
+                    <p className="font-semibold">{report.reason}</p>
+                    <p className="mt-1 break-words text-[#67564c]">
+                      Conversation {report.conversation_id}
+                      {report.message_id ? ` - message ${report.message_id}` : ""}
+                    </p>
+                    {report.details ? <p className="mt-2 text-[#67564c]">{report.details}</p> : null}
+                    <p className="mt-2 text-[#8a3f1e]">
+                      Reported {new Date(report.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </Panel>
         </div>
 
         <div className="mt-6 grid gap-6 xl:grid-cols-3">

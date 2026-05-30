@@ -70,6 +70,15 @@ export type PlatformDashboardData = {
     expires_at: string;
     created_at: string;
   }>;
+  message_reports: Array<{
+    id: string;
+    reporter_id: string;
+    conversation_id: string;
+    message_id: string | null;
+    reason: string;
+    details: string | null;
+    created_at: string;
+  }>;
 };
 
 export type PlatformMessageUser = PlatformProfileSummary & {
@@ -286,7 +295,7 @@ export async function startPlatformSupportConversation(formData: FormData) {
     redirect("/platform/messages?message=That user is not available.");
   }
 
-  const conversationId = await createOrGetDirectConversation(profile.user_id, targetUserId);
+  const conversationId = await createOrGetDirectConversation(profile.user_id, targetUserId, "/platform/messages");
 
   revalidatePath("/platform/messages");
   revalidatePath("/messages");
@@ -308,6 +317,7 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     groupsResult,
     prayerResult,
     bansResult,
+    reportsResult,
     emailMap,
   ] = await Promise.all([
     admin
@@ -353,6 +363,11 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
       .select("id,banned_user_id,reason,starts_at,expires_at,created_at")
       .order("created_at", { ascending: false })
       .limit(25),
+    admin
+      .from("message_reports")
+      .select("id,reporter_id,conversation_id,message_id,reason,details,created_at")
+      .order("created_at", { ascending: false })
+      .limit(10),
     getUserEmailMap(),
   ]);
 
@@ -366,8 +381,13 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     groupsResult,
     prayerResult,
     bansResult,
+    reportsResult,
   ]) {
     if (result.error) {
+      if (result === reportsResult && result.error.code === "42P01") {
+        continue;
+      }
+
       throw new Error(result.error.message);
     }
   }
@@ -408,6 +428,7 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     })),
     prayer_requests: ((prayerResult.data || []) as unknown as PlatformDashboardData["prayer_requests"]),
     bans: ((bansResult.data || []) as unknown as PlatformDashboardData["bans"]),
+    message_reports: ((reportsResult.data || []) as unknown as PlatformDashboardData["message_reports"]),
   };
 }
 
@@ -671,7 +692,7 @@ export async function createPlatformDirectMessageIntent(formData: FormData) {
     redirect("/platform?message=Choose a user and enter a message subject and body.");
   }
 
-  const conversationId = await createOrGetDirectConversation(profile.user_id, targetUserId);
+  const conversationId = await createOrGetDirectConversation(profile.user_id, targetUserId, "/platform");
   await insertDirectMessage(conversationId, profile.user_id, `${subject}\n\n${body}`);
 
   revalidatePath("/platform");

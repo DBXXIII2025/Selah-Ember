@@ -37,6 +37,7 @@ export type MessageParticipant = {
   username: string | null;
   avatar_url: string | null;
   last_read_at: string | null;
+  archived_at: string | null;
 };
 
 export type ConversationSummary = {
@@ -51,6 +52,7 @@ export type ConversationSummary = {
     deleted_at: string | null;
   } | null;
   unread_count: number;
+  is_archived: boolean;
 };
 
 export type ConversationDetail = ConversationSummary & {
@@ -61,6 +63,7 @@ export type ConversationDetail = ConversationSummary & {
     created_at: string;
     deleted_at: string | null;
     attachments: MessageAttachment[];
+    read_by_others: boolean;
   }>;
 };
 
@@ -70,6 +73,11 @@ export type MessageUserSearchResult = {
   username: string | null;
   church_name: string | null;
   avatar_url: string | null;
+};
+
+export type ConversationListOptions = {
+  search?: string;
+  view?: "active" | "archived";
 };
 
 function getFormString(formData: FormData, key: string) {
@@ -214,6 +222,31 @@ async function getConversationParticipantUserIds(conversationId: string) {
   return (data || []).map((row) => String(row.user_id));
 }
 
+function messagePath(conversationId: string, message: string) {
+  return `/messages/${conversationId}?message=${encodeURIComponent(message)}`;
+}
+
+function normalizeSearch(value = "") {
+  return value.trim().toLowerCase();
+}
+
+function conversationMatchesSearch(conversation: ConversationSummary, search: string) {
+  const term = normalizeSearch(search);
+
+  if (!term) {
+    return true;
+  }
+
+  const participantText = conversation.participants
+    .filter((participant) => participant.user_id !== conversation.current_user_id)
+    .flatMap((participant) => [participant.display_name, participant.username || ""])
+    .join(" ")
+    .toLowerCase();
+  const latestText = (conversation.latest_message?.body || "").toLowerCase();
+
+  return participantText.includes(term) || latestText.includes(term);
+}
+
 async function requireConversationParticipant(conversationId: string, userId: string) {
   const participantIds = await getConversationParticipantUserIds(conversationId);
 
@@ -223,6 +256,71 @@ async function requireConversationParticipant(conversationId: string, userId: st
   }
 
   return participantIds;
+}
+
+async function getBlockingUsersForSender(conversationId: string, senderId: string) {
+  const participantIds = await getConversationParticipantUserIds(conversationId);
+
+  if (!participantIds) {
+    return null;
+  }
+
+  const recipients = participantIds.filter((userId) => userId !== senderId);
+
+  if (recipients.length === 0) {
+    return [];
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("user_blocks")
+    .select("blocker_id")
+    .eq("blocked_user_id", senderId)
+    .in("blocker_id", recipients);
+
+  if (error) {
+    if (error.code === "42P01" || error.code === "42703") {
+      return [];
+    }
+
+    throw new Error(error.message);
+  }
+
+  return (data || []).map((row) => String(row.blocker_id));
+}
+
+async function assertCanMessageParticipants(conversationId: string, senderId: string, redirectPath: string) {
+  const blockingUsers = await getBlockingUsersForSender(conversationId, senderId);
+
+  if (!blockingUsers) {
+    redirect(`${redirectPath}?message=Conversation not found.`);
+  }
+
+  if (blockingUsers.length > 0) {
+    redirect(`${redirectPath}?message=This conversation is unavailable.`);
+  }
+}
+
+async function assertCanStartConversation(starterUserId: string, targetUserId: string, redirectPath: string) {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("user_blocks")
+    .select("id")
+    .eq("blocker_id", targetUserId)
+    .eq("blocked_user_id", starterUserId)
+    .limit(1);
+
+  if (error) {
+    if (error.code === "42P01" || error.code === "42703") {
+      return;
+    }
+
+    throw new Error(error.message);
+  }
+
+  if ((data || []).length > 0) {
+    redirect(`${redirectPath}?message=That profile is not available for direct messages.`);
+  }
 }
 
 export async function findDirectConversation(userA: string, userB: string) {
@@ -264,10 +362,16 @@ export async function findDirectConversation(userA: string, userB: string) {
   return null;
 }
 
-export async function createOrGetDirectConversation(starterUserId: string, targetUserId: string) {
+export async function createOrGetDirectConversation(
+  starterUserId: string,
+  targetUserId: string,
+  redirectPath = "/messages/new",
+) {
   if (starterUserId === targetUserId) {
-    redirect("/messages/new?message=Choose someone other than yourself.");
+    redirect(`${redirectPath}?message=Choose someone other than yourself.`);
   }
+
+  await assertCanStartConversation(starterUserId, targetUserId, redirectPath);
 
   const existingConversationId = await findDirectConversation(starterUserId, targetUserId);
 
@@ -311,6 +415,7 @@ export async function insertDirectMessage(conversationId: string, senderId: stri
   }
 
   const participantIds = await requireConversationParticipant(conversationId, senderId);
+  await assertCanMessageParticipants(conversationId, senderId, `/messages/${conversationId}`);
   const admin = createAdminClient();
   const { data: message, error } = await admin
     .from("direct_messages")
@@ -497,7 +602,7 @@ async function buildConversationSummaries(conversationIds: string[], currentUser
       .order("updated_at", { ascending: false }),
     admin
       .from("conversation_participants")
-      .select("conversation_id,user_id,last_read_at")
+      .select("conversation_id,user_id,last_read_at,archived_at")
       .in("conversation_id", validConversationIds),
     admin
       .from("direct_messages")
@@ -562,6 +667,7 @@ async function buildConversationSummaries(conversationIds: string[], currentUser
 
   const participantsByConversation = new Map<string, MessageParticipant[]>();
   const readStateByConversation = new Map<string, string | null>();
+  const archiveStateByConversation = new Map<string, string | null>();
 
   for (const row of participantRows) {
     const conversationId = String(row.conversation_id);
@@ -572,6 +678,7 @@ async function buildConversationSummaries(conversationIds: string[], currentUser
       username: typeof profile?.username === "string" ? profile.username : null,
       avatar_url: typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
       last_read_at: typeof row.last_read_at === "string" ? row.last_read_at : null,
+      archived_at: typeof row.archived_at === "string" ? row.archived_at : null,
     };
 
     participantsByConversation.set(conversationId, [
@@ -581,6 +688,7 @@ async function buildConversationSummaries(conversationIds: string[], currentUser
 
     if (participant.user_id === currentUserId) {
       readStateByConversation.set(conversationId, participant.last_read_at);
+      archiveStateByConversation.set(conversationId, participant.archived_at);
     }
   }
 
@@ -597,6 +705,7 @@ async function buildConversationSummaries(conversationIds: string[], currentUser
         created_at: String(row.created_at),
         deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
         attachments: [],
+        read_by_others: false,
       },
     ]);
   }
@@ -620,17 +729,23 @@ async function buildConversationSummaries(conversationIds: string[], currentUser
       participants: participantsByConversation.get(conversationId) || [],
       latest_message: messages[0] || null,
       unread_count: unreadCount,
+      is_archived: Boolean(archiveStateByConversation.get(conversationId)),
     };
   });
 }
 
-export async function getConversations(): Promise<ConversationSummary[]> {
+export async function getConversations(options: ConversationListOptions = {}): Promise<ConversationSummary[]> {
   const user = await getCurrentUser();
+  const view = options.view === "archived" ? "archived" : "active";
   const admin = createAdminClient();
-  const { data, error } = await admin
+  let query = admin
     .from("conversation_participants")
     .select("conversation_id")
     .eq("user_id", user.id);
+
+  query = view === "archived" ? query.not("archived_at", "is", null) : query.is("archived_at", null);
+
+  const { data, error } = await query;
 
   if (error) {
     logMessageIssue("conversation_list_lookup_failed", {
@@ -642,7 +757,8 @@ export async function getConversations(): Promise<ConversationSummary[]> {
   }
 
   const conversationIds = (data || []).map((row) => String(row.conversation_id));
-  return buildConversationSummaries(conversationIds, user.id);
+  const conversations = await buildConversationSummaries(conversationIds, user.id);
+  return conversations.filter((conversation) => conversationMatchesSearch(conversation, options.search || ""));
 }
 
 export async function getConversation(conversationId: string): Promise<ConversationDetail | null> {
@@ -692,6 +808,13 @@ export async function getConversation(conversationId: string): Promise<Conversat
     created_at: String(row.created_at),
     deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
     attachments: [],
+    read_by_others: summary.participants.some((participant) => {
+      if (participant.user_id === row.sender_id || !participant.last_read_at) {
+        return false;
+      }
+
+      return new Date(String(participant.last_read_at)) >= new Date(String(row.created_at));
+    }),
   }));
   const attachmentsByMessage = await getAttachmentsForMessages(messages.map((message) => message.id));
 
@@ -755,6 +878,7 @@ export async function startDirectConversation(formData: FormData) {
     redirect("/messages/new?message=That profile is not available for direct messages.");
   }
 
+  await assertCanStartConversation(user.id, targetUserId, "/messages/new");
   const conversationId = await createOrGetDirectConversation(user.id, targetUserId);
   revalidatePath("/messages");
   redirect(`/messages/${conversationId}`);
@@ -806,6 +930,7 @@ export async function sendDirectMessage(formData: FormData) {
   }
 
   const participantIds = await requireConversationParticipant(conversationId, user.id);
+  await assertCanMessageParticipants(conversationId, user.id, redirectPath);
   const admin = createAdminClient();
   const uploadAttachments: Array<{
     kind: "image" | "video" | "link";
@@ -896,7 +1021,7 @@ export async function sendDirectMessage(formData: FormData) {
   const now = new Date().toISOString();
   await admin
     .from("conversation_participants")
-    .update({ last_read_at: now })
+    .update({ last_read_at: now, archived_at: null })
     .eq("conversation_id", conversationId)
     .eq("user_id", user.id);
 
@@ -907,6 +1032,201 @@ export async function sendDirectMessage(formData: FormData) {
   revalidatePath("/notifications");
   revalidatePath("/", "layout");
   redirect(redirectPath);
+}
+
+export async function archiveConversation(formData: FormData) {
+  const user = await getCurrentUser();
+  const conversationId = getFormString(formData, "conversation_id");
+
+  if (!conversationId || !isUuid(conversationId)) {
+    redirect("/messages?message=Conversation not found.");
+  }
+
+  await requireConversationParticipant(conversationId, user.id);
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("conversation_participants")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("conversation_id", conversationId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    redirect(`/messages?message=${encodeURIComponent("Could not archive conversation.")}`);
+  }
+
+  revalidatePath("/messages");
+  revalidatePath(`/messages/${conversationId}`);
+  redirect("/messages?message=Conversation archived.");
+}
+
+export async function unarchiveConversation(formData: FormData) {
+  const user = await getCurrentUser();
+  const conversationId = getFormString(formData, "conversation_id");
+
+  if (!conversationId || !isUuid(conversationId)) {
+    redirect("/messages?view=archived&message=Conversation not found.");
+  }
+
+  await requireConversationParticipant(conversationId, user.id);
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("conversation_participants")
+    .update({ archived_at: null })
+    .eq("conversation_id", conversationId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    redirect(`/messages?view=archived&message=${encodeURIComponent("Could not unarchive conversation.")}`);
+  }
+
+  revalidatePath("/messages");
+  revalidatePath(`/messages/${conversationId}`);
+  redirect("/messages?view=archived&message=Conversation restored.");
+}
+
+export async function deleteOwnMessage(formData: FormData) {
+  const user = await getCurrentUser();
+  const conversationId = getFormString(formData, "conversation_id");
+  const messageId = getFormString(formData, "message_id");
+
+  if (!conversationId || !messageId || !isUuid(conversationId) || !isUuid(messageId)) {
+    redirect("/messages?message=Message not found.");
+  }
+
+  await requireConversationParticipant(conversationId, user.id);
+  const admin = createAdminClient();
+  const { data: message, error: lookupError } = await admin
+    .from("direct_messages")
+    .select("id,sender_id")
+    .eq("id", messageId)
+    .eq("conversation_id", conversationId)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new Error(lookupError.message);
+  }
+
+  if (!message || String(message.sender_id) !== user.id) {
+    redirect(messagePath(conversationId, "You can only delete your own messages."));
+  }
+
+  const { error } = await admin
+    .from("direct_messages")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", messageId)
+    .eq("sender_id", user.id);
+
+  if (error) {
+    redirect(messagePath(conversationId, "Could not delete message."));
+  }
+
+  revalidatePath("/messages");
+  revalidatePath(`/messages/${conversationId}`);
+  revalidatePath("/platform/messages");
+  revalidatePath(`/platform/messages/${conversationId}`);
+  redirect(messagePath(conversationId, "Message deleted."));
+}
+
+export async function reportConversationOrMessage(formData: FormData) {
+  const user = await getCurrentUser();
+  const conversationId = getFormString(formData, "conversation_id");
+  const messageId = getFormString(formData, "message_id");
+  const reason = getFormString(formData, "reason");
+  const details = getFormString(formData, "details");
+
+  if (!conversationId || !isUuid(conversationId)) {
+    redirect("/messages?message=Conversation not found.");
+  }
+
+  if (!reason) {
+    redirect(messagePath(conversationId, "Choose a report reason."));
+  }
+
+  if (messageId && !isUuid(messageId)) {
+    redirect(messagePath(conversationId, "Message not found."));
+  }
+
+  await requireConversationParticipant(conversationId, user.id);
+  const admin = createAdminClient();
+
+  if (messageId) {
+    const { data: message, error: messageError } = await admin
+      .from("direct_messages")
+      .select("id")
+      .eq("id", messageId)
+      .eq("conversation_id", conversationId)
+      .maybeSingle();
+
+    if (messageError) {
+      throw new Error(messageError.message);
+    }
+
+    if (!message) {
+      redirect(messagePath(conversationId, "Message not found."));
+    }
+  }
+
+  const { error } = await admin.from("message_reports").insert({
+    reporter_id: user.id,
+    conversation_id: conversationId,
+    message_id: messageId || null,
+    reason,
+    details: details || null,
+  });
+
+  if (error) {
+    if (error.code === "42P01") {
+      redirect(messagePath(conversationId, "Reports are not available until the latest database migration is applied."));
+    }
+
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/platform");
+  redirect(messagePath(conversationId, "Report submitted."));
+}
+
+export async function blockUser(formData: FormData) {
+  const user = await getCurrentUser();
+  const conversationId = getFormString(formData, "conversation_id");
+  const blockedUserId = getFormString(formData, "blocked_user_id");
+
+  if (!conversationId || !blockedUserId || !isUuid(conversationId) || !isUuid(blockedUserId)) {
+    redirect("/messages?message=Block request could not be completed.");
+  }
+
+  if (blockedUserId === user.id) {
+    redirect(messagePath(conversationId, "You cannot block yourself."));
+  }
+
+  const participantIds = await requireConversationParticipant(conversationId, user.id);
+
+  if (!participantIds.includes(blockedUserId)) {
+    redirect(messagePath(conversationId, "That user is not in this conversation."));
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("user_blocks").upsert(
+    {
+      blocker_id: user.id,
+      blocked_user_id: blockedUserId,
+    },
+    {
+      onConflict: "blocker_id,blocked_user_id",
+    },
+  );
+
+  if (error) {
+    if (error.code === "42P01") {
+      redirect(messagePath(conversationId, "Blocking is not available until the latest database migration is applied."));
+    }
+
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/messages");
+  revalidatePath(`/messages/${conversationId}`);
+  redirect(messagePath(conversationId, "User blocked."));
 }
 
 export async function markConversationRead(conversationId: string) {
