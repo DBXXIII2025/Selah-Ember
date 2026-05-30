@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signOut } from "@/app/actions/auth";
+import { getUnreadMessageCount } from "@/app/actions/messages";
 import { getUnreadNotificationCount } from "@/app/actions/notifications";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -69,7 +70,10 @@ export default async function ProtectedLayout({
     },
   );
 
-  const unreadNotificationCount = await getUnreadNotificationCount();
+  const [unreadNotificationCount, unreadMessageCount] = await Promise.all([
+    getUnreadNotificationCount(),
+    getUnreadMessageCount(),
+  ]);
   const { data: currentProfile } = await admin
     .from("profiles")
     .select("role")
@@ -107,6 +111,10 @@ export default async function ProtectedLayout({
               </Link>
               <Link href="/events" className="transition hover:text-[#f0a35c]">
                 Events
+              </Link>
+              <Link href="/messages" className="transition hover:text-[#f0a35c]">
+                Messages
+                {unreadMessageCount > 0 ? ` (${unreadMessageCount})` : ""}
               </Link>
               <Link href="/notifications" className="transition hover:text-[#f0a35c]">
                 Notifications

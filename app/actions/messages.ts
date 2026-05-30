@@ -1,0 +1,523 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { createNotification } from "@/app/actions/notifications";
+import { assertNotBanned } from "@/lib/moderation/bans";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+
+const MESSAGE_MAX_LENGTH = 5000;
+
+export type MessageParticipant = {
+  user_id: string;
+  display_name: string;
+  username: string | null;
+  avatar_url: string | null;
+  last_read_at: string | null;
+};
+
+export type ConversationSummary = {
+  id: string;
+  current_user_id: string;
+  updated_at: string;
+  participants: MessageParticipant[];
+  latest_message: {
+    body: string;
+    sender_id: string;
+    created_at: string;
+    deleted_at: string | null;
+  } | null;
+  unread_count: number;
+};
+
+export type ConversationDetail = ConversationSummary & {
+  messages: Array<{
+    id: string;
+    sender_id: string;
+    body: string;
+    created_at: string;
+    deleted_at: string | null;
+  }>;
+};
+
+export type MessageUserSearchResult = {
+  user_id: string;
+  display_name: string;
+  username: string | null;
+  church_name: string | null;
+  avatar_url: string | null;
+};
+
+function getFormString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function previewMessage(body: string) {
+  const compact = body.replace(/\s+/g, " ").trim();
+  return compact.length > 120 ? `${compact.slice(0, 117)}...` : compact;
+}
+
+async function getCurrentUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/signin");
+  }
+
+  return user;
+}
+
+async function getCurrentUserRole(userId: string) {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return typeof data?.role === "string" ? data.role : "user";
+}
+
+async function getVisibleMessageProfile(targetUserId: string, currentUserId: string) {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("profiles")
+    .select("user_id")
+    .eq("user_id", targetUserId)
+    .neq("user_id", currentUserId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+async function getConversationParticipantUserIds(conversationId: string) {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("conversation_participants")
+    .select("user_id")
+    .eq("conversation_id", conversationId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data || []).map((row) => String(row.user_id));
+}
+
+async function requireConversationParticipant(conversationId: string, userId: string) {
+  const participantIds = await getConversationParticipantUserIds(conversationId);
+
+  if (!participantIds.includes(userId)) {
+    redirect("/messages?message=Conversation not found.");
+  }
+
+  return participantIds;
+}
+
+export async function findDirectConversation(userA: string, userB: string) {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("conversation_participants")
+    .select("conversation_id,user_id")
+    .in("user_id", [userA, userB]);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const matches = new Map<string, Set<string>>();
+
+  for (const row of data || []) {
+    const conversationId = String(row.conversation_id);
+    const userId = String(row.user_id);
+    matches.set(conversationId, (matches.get(conversationId) || new Set()).add(userId));
+  }
+
+  for (const [conversationId, userIds] of matches) {
+    if (userIds.has(userA) && userIds.has(userB)) {
+      const { count, error: countError } = await admin
+        .from("conversation_participants")
+        .select("id", { count: "exact", head: true })
+        .eq("conversation_id", conversationId);
+
+      if (countError) {
+        throw new Error(countError.message);
+      }
+
+      if (count === 2) {
+        return conversationId;
+      }
+    }
+  }
+
+  return null;
+}
+
+export async function createOrGetDirectConversation(starterUserId: string, targetUserId: string) {
+  if (starterUserId === targetUserId) {
+    redirect("/messages/new?message=Choose someone other than yourself.");
+  }
+
+  const existingConversationId = await findDirectConversation(starterUserId, targetUserId);
+
+  if (existingConversationId) {
+    return existingConversationId;
+  }
+
+  const admin = createAdminClient();
+  const { data: conversation, error: conversationError } = await admin
+    .from("conversations")
+    .insert({})
+    .select("id")
+    .single();
+
+  if (conversationError) {
+    throw new Error(conversationError.message);
+  }
+
+  const conversationId = String(conversation.id);
+  const { error: participantsError } = await admin.from("conversation_participants").insert([
+    { conversation_id: conversationId, user_id: starterUserId, last_read_at: new Date().toISOString() },
+    { conversation_id: conversationId, user_id: targetUserId },
+  ]);
+
+  if (participantsError) {
+    throw new Error(participantsError.message);
+  }
+
+  return conversationId;
+}
+
+export async function insertDirectMessage(conversationId: string, senderId: string, body: string) {
+  const trimmedBody = body.trim();
+
+  if (!trimmedBody) {
+    redirect(`/messages/${conversationId}?message=Message cannot be empty.`);
+  }
+
+  if (trimmedBody.length > MESSAGE_MAX_LENGTH) {
+    redirect(`/messages/${conversationId}?message=Message must be 5000 characters or fewer.`);
+  }
+
+  const participantIds = await requireConversationParticipant(conversationId, senderId);
+  const admin = createAdminClient();
+  const { data: message, error } = await admin
+    .from("direct_messages")
+    .insert({
+      conversation_id: conversationId,
+      sender_id: senderId,
+      body: trimmedBody,
+    })
+    .select("id,created_at")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const recipients = participantIds.filter((userId) => userId !== senderId);
+
+  await Promise.all(
+    recipients.map((recipientId) =>
+      createNotification({
+        userId: recipientId,
+        actorUserId: senderId,
+        type: "direct_message",
+        title: "New message",
+        body: previewMessage(trimmedBody),
+        href: `/messages/${conversationId}`,
+      }),
+    ),
+  );
+
+  const now = new Date().toISOString();
+  await admin
+    .from("conversation_participants")
+    .update({ last_read_at: now })
+    .eq("conversation_id", conversationId)
+    .eq("user_id", senderId);
+
+  revalidatePath("/messages");
+  revalidatePath(`/messages/${conversationId}`);
+  revalidatePath("/notifications");
+  revalidatePath("/", "layout");
+
+  return String(message.id);
+}
+
+export async function getUnreadMessageCount() {
+  const conversations = await getConversations();
+  return conversations.reduce((total, conversation) => total + conversation.unread_count, 0);
+}
+
+async function buildConversationSummaries(conversationIds: string[], currentUserId: string) {
+  if (conversationIds.length === 0) {
+    return [];
+  }
+
+  const admin = createAdminClient();
+  const [conversationResult, participantResult, messageResult] = await Promise.all([
+    admin
+      .from("conversations")
+      .select("id,updated_at")
+      .in("id", conversationIds)
+      .order("updated_at", { ascending: false }),
+    admin
+      .from("conversation_participants")
+      .select("conversation_id,user_id,last_read_at")
+      .in("conversation_id", conversationIds),
+    admin
+      .from("direct_messages")
+      .select("id,conversation_id,sender_id,body,created_at,deleted_at")
+      .in("conversation_id", conversationIds)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  if (conversationResult.error) {
+    throw new Error(conversationResult.error.message);
+  }
+
+  if (participantResult.error) {
+    throw new Error(participantResult.error.message);
+  }
+
+  if (messageResult.error) {
+    throw new Error(messageResult.error.message);
+  }
+
+  const participantRows = participantResult.data || [];
+  const participantUserIds = Array.from(new Set(participantRows.map((row) => String(row.user_id))));
+  const profilesByUserId = new Map<string, { display_name?: string; username?: string | null; avatar_url?: string | null }>();
+
+  if (participantUserIds.length > 0) {
+    const { data: profiles, error: profilesError } = await admin
+      .from("profiles")
+      .select("user_id,display_name,username,avatar_url")
+      .in("user_id", participantUserIds);
+
+    if (profilesError) {
+      throw new Error(profilesError.message);
+    }
+
+    for (const profile of profiles || []) {
+      profilesByUserId.set(String(profile.user_id), {
+        display_name: typeof profile.display_name === "string" ? profile.display_name : undefined,
+        username: typeof profile.username === "string" ? profile.username : null,
+        avatar_url: typeof profile.avatar_url === "string" ? profile.avatar_url : null,
+      });
+    }
+  }
+
+  const participantsByConversation = new Map<string, MessageParticipant[]>();
+  const readStateByConversation = new Map<string, string | null>();
+
+  for (const row of participantRows) {
+    const conversationId = String(row.conversation_id);
+    const profile = profilesByUserId.get(String(row.user_id));
+    const participant = {
+      user_id: String(row.user_id),
+      display_name: typeof profile?.display_name === "string" ? profile.display_name : "Selah Ember Member",
+      username: typeof profile?.username === "string" ? profile.username : null,
+      avatar_url: typeof profile?.avatar_url === "string" ? profile.avatar_url : null,
+      last_read_at: typeof row.last_read_at === "string" ? row.last_read_at : null,
+    };
+
+    participantsByConversation.set(conversationId, [
+      ...(participantsByConversation.get(conversationId) || []),
+      participant,
+    ]);
+
+    if (participant.user_id === currentUserId) {
+      readStateByConversation.set(conversationId, participant.last_read_at);
+    }
+  }
+
+  const messagesByConversation = new Map<string, ConversationDetail["messages"]>();
+
+  for (const row of messageResult.data || []) {
+    const conversationId = String(row.conversation_id);
+    messagesByConversation.set(conversationId, [
+      ...(messagesByConversation.get(conversationId) || []),
+      {
+        id: String(row.id),
+        sender_id: String(row.sender_id),
+        body: String(row.body),
+        created_at: String(row.created_at),
+        deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
+      },
+    ]);
+  }
+
+  return (conversationResult.data || []).map((conversation) => {
+    const conversationId = String(conversation.id);
+    const messages = messagesByConversation.get(conversationId) || [];
+    const lastReadAt = readStateByConversation.get(conversationId);
+    const unreadCount = messages.filter((message) => {
+      if (message.sender_id === currentUserId || message.deleted_at) {
+        return false;
+      }
+
+      return !lastReadAt || new Date(message.created_at) > new Date(lastReadAt);
+    }).length;
+
+    return {
+      id: conversationId,
+      current_user_id: currentUserId,
+      updated_at: String(conversation.updated_at),
+      participants: participantsByConversation.get(conversationId) || [],
+      latest_message: messages[0] || null,
+      unread_count: unreadCount,
+    };
+  });
+}
+
+export async function getConversations(): Promise<ConversationSummary[]> {
+  const user = await getCurrentUser();
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("conversation_participants")
+    .select("conversation_id")
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const conversationIds = (data || []).map((row) => String(row.conversation_id));
+  return buildConversationSummaries(conversationIds, user.id);
+}
+
+export async function getConversation(conversationId: string): Promise<ConversationDetail> {
+  const user = await getCurrentUser();
+  await requireConversationParticipant(conversationId, user.id);
+  const [summary] = await buildConversationSummaries([conversationId], user.id);
+
+  if (!summary) {
+    redirect("/messages?message=Conversation not found.");
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("direct_messages")
+    .select("id,sender_id,body,created_at,deleted_at")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true })
+    .limit(200);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return {
+    ...summary,
+    messages: (data || []).map((row) => ({
+      id: String(row.id),
+      sender_id: String(row.sender_id),
+      body: String(row.body),
+      created_at: String(row.created_at),
+      deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
+    })),
+  };
+}
+
+export async function searchMessageUsers(search = ""): Promise<MessageUserSearchResult[]> {
+  const user = await getCurrentUser();
+  const admin = createAdminClient();
+  const term = search.trim().replace(/[,%()]/g, " ");
+  let query = admin
+    .from("profiles")
+    .select("user_id,display_name,username,church_name,avatar_url")
+    .not("user_id", "is", null)
+    .neq("user_id", user.id)
+    .order("display_name", { ascending: true })
+    .limit(25);
+
+  if (term) {
+    query = query.or(`display_name.ilike.%${term}%,username.ilike.%${term}%,church_name.ilike.%${term}%`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data || []).map((row) => ({
+    user_id: String(row.user_id),
+    display_name: String(row.display_name),
+    username: typeof row.username === "string" ? row.username : null,
+    church_name: typeof row.church_name === "string" ? row.church_name : null,
+    avatar_url: typeof row.avatar_url === "string" ? row.avatar_url : null,
+  }));
+}
+
+export async function startDirectConversation(formData: FormData) {
+  const user = await getCurrentUser();
+  await assertNotBanned(user.id, "/messages/new?message=Your account cannot start messages right now.");
+  const targetUserId = getFormString(formData, "target_user_id");
+
+  if (!targetUserId) {
+    redirect("/messages/new?message=Choose someone to message.");
+  }
+
+  if (targetUserId === user.id) {
+    redirect("/messages/new?message=Choose someone other than yourself.");
+  }
+
+  const role = await getCurrentUserRole(user.id);
+  const targetIsVisible = await getVisibleMessageProfile(targetUserId, user.id);
+
+  if (role !== "platform_engineer" && !targetIsVisible) {
+    redirect("/messages/new?message=That profile is not available for direct messages.");
+  }
+
+  const conversationId = await createOrGetDirectConversation(user.id, targetUserId);
+  revalidatePath("/messages");
+  redirect(`/messages/${conversationId}`);
+}
+
+export async function sendDirectMessage(formData: FormData) {
+  const user = await getCurrentUser();
+  await assertNotBanned(user.id, "/messages?message=Your account cannot send messages right now.");
+  const conversationId = getFormString(formData, "conversation_id");
+  const body = getFormString(formData, "body");
+
+  if (!conversationId) {
+    redirect("/messages?message=Conversation not found.");
+  }
+
+  await insertDirectMessage(conversationId, user.id, body);
+  redirect(`/messages/${conversationId}`);
+}
+
+export async function markConversationRead(conversationId: string) {
+  const user = await getCurrentUser();
+  await requireConversationParticipant(conversationId, user.id);
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("conversation_participants")
+    .update({ last_read_at: new Date().toISOString() })
+    .eq("conversation_id", conversationId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/messages");
+  revalidatePath(`/messages/${conversationId}`);
+  revalidatePath("/", "layout");
+}

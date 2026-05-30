@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createOrGetDirectConversation, insertDirectMessage } from "@/app/actions/messages";
+import { assertNotBanned } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePlatformEngineer } from "@/lib/platform/auth";
 import { isSafeHttpUrl } from "@/lib/media/validation";
@@ -465,6 +467,7 @@ export async function deletePlatformAnnouncement(formData: FormData) {
 
 export async function createPlatformDirectMessageIntent(formData: FormData) {
   const profile = await requirePlatformEngineer();
+  await assertNotBanned(profile.user_id, "/platform?message=Your account cannot send messages right now.");
   const targetUserId = getFormString(formData, "target_user_id");
   const subject = getFormString(formData, "subject");
   const body = getFormString(formData, "body");
@@ -473,20 +476,11 @@ export async function createPlatformDirectMessageIntent(formData: FormData) {
     redirect("/platform?message=Choose a user and enter a message subject and body.");
   }
 
-  const admin = createAdminClient();
-  const { error } = await admin.from("platform_direct_message_intents").insert({
-    target_user_id: targetUserId,
-    started_by: profile.id,
-    subject,
-    body,
-  });
-
-  if (error) {
-    redirect(`/platform?message=${encodeURIComponent(error.message)}`);
-  }
+  const conversationId = await createOrGetDirectConversation(profile.user_id, targetUserId);
+  await insertDirectMessage(conversationId, profile.user_id, `${subject}\n\n${body}`);
 
   revalidatePath("/platform");
-  redirect("/platform?message=Direct message intent saved for Phase 13 messaging.");
+  redirect(`/messages/${conversationId}`);
 }
 
 export async function createTemporaryBan(formData: FormData) {
