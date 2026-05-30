@@ -84,6 +84,9 @@ export default async function ProtectedLayout({
               <Link href="/profile" className="transition hover:text-[#b94f22]">
                 Profile
               </Link>
+              <Link href="/leader" className="transition hover:text-[#b94f22]">
+                Leader Dashboard
+              </Link>
               <Link href="/discover" className="transition hover:text-[#b94f22]">
                 Discover
               </Link>
