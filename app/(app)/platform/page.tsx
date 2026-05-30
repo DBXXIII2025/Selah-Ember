@@ -1,6 +1,9 @@
 import {
   createPlatformDirectMessageIntent,
   createTemporaryBan,
+  deletePlatformAnnouncement,
+  deletePlatformPlan,
+  deletePromoCode,
   getPlatformDashboardData,
   savePlatformPlan,
   savePromoCode,
@@ -19,6 +22,8 @@ const inputClassName =
   "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
 const buttonClassName =
   "rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]";
+const deleteButtonClassName =
+  "rounded-full border border-[#b42318]/30 bg-white px-5 py-3 text-sm font-semibold text-[#b42318] transition hover:bg-[#fff1f0]";
 
 function Field({
   label,
@@ -135,7 +140,8 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                 <p className="text-sm text-[#67564c]">No plans yet.</p>
               ) : (
                 data.plans.map((plan) => (
-                  <form key={plan.id} action={savePlatformPlan} className="rounded-xl border border-[#ead6c5] p-4">
+                  <div key={plan.id} className="rounded-xl border border-[#ead6c5] p-4">
+                  <form action={savePlatformPlan}>
                     <input type="hidden" name="plan_id" value={plan.id} />
                     <div className="grid gap-4 md:grid-cols-2">
                       <Field label="Plan name" name="name" defaultValue={plan.name} required />
@@ -181,6 +187,19 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                       Update plan
                     </button>
                   </form>
+                  <form action={deletePlatformPlan} className="mt-5 border-t border-[#ead6c5] pt-4">
+                    <input type="hidden" name="plan_id" value={plan.id} />
+                    <p className="text-sm text-[#67564c]">
+                      Type DELETE to deactivate this plan. Existing records are kept.
+                    </p>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                      <input name="confirmation" type="text" className={inputClassName} />
+                      <button type="submit" className={deleteButtonClassName}>
+                        Delete plan
+                      </button>
+                    </div>
+                  </form>
+                  </div>
                 ))
               )}
             </div>
@@ -210,6 +229,16 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                 <div key={promo.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
                   <p className="font-semibold">{promo.code} - {promo.discount_label}</p>
                   <p className="mt-1 text-[#67564c]">{promo.description || "No description"} · {promo.is_active ? "Active" : "Inactive"}</p>
+                  <form action={deletePromoCode} className="mt-4 border-t border-[#ead6c5] pt-4">
+                    <input type="hidden" name="promo_id" value={promo.id} />
+                    <p className="text-[#67564c]">Type DELETE to deactivate this promo code.</p>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                      <input name="confirmation" type="text" className={inputClassName} />
+                      <button type="submit" className={deleteButtonClassName}>
+                        Delete promo
+                      </button>
+                    </div>
+                  </form>
                 </div>
               ))}
             </div>
@@ -232,6 +261,16 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                 <div key={announcement.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
                   <p className="font-semibold">{announcement.title}</p>
                   <p className="mt-1 text-[#67564c]">{announcement.body}</p>
+                  <form action={deletePlatformAnnouncement} className="mt-4 border-t border-[#ead6c5] pt-4">
+                    <input type="hidden" name="announcement_id" value={announcement.id} />
+                    <p className="text-[#67564c]">Type DELETE to remove this announcement row.</p>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                      <input name="confirmation" type="text" className={inputClassName} />
+                      <button type="submit" className={deleteButtonClassName}>
+                        Delete announcement
+                      </button>
+                    </div>
+                  </form>
                 </div>
               ))}
             </div>

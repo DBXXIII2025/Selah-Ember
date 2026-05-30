@@ -287,6 +287,29 @@ export async function savePlatformPlan(formData: FormData) {
   redirect(`/platform?message=${id ? "Plan updated." : "Plan created."}`);
 }
 
+export async function deletePlatformPlan(formData: FormData) {
+  await requirePlatformEngineer();
+  const id = getFormString(formData, "plan_id");
+  const confirmation = getFormString(formData, "confirmation");
+
+  if (!id || confirmation !== "DELETE") {
+    redirect("/platform?message=Type DELETE to confirm plan deletion.");
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("platform_plans")
+    .update({ is_active: false })
+    .eq("id", id);
+
+  if (error) {
+    redirect(`/platform?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/platform");
+  redirect("/platform?message=Plan deactivated.");
+}
+
 export async function savePromoCode(formData: FormData) {
   const profile = await requirePlatformEngineer();
   const code = getFormString(formData, "code").toUpperCase();
@@ -313,6 +336,29 @@ export async function savePromoCode(formData: FormData) {
 
   revalidatePath("/platform");
   redirect("/platform?message=Promo code created.");
+}
+
+export async function deletePromoCode(formData: FormData) {
+  await requirePlatformEngineer();
+  const id = getFormString(formData, "promo_id");
+  const confirmation = getFormString(formData, "confirmation");
+
+  if (!id || confirmation !== "DELETE") {
+    redirect("/platform?message=Type DELETE to confirm promo code deletion.");
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("platform_promo_codes")
+    .update({ is_active: false })
+    .eq("id", id);
+
+  if (error) {
+    redirect(`/platform?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/platform");
+  redirect("/platform?message=Promo code deactivated.");
 }
 
 export async function sendPlatformAnnouncement(formData: FormData) {
@@ -392,6 +438,29 @@ export async function sendPlatformAnnouncement(formData: FormData) {
   revalidatePath("/platform");
   revalidatePath("/notifications");
   redirect("/platform?message=Announcement sent.");
+}
+
+export async function deletePlatformAnnouncement(formData: FormData) {
+  await requirePlatformEngineer();
+  const id = getFormString(formData, "announcement_id");
+  const confirmation = getFormString(formData, "confirmation");
+
+  if (!id || confirmation !== "DELETE") {
+    redirect("/platform?message=Type DELETE to confirm announcement deletion.");
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("platform_announcements")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    redirect(`/platform?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/platform");
+  redirect("/platform?message=Announcement deleted.");
 }
 
 export async function createPlatformDirectMessageIntent(formData: FormData) {
