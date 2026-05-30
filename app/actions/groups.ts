@@ -15,6 +15,7 @@ export type StudyGroup = {
   community_name: string | null;
   role: string | null;
   created_by: string | null;
+  member_count: number;
 };
 
 export type GroupCommunityOption = {
@@ -26,6 +27,13 @@ type Profile = {
   id: string;
   user_id: string;
   display_name: string;
+};
+
+export type GroupMembershipStatus = {
+  isSignedIn: boolean;
+  isMember: boolean;
+  isOwner: boolean;
+  role: string | null;
 };
 
 function getFormString(formData: FormData, key: string) {
@@ -51,8 +59,31 @@ async function getCurrentUser() {
   return user;
 }
 
+async function getOptionalUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return user;
+}
+
 async function getCurrentProfile(): Promise<Profile> {
   const user = await getCurrentUser();
+  return getProfileForUser(user);
+}
+
+async function getOptionalProfile(): Promise<Profile | null> {
+  const user = await getOptionalUser();
+
+  if (!user) {
+    return null;
+  }
+
+  return getProfileForUser(user);
+}
+
+async function getProfileForUser(user: Awaited<ReturnType<typeof getCurrentUser>>): Promise<Profile> {
   const admin = createAdminClient();
   const displayName =
     typeof user.user_metadata.display_name === "string"
@@ -172,10 +203,43 @@ export async function createStudyGroup(formData: FormData) {
   );
 
   revalidatePath("/groups");
+  revalidatePath("/discover/groups");
   redirect("/groups");
 }
 
-function normalizeGroup(row: Record<string, unknown>, role: string | null): StudyGroup {
+async function getGroupMembershipCounts(groupIds: string[]) {
+  if (groupIds.length === 0) {
+    return new Map<string, number>();
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("group_memberships")
+    .select("group_id")
+    .in("group_id", groupIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const counts = new Map<string, number>();
+
+  for (const membership of data || []) {
+    const groupId = typeof membership.group_id === "string" ? membership.group_id : "";
+
+    if (groupId) {
+      counts.set(groupId, (counts.get(groupId) || 0) + 1);
+    }
+  }
+
+  return counts;
+}
+
+function normalizeGroup(
+  row: Record<string, unknown>,
+  role: string | null,
+  memberCount = 0,
+): StudyGroup {
   const community = row.churches as { name?: string } | null | undefined;
 
   return {
@@ -198,12 +262,13 @@ function normalizeGroup(row: Record<string, unknown>, role: string | null): Stud
     community_name: community?.name || null,
     role,
     created_by: typeof row.created_by === "string" ? row.created_by : null,
+    member_count: memberCount,
   };
 }
 
 function groupSelect(supportsPhase5Columns: boolean) {
   return supportsPhase5Columns
-    ? "id,title,name,description,meeting_time,meeting_schedule,location,community_id,church_id,created_by,churches:community_id(name)"
+    ? "id,title,name,description,meeting_time,meeting_schedule,location,community_id,church_id,created_by,is_public,churches:community_id(name)"
     : "id,name,description,meeting_schedule,church_id,created_by,churches:church_id(name)";
 }
 
@@ -221,33 +286,44 @@ export async function getCurrentUserStudyGroups(): Promise<StudyGroup[]> {
     throw new Error(error.message);
   }
 
-  return ((data || []) as unknown as Record<string, unknown>[])
-    .filter((membership) => membership.study_groups)
-    .map((membership) =>
-      normalizeGroup(
-        membership.study_groups as Record<string, unknown>,
-        typeof membership.role === "string" ? membership.role : null,
-      ),
+  const rows = ((data || []) as unknown as Record<string, unknown>[]).filter(
+    (membership) => membership.study_groups,
+  );
+  const groupIds = rows
+    .map((membership) => (membership.study_groups as Record<string, unknown>).id)
+    .filter((id): id is string => typeof id === "string");
+  const counts = await getGroupMembershipCounts(groupIds);
+
+  return rows.map((membership) => {
+    const group = membership.study_groups as Record<string, unknown>;
+
+    return normalizeGroup(
+      group,
+      typeof membership.role === "string" ? membership.role : null,
+      counts.get(String(group.id)) || 0,
     );
+  });
 }
 
 export async function getStudyGroupById(id: string): Promise<StudyGroup | null> {
-  const profile = await getCurrentProfile();
+  const profile = await getOptionalProfile();
   const admin = createAdminClient();
   const supportsPhase5Columns = await hasColumn("study_groups", "title");
-  const { data: membership, error: membershipError } = await admin
-    .from("group_memberships")
-    .select("role")
-    .eq("group_id", id)
-    .eq("profile_id", profile.id)
-    .maybeSingle();
+  let role: string | null = null;
 
-  if (membershipError) {
-    throw new Error(membershipError.message);
-  }
+  if (profile) {
+    const { data: membership, error: membershipError } = await admin
+      .from("group_memberships")
+      .select("role")
+      .eq("group_id", id)
+      .eq("profile_id", profile.id)
+      .maybeSingle();
 
-  if (!membership) {
-    return null;
+    if (membershipError) {
+      throw new Error(membershipError.message);
+    }
+
+    role = typeof membership?.role === "string" ? membership.role : null;
   }
 
   const { data, error } = await admin
@@ -260,7 +336,153 @@ export async function getStudyGroupById(id: string): Promise<StudyGroup | null> 
     throw new Error(error.message);
   }
 
-  return data
-    ? normalizeGroup(data as unknown as Record<string, unknown>, membership.role)
-    : null;
+  if (!data) {
+    return null;
+  }
+
+  const row = data as unknown as Record<string, unknown>;
+
+  if (!role && row.is_public === false) {
+    return null;
+  }
+
+  const counts = await getGroupMembershipCounts([id]);
+
+  return normalizeGroup(row, role, counts.get(id) || 0);
+}
+
+export async function getDiscoverStudyGroups(): Promise<StudyGroup[]> {
+  const admin = createAdminClient();
+  const supportsPhase5Columns = await hasColumn("study_groups", "title");
+  const { data, error } = await admin
+    .from("study_groups")
+    .select(groupSelect(supportsPhase5Columns))
+    .eq("is_public", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rows = (data || []) as unknown as Record<string, unknown>[];
+  const groupIds = rows
+    .map((group) => group.id)
+    .filter((id): id is string => typeof id === "string");
+  const counts = await getGroupMembershipCounts(groupIds);
+
+  return rows.map((group) => normalizeGroup(group, null, counts.get(String(group.id)) || 0));
+}
+
+export async function getMembershipStatus(groupId: string): Promise<GroupMembershipStatus> {
+  const profile = await getOptionalProfile();
+
+  if (!profile) {
+    return {
+      isSignedIn: false,
+      isMember: false,
+      isOwner: false,
+      role: null,
+    };
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("group_memberships")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const role = typeof data?.role === "string" ? data.role : null;
+
+  return {
+    isSignedIn: true,
+    isMember: Boolean(role),
+    isOwner: role === "owner" || role === "leader",
+    role,
+  };
+}
+
+export async function joinGroup(formData: FormData) {
+  const groupId = getFormString(formData, "group_id");
+
+  if (!groupId) {
+    redirect("/discover/groups");
+  }
+
+  const profile = await getOptionalProfile();
+
+  if (!profile) {
+    redirect("/signin");
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("group_memberships").upsert(
+    {
+      group_id: groupId,
+      profile_id: profile.id,
+      role: "member",
+    },
+    {
+      onConflict: "group_id,profile_id",
+      ignoreDuplicates: true,
+    },
+  );
+
+  if (error) {
+    redirect(`/groups/${groupId}?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/groups");
+  revalidatePath("/discover/groups");
+  revalidatePath(`/groups/${groupId}`);
+  redirect(`/groups/${groupId}`);
+}
+
+export async function leaveGroup(formData: FormData) {
+  const groupId = getFormString(formData, "group_id");
+
+  if (!groupId) {
+    redirect("/groups");
+  }
+
+  const profile = await getCurrentProfile();
+  const admin = createAdminClient();
+  const { data: membership, error: membershipError } = await admin
+    .from("group_memberships")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+
+  if (membershipError) {
+    redirect(`/groups/${groupId}?message=${encodeURIComponent(membershipError.message)}`);
+  }
+
+  if (!membership) {
+    redirect(`/groups/${groupId}`);
+  }
+
+  if (membership.role === "owner" || membership.role === "leader") {
+    redirect(`/groups/${groupId}?message=Group leaders cannot leave their own group.`);
+  }
+
+  const { error } = await admin
+    .from("group_memberships")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("profile_id", profile.id);
+
+  if (error) {
+    redirect(`/groups/${groupId}?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/groups");
+  revalidatePath("/discover/groups");
+  revalidatePath(`/groups/${groupId}`);
+  redirect(`/groups/${groupId}`);
 }

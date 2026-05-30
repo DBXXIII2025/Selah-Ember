@@ -1,6 +1,10 @@
-import { BookOpen, CalendarDays, MapPin, Plus } from "lucide-react";
+import { BookOpen, CalendarDays, MapPin, Plus, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { getCurrentUserStudyGroups } from "@/app/actions/groups";
+
+function formatMemberCount(count: number) {
+  return `${count} ${count === 1 ? "member" : "members"}`;
+}
 
 export default async function GroupsPage() {
   const groups = await getCurrentUserStudyGroups();
@@ -74,6 +78,10 @@ export default async function GroupsPage() {
                       {group.community_name}
                     </p>
                   ) : null}
+                  <p className="flex items-center gap-2">
+                    <UsersRound aria-hidden="true" className="h-4 w-4 text-[#b94f22]" />
+                    {formatMemberCount(group.member_count)}
+                  </p>
                 </div>
                 <Link
                   href={`/groups/${group.id}`}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signOut } from "@/app/actions/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -9,13 +10,42 @@ export default async function ProtectedLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headerStore = await headers();
+  const pathname = headerStore.get("x-selah-pathname") || "";
+  const isPublicGroupDetail = /^\/groups\/[^/]+$/.test(pathname);
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!user && !isPublicGroupDetail) {
     redirect("/signin");
+  }
+
+  if (!user) {
+    return (
+      <main className="min-h-screen bg-[#fff8ed] text-[#211b17]">
+        <header className="border-b border-[#ead6c5] bg-white/75">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-10 lg:px-16">
+            <Link href="/" className="text-lg font-semibold">
+              Selah Ember
+            </Link>
+            <nav className="flex items-center gap-4 text-sm font-semibold text-[#67564c]">
+              <Link href="/discover" className="transition hover:text-[#b94f22]">
+                Discover
+              </Link>
+              <Link href="/discover/groups" className="transition hover:text-[#b94f22]">
+                Groups
+              </Link>
+              <Link href="/signin" className="transition hover:text-[#b94f22]">
+                Sign in
+              </Link>
+            </nav>
+          </div>
+        </header>
+        {children}
+      </main>
+    );
   }
 
   const admin = createAdminClient();
@@ -50,11 +80,11 @@ export default async function ProtectedLayout({
               <Link href="/profile" className="transition hover:text-[#b94f22]">
                 Profile
               </Link>
-              <Link href="/communities" className="transition hover:text-[#b94f22]">
-                Communities
-              </Link>
               <Link href="/discover" className="transition hover:text-[#b94f22]">
                 Discover
+              </Link>
+              <Link href="/communities" className="transition hover:text-[#b94f22]">
+                Communities
               </Link>
               <Link href="/prayer" className="transition hover:text-[#b94f22]">
                 Prayer

@@ -2,8 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-selah-pathname", request.nextUrl.pathname);
+
   let response = NextResponse.next({
-    request,
+    request: {
+      headers: requestHeaders,
+    },
   });
 
   const supabase = createServerClient(
@@ -17,7 +22,9 @@ export async function proxy(request: NextRequest) {
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({
-            request,
+            request: {
+              headers: requestHeaders,
+            },
           });
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options);
