@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     "church events",
   ],
   icons: {
-    icon: "/icon.svg",
+    icon: "/images/selah-ember-logo.png",
   },
   openGraph: {
     title: "Selah Ember",
@@ -28,6 +28,14 @@ export const metadata: Metadata = {
     siteName: "Selah Ember",
     type: "website",
     locale: "en_US",
+    images: [
+      {
+        url: "/images/selah-ember-logo.png",
+        width: 1536,
+        height: 864,
+        alt: "Selah Ember logo",
+      },
+    ],
   },
   twitter: {
     card: "summary",

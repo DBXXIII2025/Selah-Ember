@@ -1,6 +1,7 @@
 import { BookOpen, CalendarDays, MapPin, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { getDiscoverStudyGroups } from "@/app/actions/groups";
+import { BrandMark } from "@/components/ui/brand-mark";
 
 export const dynamic = "force-dynamic";
 
@@ -12,20 +13,18 @@ export default async function DiscoverGroupsPage() {
   const groups = await getDiscoverStudyGroups();
 
   return (
-    <main className="min-h-screen bg-[#fff8ed] text-[#211b17]">
-      <header className="border-b border-[#ead6c5] bg-white/75">
+    <main className="min-h-screen bg-[#f7ead7] text-[#211814]">
+      <header className="border-b border-[#c8874d]/30 bg-[#151210]/95 text-[#fff4df]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-10 lg:px-16">
-          <Link href="/" className="text-lg font-semibold">
-            Selah Ember
-          </Link>
-          <nav className="flex items-center gap-4 text-sm font-semibold text-[#67564c]">
-            <Link href="/discover" className="transition hover:text-[#b94f22]">
+          <BrandMark variant="light" />
+          <nav className="flex items-center gap-4 text-sm font-semibold text-[#d8bea3]">
+            <Link href="/discover" className="transition hover:text-[#f0a35c]">
               Discover
             </Link>
-            <Link href="/discover/groups" className="text-[#b94f22]">
+            <Link href="/discover/groups" className="text-[#f0a35c]">
               Groups
             </Link>
-            <Link href="/signin" className="transition hover:text-[#b94f22]">
+            <Link href="/signin" className="transition hover:text-[#f0a35c]">
               Sign in
             </Link>
           </nav>

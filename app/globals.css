@@ -1,8 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fff8ed;
-  --foreground: #211b17;
+  --background: #f7ead7;
+  --foreground: #211814;
+  --ember: #d97834;
+  --ember-deep: #9b4d25;
+  --charcoal: #151210;
+  --cream: #fff4df;
+  --line: #d9b58d;
 }
 
 html {
@@ -19,4 +24,9 @@ body {
 button,
 a {
   touch-action: manipulation;
+}
+
+::selection {
+  background: rgba(217, 120, 52, 0.28);
+  color: var(--charcoal);
 }

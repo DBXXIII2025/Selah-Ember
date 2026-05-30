@@ -6,6 +6,7 @@ import {
   getPublicCommunityBySlug,
 } from "@/app/actions/communities";
 import { CommunityMembershipForm } from "@/components/church/community-membership-form";
+import { BrandMark } from "@/components/ui/brand-mark";
 
 type PublicCommunityPageProps = {
   params: Promise<{
@@ -35,13 +36,11 @@ export default async function PublicCommunityPage({
   const status = await getCommunityMembershipStatus(community.id);
 
   return (
-    <main className="min-h-screen bg-[#fff8ed] text-[#211b17]">
+    <main className="min-h-screen bg-[#f7ead7] text-[#211814]">
       <section className="relative isolate overflow-hidden px-6 py-10 sm:px-10 lg:px-16">
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(135deg,#fff8ed_0%,#f4dcc0_48%,#2a211d_100%)]" />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(135deg,#f7ead7_0%,#ead0ac_50%,#151210_100%)]" />
         <nav className="mx-auto flex max-w-7xl items-center justify-between">
-          <Link href="/" className="text-lg font-semibold">
-            Selah Ember
-          </Link>
+          <BrandMark />
           <div className="flex items-center gap-4 text-sm font-semibold">
             <Link href="/discover" className="text-[#67564c] hover:text-[#b94f22]">
               Discover
