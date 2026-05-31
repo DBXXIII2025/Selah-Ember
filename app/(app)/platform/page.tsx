@@ -1,5 +1,7 @@
 import {
   createTemporaryBan,
+  deletePlatformCommunity,
+  deletePlatformGroup,
   deletePlatformAnnouncement,
   deletePlatformPlan,
   deletePromoCode,
@@ -9,6 +11,7 @@ import {
   sendPlatformAnnouncement,
   updatePlatformSettings,
 } from "@/app/actions/platform";
+import { deleteOwnReply, deleteOwnThread } from "@/app/actions/discussions";
 import Link from "next/link";
 
 type PlatformPageProps = {
@@ -382,6 +385,24 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                     <p className="mt-2 text-[#8a3f1e]">
                       Reported {new Date(report.created_at).toLocaleString()}
                     </p>
+                    {report.thread_id ? (
+                      <form action={deleteOwnThread} className="mt-4 border-t border-[#ead6c5] pt-4">
+                        <input type="hidden" name="thread_id" value={report.thread_id} />
+                        <input type="hidden" name="return_path" value="/platform" />
+                        <button type="submit" className={deleteButtonClassName}>
+                          Delete thread
+                        </button>
+                      </form>
+                    ) : null}
+                    {report.reply_id ? (
+                      <form action={deleteOwnReply} className="mt-4 border-t border-[#ead6c5] pt-4">
+                        <input type="hidden" name="reply_id" value={report.reply_id} />
+                        <input type="hidden" name="return_path" value="/platform" />
+                        <button type="submit" className={deleteButtonClassName}>
+                          Delete reply
+                        </button>
+                      </form>
+                    ) : null}
                   </div>
                 ))
               )}
@@ -393,18 +414,48 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
           <Panel title="Communities">
             <div className="space-y-3 text-sm">
               {data.communities.map((community) => (
-                <p key={community.id} className="rounded-xl border border-[#ead6c5] p-3">
-                  {community.name}
-                </p>
+                <div key={community.id} className="rounded-xl border border-[#ead6c5] p-3">
+                  <p className="font-semibold">{community.name}</p>
+                  <form action={deletePlatformCommunity} className="mt-3 border-t border-[#ead6c5] pt-3">
+                    <input type="hidden" name="community_id" value={community.id} />
+                    <p className="text-xs text-[#67564c]">Type DELETE to remove this community.</p>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                      <input
+                        name="confirmation"
+                        type="text"
+                        placeholder="DELETE"
+                        className="rounded-xl border border-[#ead6c5] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
+                      />
+                      <button type="submit" className={deleteButtonClassName}>
+                        Delete
+                      </button>
+                    </div>
+                  </form>
+                </div>
               ))}
             </div>
           </Panel>
           <Panel title="Groups">
             <div className="space-y-3 text-sm">
               {data.groups.map((group) => (
-                <p key={group.id} className="rounded-xl border border-[#ead6c5] p-3">
-                  {group.title}
-                </p>
+                <div key={group.id} className="rounded-xl border border-[#ead6c5] p-3">
+                  <p className="font-semibold">{group.title}</p>
+                  <form action={deletePlatformGroup} className="mt-3 border-t border-[#ead6c5] pt-3">
+                    <input type="hidden" name="group_id" value={group.id} />
+                    <p className="text-xs text-[#67564c]">Type DELETE to remove this group.</p>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                      <input
+                        name="confirmation"
+                        type="text"
+                        placeholder="DELETE"
+                        className="rounded-xl border border-[#ead6c5] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
+                      />
+                      <button type="submit" className={deleteButtonClassName}>
+                        Delete
+                      </button>
+                    </div>
+                  </form>
+                </div>
               ))}
             </div>
           </Panel>

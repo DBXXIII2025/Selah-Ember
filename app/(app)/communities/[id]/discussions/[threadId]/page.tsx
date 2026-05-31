@@ -37,8 +37,6 @@ export default async function CommunityDiscussionThreadPage({ params, searchPara
     notFound();
   }
 
-  const returnPath = `/communities/${id}/discussions/${threadId}`;
-
   if (!thread || thread.community_id !== id) {
     return (
       <section className="px-6 py-12 sm:px-10 lg:px-16">
@@ -52,6 +50,16 @@ export default async function CommunityDiscussionThreadPage({ params, searchPara
       </section>
     );
   }
+
+  const returnPath = `/communities/${id}/discussions/${threadId}`;
+  const canManageThread =
+    thread.author_id === threadData.current_user_id ||
+    threadData.current_user_role === "platform_engineer" ||
+    threadData.role === "owner";
+  const canManageReply =
+    threadData.current_user_role === "platform_engineer" ||
+    threadData.role === "owner" ||
+    threadData.role === "leader";
 
   const canReply = threadData.isMember && !thread.deleted_at;
 
@@ -92,7 +100,7 @@ export default async function CommunityDiscussionThreadPage({ params, searchPara
             {thread.deleted_at ? <p className="italic text-[#67564c]">Thread deleted</p> : <DiscussionBody body={thread.body} />}
           </div>
 
-          {!thread.deleted_at && thread.author_id === threadData.current_user_id ? (
+          {!thread.deleted_at && canManageThread ? (
             <form action={deleteOwnThread} className="mt-6">
               <input type="hidden" name="thread_id" value={thread.id} />
               <input type="hidden" name="return_path" value={returnPath} />
@@ -131,7 +139,7 @@ export default async function CommunityDiscussionThreadPage({ params, searchPara
                 <div className="mt-4">
                   {reply.deleted_at ? <p className="italic text-[#67564c]">Reply deleted</p> : <DiscussionBody body={reply.body} />}
                 </div>
-                {!reply.deleted_at && reply.author_id === threadData.current_user_id ? (
+                {!reply.deleted_at && (reply.author_id === threadData.current_user_id || canManageReply) ? (
                   <form action={deleteOwnReply} className="mt-4">
                     <input type="hidden" name="reply_id" value={reply.id} />
                     <input type="hidden" name="return_path" value={returnPath} />

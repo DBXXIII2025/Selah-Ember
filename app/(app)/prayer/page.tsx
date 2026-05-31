@@ -1,6 +1,6 @@
 import { Lock, Plus, UsersRound } from "lucide-react";
 import Link from "next/link";
-import { getVisiblePrayerRequests } from "@/app/actions/prayer";
+import { deleteOwnPrayerRequest, getVisiblePrayerRequests } from "@/app/actions/prayer";
 
 export default async function PrayerPage() {
   const requests = await getVisiblePrayerRequests();
@@ -69,6 +69,26 @@ export default async function PrayerPage() {
                   ) : null}
                   {request.is_owner ? <span>Your request</span> : <span>Community request</span>}
                 </div>
+                {request.is_owner ? (
+                  <form action={deleteOwnPrayerRequest} className="mt-4 border-t border-[#ead6c5] pt-4">
+                    <input type="hidden" name="request_id" value={request.id} />
+                    <p className="text-xs text-[#67564c]">Type DELETE to remove this prayer request.</p>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                      <input
+                        name="confirmation"
+                        type="text"
+                        placeholder="DELETE"
+                        className="rounded-xl border border-[#ead6c5] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
+                      />
+                      <button
+                        type="submit"
+                        className="rounded-full border border-[#b42318]/30 bg-white px-5 py-3 text-sm font-semibold text-[#b42318] transition hover:bg-[#fff1f0]"
+                      >
+                        Delete request
+                      </button>
+                    </div>
+                  </form>
+                ) : null}
               </article>
             ))}
           </div>

@@ -34,6 +34,7 @@ type Profile = {
   id: string;
   user_id: string;
   display_name: string;
+  role: string;
 };
 
 function getFormString(formData: FormData, key: string) {
@@ -117,7 +118,7 @@ async function getProfileForUser(user: Awaited<ReturnType<typeof getCurrentUser>
 
   const { data, error } = await admin
     .from("profiles")
-    .select("id,user_id,display_name")
+    .select("id,user_id,display_name,role")
     .eq("user_id", user.id)
     .single();
 
@@ -469,4 +470,53 @@ export async function leaveCommunity(formData: FormData) {
   revalidatePath("/communities");
   revalidatePath(`/c/${slug}`);
   redirect(`/c/${slug}`);
+}
+
+export async function deleteOwnedCommunity(formData: FormData) {
+  const communityId = getFormString(formData, "community_id");
+  const confirmation = getFormString(formData, "confirmation");
+
+  if (!communityId) {
+    redirect("/communities?message=Community not found.");
+  }
+
+  if (confirmation !== "DELETE") {
+    redirect(`/communities/${communityId}?message=Type DELETE to confirm community deletion.`);
+  }
+
+  const profile = await getCurrentProfile();
+  const admin = createAdminClient();
+  const { data: community, error } = await admin
+    .from("churches")
+    .select("id,slug,created_by")
+    .eq("id", communityId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!community) {
+    redirect("/communities?message=Community not found.");
+  }
+
+  const isOwner = String(community.created_by) === profile.id;
+  const isPlatformEngineer = profile.role === "platform_engineer";
+
+  if (!isOwner && !isPlatformEngineer) {
+    redirect(`/communities/${communityId}?message=You can only delete communities you own.`);
+  }
+
+  const { error: deleteError } = await admin.from("churches").delete().eq("id", communityId);
+
+  if (deleteError) {
+    redirect(`/communities/${communityId}?message=${encodeURIComponent(deleteError.message)}`);
+  }
+
+  revalidatePath("/communities");
+  revalidatePath("/discover");
+  if (typeof community.slug === "string" && community.slug) {
+    revalidatePath(`/c/${community.slug}`);
+  }
+  redirect("/communities?message=Community deleted.");
 }

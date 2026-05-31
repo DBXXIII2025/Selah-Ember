@@ -95,6 +95,7 @@ export type DiscussionThreadData = {
   isMember: boolean;
   role: string | null;
   current_user_id: string | null;
+  current_user_role: string | null;
 };
 
 function getFormString(formData: FormData, key: string) {
@@ -281,34 +282,6 @@ async function getGroup(groupId: string) {
   };
 }
 
-async function isChurchOwnerByUser(communityId: string, userId: string) {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("is_church_owner_by_user", {
-    target_church_id: communityId,
-    target_user_id: userId,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return Boolean(data);
-}
-
-async function isChurchMemberByProfile(communityId: string, profileId: string) {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("is_church_member_by_profile", {
-    target_church_id: communityId,
-    target_profile_id: profileId,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return Boolean(data);
-}
-
 async function getCommunityAccess(communityId: string, profile: Profile | null): Promise<CommunityAccess> {
   if (!profile) {
     return {
@@ -321,58 +294,36 @@ async function getCommunityAccess(communityId: string, profile: Profile | null):
     };
   }
 
-  const [ownerCheckPassed, membershipCheckPassed] = await Promise.all([
-    isChurchOwnerByUser(communityId, profile.authUserId),
-    isChurchMemberByProfile(communityId, profile.id),
+  const admin = createAdminClient();
+  const [{ data: community, error: communityError }, { data: membership, error: membershipError }] = await Promise.all([
+    admin.from("churches").select("id,created_by").eq("id", communityId).maybeSingle(),
+    admin
+      .from("church_memberships")
+      .select("id,role")
+      .eq("church_id", communityId)
+      .eq("profile_id", profile.id)
+      .maybeSingle(),
   ]);
 
-  const admin = createAdminClient();
-  const { data: accessData, error: accessError } = await admin.rpc("can_access_community_discussions", {
-    target_church_id: communityId,
-    target_auth_user_id: profile.authUserId,
-    target_profile_id: profile.id,
-  });
-
-  if (accessError) {
-    throw new Error(accessError.message);
+  if (communityError) {
+    throw new Error(communityError.message);
   }
+
+  if (membershipError) {
+    throw new Error(membershipError.message);
+  }
+
+  const ownerCheckPassed = typeof community?.created_by === "string" && community.created_by === profile.id;
+  const membershipCheckPassed = Boolean(membership);
 
   return {
     isSignedIn: true,
-    isMember: Boolean(accessData),
-    role: ownerCheckPassed ? "owner" : membershipCheckPassed ? "member" : null,
+    isMember: ownerCheckPassed || membershipCheckPassed,
+    role: ownerCheckPassed ? "owner" : typeof membership?.role === "string" ? membership.role : null,
     ownerCheckPassed,
     membershipCheckPassed,
     membershipResultCount: membershipCheckPassed ? 1 : 0,
   };
-}
-
-async function isGroupOwnerByUser(groupId: string, userId: string) {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("is_group_owner_by_user", {
-    target_group_id: groupId,
-    target_user_id: userId,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return Boolean(data);
-}
-
-async function isGroupMemberByProfile(groupId: string, profileId: string) {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("is_group_member_by_profile", {
-    target_group_id: groupId,
-    target_profile_id: profileId,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return Boolean(data);
 }
 
 async function getGroupAccess(groupId: string, profile: Profile | null): Promise<GroupAccess> {
@@ -387,26 +338,32 @@ async function getGroupAccess(groupId: string, profile: Profile | null): Promise
     };
   }
 
-  const [ownerCheckPassed, membershipCheckPassed] = await Promise.all([
-    isGroupOwnerByUser(groupId, profile.authUserId),
-    isGroupMemberByProfile(groupId, profile.id),
+  const admin = createAdminClient();
+  const [{ data: group, error: groupError }, { data: membership, error: membershipError }] = await Promise.all([
+    admin.from("study_groups").select("id,created_by").eq("id", groupId).maybeSingle(),
+    admin
+      .from("group_memberships")
+      .select("id,role")
+      .eq("group_id", groupId)
+      .eq("profile_id", profile.id)
+      .maybeSingle(),
   ]);
 
-  const admin = createAdminClient();
-  const { data: accessData, error: accessError } = await admin.rpc("can_access_group_discussions", {
-    target_group_id: groupId,
-    target_auth_user_id: profile.authUserId,
-    target_profile_id: profile.id,
-  });
-
-  if (accessError) {
-    throw new Error(accessError.message);
+  if (groupError) {
+    throw new Error(groupError.message);
   }
+
+  if (membershipError) {
+    throw new Error(membershipError.message);
+  }
+
+  const ownerCheckPassed = typeof group?.created_by === "string" && group.created_by === profile.id;
+  const membershipCheckPassed = Boolean(membership);
 
   return {
     isSignedIn: true,
-    isMember: Boolean(accessData),
-    role: ownerCheckPassed ? "owner" : membershipCheckPassed ? "member" : null,
+    isMember: ownerCheckPassed || membershipCheckPassed,
+    role: ownerCheckPassed ? "owner" : typeof membership?.role === "string" ? membership.role : null,
     ownerCheckPassed,
     membershipCheckPassed,
     membershipResultCount: membershipCheckPassed ? 1 : 0,
@@ -721,17 +678,24 @@ export async function getDiscussionThread(threadId: string): Promise<DiscussionT
   const threadRow = await getThreadRow(threadId);
 
   if (!threadRow) {
-    return { thread: null, isSignedIn: Boolean(profile), isMember: false, role: null, current_user_id: profile?.authUserId || null };
+    return {
+      thread: null,
+      isSignedIn: Boolean(profile),
+      isMember: false,
+      role: null,
+      current_user_id: profile?.authUserId || null,
+      current_user_role: profile?.role || null,
+    };
   }
 
   const access = await canReadThread(threadRow, profile);
 
   if (!access.isMember) {
-    return { thread: null, ...access, current_user_id: profile?.authUserId || null };
+    return { thread: null, ...access, current_user_id: profile?.authUserId || null, current_user_role: profile?.role || null };
   }
 
   const thread = await getThreadDetail(threadId, profile);
-  return { thread, ...access, current_user_id: profile?.authUserId || null };
+  return { thread, ...access, current_user_id: profile?.authUserId || null, current_user_role: profile?.role || null };
 }
 
 async function notifyCommunityOwners(communityId: string, actorUserId: string, threadId: string, title: string) {
@@ -975,7 +939,27 @@ export async function deleteOwnThread(formData: FormData) {
 
   const thread = await getThreadRow(threadId);
 
-  if (!thread || String(thread.author_id) !== profile.authUserId) {
+  if (!thread) {
+    redirect(`${returnPath}?message=Discussion not found.`);
+  }
+
+  const access =
+    thread.scope_type === "community" && typeof thread.community_id === "string"
+      ? await getCommunityAccess(thread.community_id, profile)
+      : thread.scope_type === "group" && typeof thread.group_id === "string"
+        ? await getGroupAccess(thread.group_id, profile)
+        : null;
+
+  const isAuthor = String(thread.author_id) === profile.authUserId;
+  const isPlatformEngineer = profile.role === "platform_engineer";
+  const isModerator =
+    thread.scope_type === "community"
+      ? access?.role === "owner"
+      : thread.scope_type === "group"
+        ? access?.role === "owner" || access?.role === "leader"
+        : false;
+
+  if (!isAuthor && !isModerator && !isPlatformEngineer) {
     redirect(`${returnPath}?message=You can only delete your own discussion.`);
   }
 
@@ -1006,7 +990,7 @@ export async function deleteOwnReply(formData: FormData) {
   const admin = createAdminClient();
   const { data: reply, error: lookupError } = await admin
     .from("discussion_replies")
-    .select("id,author_id")
+    .select("id,thread_id,author_id")
     .eq("id", replyId)
     .maybeSingle();
 
@@ -1014,7 +998,37 @@ export async function deleteOwnReply(formData: FormData) {
     throw new Error(lookupError.message);
   }
 
-  if (!reply || String(reply.author_id) !== profile.authUserId) {
+  if (!reply) {
+    redirect(`${returnPath}?message=Reply not found.`);
+  }
+
+  const { data: thread, error: threadError } = await admin
+    .from("discussion_threads")
+    .select("id,scope_type,community_id,group_id,author_id")
+    .eq("id", String(reply.thread_id))
+    .maybeSingle();
+
+  if (threadError) {
+    throw new Error(threadError.message);
+  }
+
+  const access =
+    thread && thread.scope_type === "community" && typeof thread.community_id === "string"
+      ? await getCommunityAccess(thread.community_id, profile)
+      : thread && thread.scope_type === "group" && typeof thread.group_id === "string"
+        ? await getGroupAccess(thread.group_id, profile)
+        : null;
+
+  const isAuthor = String(reply.author_id) === profile.authUserId;
+  const isPlatformEngineer = profile.role === "platform_engineer";
+  const isModerator =
+    thread?.scope_type === "community"
+      ? access?.role === "owner"
+      : thread?.scope_type === "group"
+        ? access?.role === "owner" || access?.role === "leader"
+        : false;
+
+  if (!isAuthor && !isModerator && !isPlatformEngineer) {
     redirect(`${returnPath}?message=You can only delete your own reply.`);
   }
 

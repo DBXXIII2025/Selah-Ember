@@ -50,6 +50,7 @@ type Profile = {
   id: string;
   user_id: string;
   display_name: string;
+  role: string;
 };
 
 function getFormString(formData: FormData, key: string) {
@@ -123,7 +124,7 @@ async function getProfileForUser(user: Awaited<ReturnType<typeof getCurrentUser>
 
   const { data, error } = await admin
     .from("profiles")
-    .select("id,user_id,display_name")
+    .select("id,user_id,display_name,role")
     .eq("user_id", user.id)
     .single();
 
@@ -501,4 +502,49 @@ export async function removeEventRsvp(formData: FormData) {
   revalidatePath("/events");
   revalidatePath(`/events/${eventId}`);
   redirect(`/events/${eventId}`);
+}
+
+export async function deleteOwnedEvent(formData: FormData) {
+  const eventId = getFormString(formData, "event_id");
+  const confirmation = getFormString(formData, "confirmation");
+
+  if (!eventId) {
+    redirect("/events?message=Event not found.");
+  }
+
+  if (confirmation !== "DELETE") {
+    redirect(`/events/${eventId}?message=Type DELETE to confirm event deletion.`);
+  }
+
+  const profile = await getCurrentProfile();
+  const admin = createAdminClient();
+  const { data: event, error } = await admin
+    .from("events")
+    .select("id,title,created_by")
+    .eq("id", eventId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!event) {
+    redirect("/events?message=Event not found.");
+  }
+
+  const isOwner = String(event.created_by) === profile.id;
+  const isPlatformEngineer = profile.role === "platform_engineer";
+
+  if (!isOwner && !isPlatformEngineer) {
+    redirect(`/events/${eventId}?message=You can only delete events you own.`);
+  }
+
+  const { error: deleteError } = await admin.from("events").delete().eq("id", eventId);
+
+  if (deleteError) {
+    redirect(`/events/${eventId}?message=${encodeURIComponent(deleteError.message)}`);
+  }
+
+  revalidatePath("/events");
+  redirect("/events?message=Event deleted.");
 }

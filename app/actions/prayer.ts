@@ -28,6 +28,7 @@ type Profile = {
   id: string;
   user_id: string;
   display_name: string;
+  role: string;
 };
 
 function getFormString(formData: FormData, key: string) {
@@ -78,7 +79,7 @@ async function getCurrentProfile(): Promise<Profile> {
 
   const { data, error } = await admin
     .from("profiles")
-    .select("id,user_id,display_name")
+    .select("id,user_id,display_name,role")
     .eq("user_id", user.id)
     .single();
 
@@ -219,4 +220,49 @@ export async function getVisiblePrayerRequests(): Promise<PrayerRequest[]> {
       is_owner: row.profile_id === profile.id,
     };
   });
+}
+
+export async function deleteOwnPrayerRequest(formData: FormData) {
+  const requestId = getFormString(formData, "request_id");
+  const confirmation = getFormString(formData, "confirmation");
+
+  if (!requestId) {
+    redirect("/prayer?message=Prayer request not found.");
+  }
+
+  if (confirmation !== "DELETE") {
+    redirect(`/prayer?message=Type DELETE to confirm prayer request deletion.`);
+  }
+
+  const profile = await getCurrentProfile();
+  const admin = createAdminClient();
+  const { data: request, error } = await admin
+    .from("prayer_requests")
+    .select("id,profile_id")
+    .eq("id", requestId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!request) {
+    redirect("/prayer?message=Prayer request not found.");
+  }
+
+  const isOwner = String(request.profile_id) === profile.id;
+  const isPlatformEngineer = profile.role === "platform_engineer";
+
+  if (!isOwner && !isPlatformEngineer) {
+    redirect("/prayer?message=You can only delete your own prayer requests.");
+  }
+
+  const { error: deleteError } = await admin.from("prayer_requests").delete().eq("id", requestId);
+
+  if (deleteError) {
+    redirect(`/prayer?message=${encodeURIComponent(deleteError.message)}`);
+  }
+
+  revalidatePath("/prayer");
+  redirect("/prayer?message=Prayer request deleted.");
 }

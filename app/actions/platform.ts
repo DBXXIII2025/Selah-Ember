@@ -698,6 +698,116 @@ export async function deletePlatformAnnouncement(formData: FormData) {
   redirect("/platform?message=Announcement deleted.");
 }
 
+export async function deletePlatformCommunity(formData: FormData) {
+  await requirePlatformEngineer();
+  const id = getFormString(formData, "community_id");
+  const confirmation = getFormString(formData, "confirmation");
+
+  if (!id || confirmation !== "DELETE") {
+    redirect("/platform?message=Type DELETE to confirm community deletion.");
+  }
+
+  const admin = createAdminClient();
+  const { data: community, error: lookupError } = await admin
+    .from("churches")
+    .select("id,slug")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new Error(lookupError.message);
+  }
+
+  if (!community) {
+    redirect("/platform?message=Community not found.");
+  }
+
+  const { error } = await admin.from("churches").delete().eq("id", id);
+
+  if (error) {
+    redirect(`/platform?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/platform");
+  revalidatePath("/communities");
+  revalidatePath("/discover");
+  if (typeof community.slug === "string" && community.slug) {
+    revalidatePath(`/c/${community.slug}`);
+  }
+  redirect("/platform?message=Community deleted.");
+}
+
+export async function deletePlatformGroup(formData: FormData) {
+  await requirePlatformEngineer();
+  const id = getFormString(formData, "group_id");
+  const confirmation = getFormString(formData, "confirmation");
+
+  if (!id || confirmation !== "DELETE") {
+    redirect("/platform?message=Type DELETE to confirm group deletion.");
+  }
+
+  const admin = createAdminClient();
+  const { data: group, error: lookupError } = await admin
+    .from("study_groups")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new Error(lookupError.message);
+  }
+
+  if (!group) {
+    redirect("/platform?message=Group not found.");
+  }
+
+  const { error } = await admin.from("study_groups").delete().eq("id", id);
+
+  if (error) {
+    redirect(`/platform?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/platform");
+  revalidatePath("/groups");
+  revalidatePath("/discover/groups");
+  redirect("/platform?message=Group deleted.");
+}
+
+export async function deletePlatformEvent(formData: FormData) {
+  await requirePlatformEngineer();
+  const id = getFormString(formData, "event_id");
+  const confirmation = getFormString(formData, "confirmation");
+
+  if (!id || confirmation !== "DELETE") {
+    redirect("/platform?message=Type DELETE to confirm event deletion.");
+  }
+
+  const admin = createAdminClient();
+  const { data: event, error: lookupError } = await admin
+    .from("events")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new Error(lookupError.message);
+  }
+
+  if (!event) {
+    redirect("/platform?message=Event not found.");
+  }
+
+  const { error } = await admin.from("events").delete().eq("id", id);
+
+  if (error) {
+    redirect(`/platform?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/platform");
+  revalidatePath("/events");
+  redirect("/platform?message=Event deleted.");
+}
+
 export async function createPlatformDirectMessageIntent(formData: FormData) {
   const profile = await requirePlatformEngineer();
   await assertNotBanned(profile.user_id, "/platform?message=Your account cannot send messages right now.");

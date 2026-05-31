@@ -29,6 +29,7 @@ type Profile = {
   id: string;
   user_id: string;
   display_name: string;
+  role: string;
 };
 
 export type GroupMembershipStatus = {
@@ -109,7 +110,7 @@ async function getProfileForUser(user: Awaited<ReturnType<typeof getCurrentUser>
 
   const { data, error } = await admin
     .from("profiles")
-    .select("id,user_id,display_name")
+    .select("id,user_id,display_name,role")
     .eq("user_id", user.id)
     .single();
 
@@ -539,4 +540,50 @@ export async function leaveGroup(formData: FormData) {
   revalidatePath("/discover/groups");
   revalidatePath(`/groups/${groupId}`);
   redirect(`/groups/${groupId}`);
+}
+
+export async function deleteOwnedGroup(formData: FormData) {
+  const groupId = getFormString(formData, "group_id");
+  const confirmation = getFormString(formData, "confirmation");
+
+  if (!groupId) {
+    redirect("/groups?message=Group not found.");
+  }
+
+  if (confirmation !== "DELETE") {
+    redirect(`/groups/${groupId}?message=Type DELETE to confirm group deletion.`);
+  }
+
+  const profile = await getCurrentProfile();
+  const admin = createAdminClient();
+  const { data: group, error } = await admin
+    .from("study_groups")
+    .select("id,title,created_by")
+    .eq("id", groupId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!group) {
+    redirect("/groups?message=Group not found.");
+  }
+
+  const isOwner = String(group.created_by) === profile.id;
+  const isPlatformEngineer = profile.role === "platform_engineer";
+
+  if (!isOwner && !isPlatformEngineer) {
+    redirect(`/groups/${groupId}?message=You can only delete groups you own.`);
+  }
+
+  const { error: deleteError } = await admin.from("study_groups").delete().eq("id", groupId);
+
+  if (deleteError) {
+    redirect(`/groups/${groupId}?message=${encodeURIComponent(deleteError.message)}`);
+  }
+
+  revalidatePath("/groups");
+  revalidatePath("/discover/groups");
+  redirect("/groups?message=Group deleted.");
 }
