@@ -25,19 +25,13 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
   const { message } = await searchParams;
   const data = await getGroupThreads(id);
 
-  if (!data.group) {
+  if (data.state === "missing") {
     return (
       <section className="px-6 py-12 sm:px-10 lg:px-16">
         <div className="mx-auto max-w-3xl rounded-2xl border border-[#ead6c5] bg-white/75 p-8 text-center shadow-sm">
           <MessageSquareText aria-hidden="true" className="mx-auto h-10 w-10 text-[#b94f22]" />
-          <h1 className="mt-4 text-3xl font-semibold">
-            {data.isSignedIn ? "Join to view discussions" : "Sign in to view discussions"}
-          </h1>
-          <p className="mt-3 text-[#67564c]">
-            {data.isSignedIn
-              ? "Join this group to view its discussion threads."
-              : "Group discussions are private to members."}
-          </p>
+          <h1 className="mt-4 text-3xl font-semibold">Group discussions unavailable</h1>
+          <p className="mt-3 text-[#67564c]">This group could not be found.</p>
           <Link href="/groups" className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
             Back to groups
           </Link>
@@ -48,24 +42,54 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
 
   const group = data.group;
 
+  if (data.state === "signed_out") {
+    return (
+      <section className="px-6 py-12 sm:px-10 lg:px-16">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-[#ead6c5] bg-white/75 p-8 text-center shadow-sm">
+          <MessageSquareText aria-hidden="true" className="mx-auto h-10 w-10 text-[#b94f22]" />
+          <h1 className="mt-4 text-3xl font-semibold">Sign in to view discussions</h1>
+          <p className="mt-3 text-[#67564c]">Group discussions are private to members.</p>
+          <Link href="/signin" className="mt-6 inline-flex rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white">
+            Sign in
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  if (data.state === "non_member") {
+    return (
+      <section className="px-6 py-12 sm:px-10 lg:px-16">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-[#ead6c5] bg-white/75 p-8 text-center shadow-sm">
+          <MessageSquareText aria-hidden="true" className="mx-auto h-10 w-10 text-[#b94f22]" />
+          <h1 className="mt-4 text-3xl font-semibold">Join this group to view discussions</h1>
+          <p className="mt-3 text-[#67564c]">Private study threads are visible only to group members.</p>
+          <Link href={`/groups/${data.group?.id || id}`} className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
+            Back to group
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="px-6 py-12 sm:px-10 lg:px-16">
       <div className="mx-auto max-w-5xl">
-        <Link href={`/groups/${group.id}`} className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
+        <Link href={`/groups/${group!.id}`} className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
           Back to group
         </Link>
 
         <div className="mt-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">Group discussions</p>
-            <h1 className="mt-3 text-4xl font-semibold">{group.title}</h1>
+            <h1 className="mt-3 text-4xl font-semibold">{group!.title}</h1>
             <p className="mt-3 max-w-2xl leading-7 text-[#67564c]">
               Member-only threads for study notes, questions, prayer follow-up, and fellowship.
             </p>
           </div>
           {data.isMember ? (
             <Link
-              href={`/groups/${group.id}/discussions/new`}
+              href={`/groups/${group!.id}/discussions/new`}
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
             >
               <Plus aria-hidden="true" className="h-4 w-4" />
@@ -108,7 +132,7 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <Link
-                      href={`/groups/${group.id}/discussions/${thread.id}`}
+                      href={`/groups/${group!.id}/discussions/${thread.id}`}
                       className="text-2xl font-semibold hover:text-[#b94f22]"
                     >
                       {thread.deleted_at ? "Thread deleted" : thread.title}

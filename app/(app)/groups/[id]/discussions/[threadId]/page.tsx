@@ -33,8 +33,36 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
   const [groupData, threadData] = await Promise.all([getGroupThreads(id), getDiscussionThread(threadId)]);
   const thread = threadData.thread;
 
-  if (!groupData.group) {
+  if (groupData.state === "missing") {
     notFound();
+  }
+
+  if (threadData.state === "signed_out") {
+    return (
+      <section className="px-6 py-12 sm:px-10 lg:px-16">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-[#ead6c5] bg-white/75 p-8 text-center shadow-sm">
+          <h1 className="text-3xl font-semibold">Sign in to view discussions</h1>
+          <p className="mt-3 text-[#67564c]">Group discussions are private to members.</p>
+          <Link href={`/groups/${id}/discussions`} className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
+            Back to discussions
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  if (threadData.state === "non_member") {
+    return (
+      <section className="px-6 py-12 sm:px-10 lg:px-16">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-[#ead6c5] bg-white/75 p-8 text-center shadow-sm">
+          <h1 className="text-3xl font-semibold">Join this group to view discussions</h1>
+          <p className="mt-3 text-[#67564c]">Private study threads are visible only to group members.</p>
+          <Link href={`/groups/${id}/discussions`} className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
+            Back to discussions
+          </Link>
+        </div>
+      </section>
+    );
   }
 
   if (!thread || thread.group_id !== id) {
@@ -42,7 +70,7 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
       <section className="px-6 py-12 sm:px-10 lg:px-16">
         <div className="mx-auto max-w-3xl rounded-2xl border border-[#ead6c5] bg-white/75 p-8 text-center shadow-sm">
           <h1 className="text-3xl font-semibold">Discussion unavailable</h1>
-          <p className="mt-3 text-[#67564c]">This thread may have moved, or you may need to join the group to view it.</p>
+          <p className="mt-3 text-[#67564c]">This thread may have moved or been removed.</p>
           <Link href={`/groups/${id}/discussions`} className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
             Back to discussions
           </Link>

@@ -25,19 +25,13 @@ export default async function CommunityDiscussionsPage({ params, searchParams }:
   const { message } = await searchParams;
   const data = await getCommunityThreads(id);
 
-  if (!data.community) {
+  if (data.state === "missing") {
     return (
       <section className="px-6 py-12 sm:px-10 lg:px-16">
         <div className="mx-auto max-w-3xl rounded-2xl border border-[#ead6c5] bg-white/75 p-8 text-center shadow-sm">
           <MessageSquareText aria-hidden="true" className="mx-auto h-10 w-10 text-[#b94f22]" />
-          <h1 className="mt-4 text-3xl font-semibold">
-            {data.isSignedIn ? "Join to view discussions" : "Sign in to view discussions"}
-          </h1>
-          <p className="mt-3 text-[#67564c]">
-            {data.isSignedIn
-              ? "Join this community to view its discussion threads."
-              : "Community discussions are private to members."}
-          </p>
+          <h1 className="mt-4 text-3xl font-semibold">Community discussions unavailable</h1>
+          <p className="mt-3 text-[#67564c]">This community could not be found.</p>
           <Link href="/communities" className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
             Back to communities
           </Link>
@@ -48,11 +42,41 @@ export default async function CommunityDiscussionsPage({ params, searchParams }:
 
   const community = data.community;
 
+  if (data.state === "signed_out") {
+    return (
+      <section className="px-6 py-12 sm:px-10 lg:px-16">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-[#ead6c5] bg-white/75 p-8 text-center shadow-sm">
+          <MessageSquareText aria-hidden="true" className="mx-auto h-10 w-10 text-[#b94f22]" />
+          <h1 className="mt-4 text-3xl font-semibold">Sign in to view discussions</h1>
+          <p className="mt-3 text-[#67564c]">Community discussions are private to members.</p>
+          <Link href="/signin" className="mt-6 inline-flex rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white">
+            Sign in
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  if (data.state === "non_member") {
+    return (
+      <section className="px-6 py-12 sm:px-10 lg:px-16">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-[#ead6c5] bg-white/75 p-8 text-center shadow-sm">
+          <MessageSquareText aria-hidden="true" className="mx-auto h-10 w-10 text-[#b94f22]" />
+          <h1 className="mt-4 text-3xl font-semibold">Join this community to view discussions</h1>
+          <p className="mt-3 text-[#67564c]">Private fellowship threads are visible only to community members.</p>
+          <Link href={community!.slug ? `/c/${community!.slug}` : "/communities"} className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
+            Back to community
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="px-6 py-12 sm:px-10 lg:px-16">
       <div className="mx-auto max-w-5xl">
         <Link
-          href={community.slug ? `/c/${community.slug}` : "/communities"}
+          href={community!.slug ? `/c/${community!.slug}` : "/communities"}
           className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]"
         >
           Back to community
@@ -61,14 +85,14 @@ export default async function CommunityDiscussionsPage({ params, searchParams }:
         <div className="mt-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">Community discussions</p>
-            <h1 className="mt-3 text-4xl font-semibold">{community.name}</h1>
+            <h1 className="mt-3 text-4xl font-semibold">{community!.name}</h1>
             <p className="mt-3 max-w-2xl leading-7 text-[#67564c]">
               Member-only threads for questions, encouragement, resources, and fellowship.
             </p>
           </div>
           {data.isMember ? (
             <Link
-              href={`/communities/${community.id}/discussions/new`}
+              href={`/communities/${community!.id}/discussions/new`}
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
             >
               <Plus aria-hidden="true" className="h-4 w-4" />
@@ -111,7 +135,7 @@ export default async function CommunityDiscussionsPage({ params, searchParams }:
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <Link
-                      href={`/communities/${community.id}/discussions/${thread.id}`}
+                      href={`/communities/${community!.id}/discussions/${thread.id}`}
                       className="text-2xl font-semibold hover:text-[#b94f22]"
                     >
                       {thread.deleted_at ? "Thread deleted" : thread.title}

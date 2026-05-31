@@ -3,9 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/app/actions/notifications";
+import {
+  getCurrentAuthAndProfile,
+  getCurrentProfileForUser as resolveCurrentProfileForUser,
+  getOptionalAuthAndProfile,
+} from "@/lib/auth/current";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 export type StudyGroup = {
   id: string;
@@ -58,84 +62,24 @@ function nullableFormString(formData: FormData, key: string) {
   return value.length > 0 ? value : null;
 }
 
-async function getCurrentUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/signin");
-  }
-
-  return user;
-}
-
-async function getOptionalUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  return user;
-}
-
 async function getCurrentProfile(): Promise<Profile> {
-  const user = await getCurrentUser();
-  return getProfileForUser(user);
+  const { profile } = await getCurrentAuthAndProfile();
+  return profile;
 }
 
 async function getOptionalProfile(): Promise<Profile | null> {
-  const user = await getOptionalUser();
+  const result = await getOptionalAuthAndProfile();
+  return result?.profile || null;
+}
 
+export async function getCurrentProfileForUser(
+  user: { id: string; user_metadata: Record<string, unknown>; email?: string | null } | null,
+) {
   if (!user) {
     return null;
   }
 
-  return getProfileForUser(user);
-}
-
-async function getProfileForUser(user: Awaited<ReturnType<typeof getCurrentUser>>): Promise<Profile> {
-  const admin = createAdminClient();
-  const displayName =
-    typeof user.user_metadata.display_name === "string"
-      ? user.user_metadata.display_name
-      : user.email?.split("@")[0] || "Selah Ember Member";
-
-  const { error: upsertError } = await admin.from("profiles").upsert(
-    {
-      user_id: user.id,
-      display_name: displayName,
-    },
-    {
-      onConflict: "user_id",
-      ignoreDuplicates: true,
-    },
-  );
-
-  if (upsertError) {
-    throw new Error(upsertError.message);
-  }
-
-  const { data, error } = await admin
-    .from("profiles")
-    .select("id,user_id,display_name,role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data;
-}
-
-export async function getCurrentProfileForUser(user: Awaited<ReturnType<typeof getOptionalUser>>) {
-  if (!user) {
-    return null;
-  }
-
-  return getProfileForUser(user as Awaited<ReturnType<typeof getCurrentUser>>);
+  return resolveCurrentProfileForUser(user as Parameters<typeof resolveCurrentProfileForUser>[0]);
 }
 
 export async function getGroupViewerState(groupId: string): Promise<GroupViewerState> {

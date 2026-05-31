@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/app/actions/notifications";
-import { getCommunityViewerState } from "@/app/actions/communities";
-import { getGroupViewerState } from "@/app/actions/groups";
+import {
+  getCurrentAuthAndProfile as resolveCurrentAuthAndProfile,
+  getOptionalAuthAndProfile as resolveOptionalAuthAndProfile,
+} from "@/lib/auth/current";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 const TITLE_MAX_LENGTH = 160;
 const BODY_MAX_LENGTH = 10000;
@@ -22,6 +23,7 @@ type Profile = {
 };
 
 type CommunityAccess = {
+  state: "signed_out" | "missing" | "non_member" | "allowed";
   isSignedIn: boolean;
   isMember: boolean;
   role: string | null;
@@ -74,6 +76,7 @@ export type CommunityDiscussionData = {
     name: string;
     slug: string | null;
   } | null;
+  state: "signed_out" | "missing" | "non_member" | "allowed";
   isSignedIn: boolean;
   isMember: boolean;
   role: string | null;
@@ -85,6 +88,7 @@ export type GroupDiscussionData = {
     id: string;
     title: string;
   } | null;
+  state: "signed_out" | "missing" | "non_member" | "allowed";
   isSignedIn: boolean;
   isMember: boolean;
   role: string | null;
@@ -93,6 +97,7 @@ export type GroupDiscussionData = {
 
 export type DiscussionThreadData = {
   thread: DiscussionThreadDetail | null;
+  state: "signed_out" | "missing" | "non_member" | "allowed";
   isSignedIn: boolean;
   isMember: boolean;
   role: string | null;
@@ -151,79 +156,30 @@ function discussionLog(
   });
 }
 
-async function getOptionalUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  return user;
-}
-
-async function getCurrentUser() {
-  const user = await getOptionalUser();
-
-  if (!user) {
-    redirect("/signin");
-  }
-
-  return user;
-}
-
-async function getProfileForUser(user: Awaited<ReturnType<typeof getCurrentUser>>): Promise<Profile> {
-  const admin = createAdminClient();
-  const displayName =
-    typeof user.user_metadata.display_name === "string"
-      ? user.user_metadata.display_name
-      : user.email?.split("@")[0] || "Selah Ember Member";
-
-  const { error: upsertError } = await admin.from("profiles").upsert(
-    {
-      user_id: user.id,
-      display_name: displayName,
-    },
-    {
-      onConflict: "user_id",
-      ignoreDuplicates: true,
-    },
-  );
-
-  if (upsertError) {
-    throw new Error(upsertError.message);
-  }
-
-  const { data, error } = await admin
-    .from("profiles")
-    .select("id,user_id,display_name,username,role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return {
-    id: String(data.id),
-    authUserId: user.id,
-    display_name: String(data.display_name),
-    username: typeof data.username === "string" ? data.username : null,
-    role: typeof data.role === "string" ? data.role : "user",
-  };
-}
-
 async function getOptionalProfile() {
-  const user = await getOptionalUser();
-
-  if (!user) {
+  const result = await resolveOptionalAuthAndProfile();
+  if (!result) {
     return null;
   }
 
-  return getProfileForUser(user);
+  return {
+    id: result.profile.id,
+    authUserId: result.user.id,
+    display_name: result.profile.display_name,
+    username: result.profile.username,
+    role: result.profile.role,
+  };
 }
 
 async function getCurrentProfile() {
-  const user = await getCurrentUser();
-  return getProfileForUser(user);
+  const result = await resolveCurrentAuthAndProfile();
+  return {
+    id: result.profile.id,
+    authUserId: result.user.id,
+    display_name: result.profile.display_name,
+    username: result.profile.username,
+    role: result.profile.role,
+  };
 }
 
 async function getCommunity(communityId: string) {
@@ -284,11 +240,31 @@ async function getGroup(groupId: string) {
   };
 }
 
-async function getCommunityAccess(communityId: string): Promise<CommunityAccess> {
-  const viewer = await getCommunityViewerState(communityId);
+async function getOptionalAuthContext() {
+  const result = await resolveOptionalAuthAndProfile();
 
-  if (!viewer.isSignedIn) {
+  if (!result) {
+    return null;
+  }
+
+  return {
+    user: result.user,
+    profile: {
+      id: result.profile.id,
+      authUserId: result.user.id,
+      display_name: result.profile.display_name,
+      username: result.profile.username,
+      role: result.profile.role,
+    },
+  };
+}
+
+async function getCommunityAccess(communityId: string): Promise<CommunityAccess> {
+  const context = await getOptionalAuthContext();
+
+  if (!context) {
     return {
+      state: "signed_out",
       isSignedIn: false,
       isMember: false,
       role: null,
@@ -298,24 +274,77 @@ async function getCommunityAccess(communityId: string): Promise<CommunityAccess>
     };
   }
 
-  const ownerCheckPassed = viewer.isOwner;
-  const membershipCheckPassed = viewer.isMember && !viewer.isOwner;
+  const admin = createAdminClient();
+  const [{ data: community, error: communityError }, { data: membershipRows, count, error: membershipError }] =
+    await Promise.all([
+      admin.from("churches").select("created_by").eq("id", communityId).maybeSingle(),
+      admin
+        .from("church_memberships")
+        .select("id", { count: "exact" })
+        .eq("church_id", communityId)
+        .eq("profile_id", context.profile.id),
+    ]);
+
+  if (communityError) {
+    discussionLog("community_lookup_failed", {
+      communityId,
+      userId: context.user.id,
+      profileId: context.profile.id,
+      code: communityError.code,
+      message: communityError.message,
+    });
+  }
+
+  if (membershipError) {
+    discussionLog("community_membership_lookup_failed", {
+      communityId,
+      userId: context.user.id,
+      profileId: context.profile.id,
+      code: membershipError.code,
+      message: membershipError.message,
+    });
+  }
+
+  const ownerCheckPassed = typeof community?.created_by === "string" && community.created_by === context.profile.id;
+  const {
+    data: communityAccessAllowed,
+    error: communityAccessError,
+  } = await admin.rpc("can_access_community_discussions", {
+    target_church_id: communityId,
+    target_auth_user_id: context.user.id,
+    target_profile_id: context.profile.id,
+  });
+
+  if (communityAccessError) {
+    discussionLog("community_access_rpc_failed", {
+      communityId,
+      userId: context.user.id,
+      profileId: context.profile.id,
+      code: communityAccessError.code,
+      message: communityAccessError.message,
+    });
+  }
+
+  const membershipCheckPassed = communityAccessAllowed === true;
+  const membershipResultCount = typeof count === "number" ? count : Array.isArray(membershipRows) ? membershipRows.length : 0;
 
   return {
-    isSignedIn: viewer.isSignedIn,
-    isMember: viewer.isMember,
-    role: viewer.role,
+    state: ownerCheckPassed || membershipCheckPassed ? "allowed" : "non_member",
+    isSignedIn: true,
+    isMember: ownerCheckPassed || membershipCheckPassed,
+    role: ownerCheckPassed ? "owner" : membershipResultCount > 0 ? "member" : null,
     ownerCheckPassed,
     membershipCheckPassed,
-    membershipResultCount: membershipCheckPassed ? 1 : 0,
+    membershipResultCount,
   };
 }
 
 async function getGroupAccess(groupId: string): Promise<GroupAccess> {
-  const viewer = await getGroupViewerState(groupId);
+  const context = await getOptionalAuthContext();
 
-  if (!viewer.isSignedIn) {
+  if (!context) {
     return {
+      state: "signed_out",
       isSignedIn: false,
       isMember: false,
       role: null,
@@ -325,16 +354,69 @@ async function getGroupAccess(groupId: string): Promise<GroupAccess> {
     };
   }
 
-  const ownerCheckPassed = viewer.isOwner;
-  const membershipCheckPassed = viewer.isMember && !viewer.isOwner;
+  const admin = createAdminClient();
+  const [{ data: group, error: groupError }, { data: membershipRows, count, error: membershipError }] =
+    await Promise.all([
+      admin.from("study_groups").select("created_by").eq("id", groupId).maybeSingle(),
+      admin
+        .from("group_memberships")
+        .select("id,role", { count: "exact" })
+        .eq("group_id", groupId)
+        .eq("profile_id", context.profile.id),
+    ]);
+
+  if (groupError) {
+    discussionLog("group_lookup_failed", {
+      groupId,
+      userId: context.user.id,
+      profileId: context.profile.id,
+      code: groupError.code,
+      message: groupError.message,
+    });
+  }
+
+  if (membershipError) {
+    discussionLog("group_membership_lookup_failed", {
+      groupId,
+      userId: context.user.id,
+      profileId: context.profile.id,
+      code: membershipError.code,
+      message: membershipError.message,
+    });
+  }
+
+  const ownerCheckPassed = typeof group?.created_by === "string" && group.created_by === context.profile.id;
+  const {
+    data: groupAccessAllowed,
+    error: groupAccessError,
+  } = await admin.rpc("can_access_group_discussions", {
+    target_group_id: groupId,
+    target_auth_user_id: context.user.id,
+    target_profile_id: context.profile.id,
+  });
+
+  if (groupAccessError) {
+    discussionLog("group_access_rpc_failed", {
+      groupId,
+      userId: context.user.id,
+      profileId: context.profile.id,
+      code: groupAccessError.code,
+      message: groupAccessError.message,
+    });
+  }
+
+  const membershipCheckPassed = groupAccessAllowed === true;
+  const membershipResultCount = typeof count === "number" ? count : Array.isArray(membershipRows) ? membershipRows.length : 0;
+  const membershipRole = Array.isArray(membershipRows) && membershipRows.length > 0 ? (membershipRows[0] as Record<string, unknown>).role : null;
 
   return {
-    isSignedIn: viewer.isSignedIn,
-    isMember: viewer.isMember,
-    role: viewer.role,
+    state: ownerCheckPassed || membershipCheckPassed ? "allowed" : "non_member",
+    isSignedIn: true,
+    isMember: ownerCheckPassed || membershipCheckPassed,
+    role: ownerCheckPassed ? "owner" : typeof membershipRole === "string" ? membershipRole : membershipResultCount > 0 ? "member" : null,
     ownerCheckPassed,
     membershipCheckPassed,
-    membershipResultCount: membershipCheckPassed ? 1 : 0,
+    membershipResultCount,
   };
 }
 
@@ -451,9 +533,17 @@ async function getThreadRow(threadId: string) {
   return data as Record<string, unknown> | null;
 }
 
-async function canReadThread(thread: Record<string, unknown>, profile: Profile | null) {
+async function canReadThread(thread: Record<string, unknown>, profile: Profile | null): Promise<CommunityAccess> {
   if (!profile) {
-    return { isSignedIn: false, isMember: false, role: null };
+    return {
+      state: "signed_out",
+      isSignedIn: false,
+      isMember: false,
+      role: null,
+      ownerCheckPassed: false,
+      membershipCheckPassed: false,
+      membershipResultCount: 0,
+    };
   }
 
   if (thread.scope_type === "community" && typeof thread.community_id === "string") {
@@ -465,6 +555,7 @@ async function canReadThread(thread: Record<string, unknown>, profile: Profile |
   }
 
   return {
+    state: "missing",
     isSignedIn: true,
     isMember: false,
     role: null,
@@ -537,11 +628,11 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
       membershipCheckPassed: false,
       membershipResultCount: 0,
     });
-    return { community: null, isSignedIn: Boolean(profile), isMember: false, role: null, threads: [] };
+    return { community: null, state: "missing", isSignedIn: Boolean(profile), isMember: false, role: null, threads: [] };
   }
 
   if (!profile) {
-    return { community, isSignedIn: false, isMember: false, role: null, threads: [] };
+    return { community, state: "signed_out", isSignedIn: false, isMember: false, role: null, threads: [] };
   }
 
   const access = await getCommunityAccess(communityId);
@@ -557,7 +648,7 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
       membershipCheckPassed: access.membershipCheckPassed,
       membershipResultCount: access.membershipResultCount,
     });
-    return { community, isSignedIn: true, isMember: false, role: null, threads: [] };
+    return { community, state: "non_member", isSignedIn: true, isMember: false, role: null, threads: [] };
   }
 
   const admin = createAdminClient();
@@ -576,11 +667,11 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
       code: error.code,
       message: error.message,
     });
-    return { community, isSignedIn: true, isMember, role, threads: [] };
+    return { community, state: "allowed", isSignedIn: true, isMember, role, threads: [] };
   }
 
   const threads = await normalizeThreads((data || []) as unknown as Record<string, unknown>[]);
-  return { community, isSignedIn: true, isMember, role, threads };
+  return { community, state: "allowed", isSignedIn: true, isMember, role, threads };
 }
 
 export async function getGroupThreads(groupId: string): Promise<GroupDiscussionData> {
@@ -595,11 +686,11 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
       membershipCheckPassed: false,
       membershipResultCount: 0,
     });
-    return { group: null, isSignedIn: Boolean(profile), isMember: false, role: null, threads: [] };
+    return { group: null, state: "missing", isSignedIn: Boolean(profile), isMember: false, role: null, threads: [] };
   }
 
   if (!profile) {
-    return { group, isSignedIn: false, isMember: false, role: null, threads: [] };
+    return { group, state: "signed_out", isSignedIn: false, isMember: false, role: null, threads: [] };
   }
 
   const access = await getGroupAccess(groupId);
@@ -615,7 +706,7 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
       membershipCheckPassed: access.membershipCheckPassed,
       membershipResultCount: access.membershipResultCount,
     });
-    return { group, isSignedIn: true, isMember: false, role: null, threads: [] };
+    return { group, state: "non_member", isSignedIn: true, isMember: false, role: null, threads: [] };
   }
 
   const admin = createAdminClient();
@@ -634,11 +725,11 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
       code: error.code,
       message: error.message,
     });
-    return { group, isSignedIn: true, isMember, role, threads: [] };
+    return { group, state: "allowed", isSignedIn: true, isMember, role, threads: [] };
   }
 
   const threads = await normalizeThreads((data || []) as unknown as Record<string, unknown>[]);
-  return { group, isSignedIn: true, isMember, role, threads };
+  return { group, state: "allowed", isSignedIn: true, isMember, role, threads };
 }
 
 export async function getDiscussionThread(threadId: string): Promise<DiscussionThreadData> {
@@ -648,6 +739,7 @@ export async function getDiscussionThread(threadId: string): Promise<DiscussionT
   if (!threadRow) {
     return {
       thread: null,
+      state: "missing",
       isSignedIn: Boolean(profile),
       isMember: false,
       role: null,
@@ -659,11 +751,22 @@ export async function getDiscussionThread(threadId: string): Promise<DiscussionT
   const access = await canReadThread(threadRow, profile);
 
   if (!access.isMember) {
-    return { thread: null, ...access, current_user_id: profile?.authUserId || null, current_user_role: profile?.role || null };
+    return {
+      thread: null,
+      ...access,
+      current_user_id: profile?.authUserId || null,
+      current_user_role: profile?.role || null,
+    };
   }
 
   const thread = await getThreadDetail(threadId, profile);
-  return { thread, ...access, current_user_id: profile?.authUserId || null, current_user_role: profile?.role || null };
+  return {
+    ...access,
+    state: "allowed",
+    thread,
+    current_user_id: profile?.authUserId || null,
+    current_user_role: profile?.role || null,
+  };
 }
 
 async function notifyCommunityOwners(communityId: string, actorUserId: string, threadId: string, title: string) {
