@@ -79,6 +79,15 @@ export type PlatformDashboardData = {
     details: string | null;
     created_at: string;
   }>;
+  discussion_reports: Array<{
+    id: string;
+    reporter_id: string;
+    thread_id: string | null;
+    reply_id: string | null;
+    reason: string;
+    details: string | null;
+    created_at: string;
+  }>;
 };
 
 export type PlatformMessageUser = PlatformProfileSummary & {
@@ -318,6 +327,7 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     prayerResult,
     bansResult,
     reportsResult,
+    discussionReportsResult,
     emailMap,
   ] = await Promise.all([
     admin
@@ -368,6 +378,11 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
       .select("id,reporter_id,conversation_id,message_id,reason,details,created_at")
       .order("created_at", { ascending: false })
       .limit(10),
+    admin
+      .from("discussion_reports")
+      .select("id,reporter_id,thread_id,reply_id,reason,details,created_at")
+      .order("created_at", { ascending: false })
+      .limit(10),
     getUserEmailMap(),
   ]);
 
@@ -382,9 +397,10 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     prayerResult,
     bansResult,
     reportsResult,
+    discussionReportsResult,
   ]) {
     if (result.error) {
-      if (result === reportsResult && result.error.code === "42P01") {
+      if ((result === reportsResult || result === discussionReportsResult) && result.error.code === "42P01") {
         continue;
       }
 
@@ -429,6 +445,7 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     prayer_requests: ((prayerResult.data || []) as unknown as PlatformDashboardData["prayer_requests"]),
     bans: ((bansResult.data || []) as unknown as PlatformDashboardData["bans"]),
     message_reports: ((reportsResult.data || []) as unknown as PlatformDashboardData["message_reports"]),
+    discussion_reports: ((discussionReportsResult.data || []) as unknown as PlatformDashboardData["discussion_reports"]),
   };
 }
 

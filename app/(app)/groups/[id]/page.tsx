@@ -1,4 +1,4 @@
-import { CalendarDays, MapPin, UsersRound } from "lucide-react";
+import { CalendarDays, MapPin, MessageSquareText, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getMembershipStatus, getStudyGroupById } from "@/app/actions/groups";
@@ -58,6 +58,28 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
           ) : null}
           <div className="mt-8">
             <GroupMembershipForm group={group} status={status} />
+          </div>
+
+          <div className="mt-8 rounded-2xl bg-[#fff4e8] p-5">
+            <p className="flex items-center gap-2 text-sm font-semibold text-[#8a3f1e]">
+              <MessageSquareText aria-hidden="true" className="h-4 w-4" />
+              Discussions
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[#67564c]">
+              Group-only threads for study notes, questions, and fellowship.
+            </p>
+            {status.isMember ? (
+              <Link
+                href={`/groups/${group.id}/discussions`}
+                className="mt-4 inline-flex rounded-full bg-[#cf5f2b] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+              >
+                Open discussions
+              </Link>
+            ) : (
+              <p className="mt-4 text-sm font-semibold text-[#8a3f1e]">
+                {status.isSignedIn ? "Join this group to view discussions." : "Sign in and join to view discussions."}
+              </p>
+            )}
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">

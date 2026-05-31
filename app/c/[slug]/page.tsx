@@ -1,4 +1,4 @@
-import { MapPin, UsersRound } from "lucide-react";
+import { MapPin, MessageSquareText, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -77,6 +77,27 @@ export default async function PublicCommunityPage({
             ) : null}
             <div className="mt-8">
               <CommunityMembershipForm community={community} status={status} />
+            </div>
+            <div className="mt-6 rounded-2xl border border-white/55 bg-white/65 p-5 shadow-sm">
+              <p className="flex items-center gap-2 text-sm font-semibold text-[#8a3f1e]">
+                <MessageSquareText aria-hidden="true" className="h-4 w-4" />
+                Discussions
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[#594a42]">
+                Member-only threads for fellowship, questions, and shared resources.
+              </p>
+              {status.isMember ? (
+                <Link
+                  href={`/communities/${community.id}/discussions`}
+                  className="mt-4 inline-flex rounded-full bg-[#cf5f2b] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+                >
+                  Open discussions
+                </Link>
+              ) : (
+                <p className="mt-4 text-sm font-semibold text-[#8a3f1e]">
+                  {status.isSignedIn ? "Join this community to view discussions." : "Sign in and join to view discussions."}
+                </p>
+              )}
             </div>
           </div>
 
