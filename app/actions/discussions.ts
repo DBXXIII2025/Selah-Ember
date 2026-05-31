@@ -122,6 +122,7 @@ function discussionLog(
   event: string,
   details: {
     userId?: string;
+    profileId?: string;
     threadId?: string;
     communityId?: string;
     groupId?: string;
@@ -134,6 +135,8 @@ function discussionLog(
   console.warn("[discussions]", event, {
     userId: details.userId,
     userIdPresent: Boolean(details.userId),
+    profileId: details.profileId,
+    profileIdPresent: Boolean(details.profileId),
     threadId: details.threadId,
     communityId: details.communityId,
     groupId: details.groupId,
@@ -305,7 +308,7 @@ async function getCommunityAccess(communityId: string, profile: Profile | null):
   }
 
   const [community, role] = await Promise.all([getCommunity(communityId), getCommunityRole(communityId, profile.id)]);
-  const ownerCheckPassed = community?.created_by === profile.id;
+  const ownerCheckPassed = community?.created_by === profile.authUserId;
   const membershipCheckPassed = Boolean(role);
 
   return {
@@ -345,7 +348,7 @@ async function getGroupAccess(groupId: string, profile: Profile | null): Promise
   }
 
   const [group, role] = await Promise.all([getGroup(groupId), getGroupRole(groupId, profile.id)]);
-  const ownerCheckPassed = group?.created_by === profile.id;
+  const ownerCheckPassed = group?.created_by === profile.authUserId || group?.created_by === profile.id;
   const membershipCheckPassed = Boolean(role);
 
   return {
@@ -550,6 +553,7 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
     discussionLog("community_discussion_community_unavailable", {
       communityId,
       userId: profile?.authUserId,
+      profileId: profile?.id,
       ownerCheckPassed: false,
       membershipCheckPassed: false,
     });
@@ -571,6 +575,7 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
   discussionLog("community_discussion_access_checked", {
     communityId,
     userId: profile.authUserId,
+    profileId: profile.id,
     ownerCheckPassed: access.ownerCheckPassed,
     membershipCheckPassed: access.membershipCheckPassed,
   });
@@ -591,6 +596,7 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
     discussionLog("community_threads_lookup_failed", {
       communityId,
       userId: profile.authUserId,
+      profileId: profile.id,
       code: error.code,
       message: error.message,
     });
@@ -608,6 +614,7 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
     discussionLog("group_discussion_group_unavailable", {
       groupId,
       userId: profile?.authUserId,
+      profileId: profile?.id,
       ownerCheckPassed: false,
       membershipCheckPassed: false,
     });
@@ -629,6 +636,7 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
   discussionLog("group_discussion_access_checked", {
     groupId,
     userId: profile.authUserId,
+    profileId: profile.id,
     ownerCheckPassed: access.ownerCheckPassed,
     membershipCheckPassed: access.membershipCheckPassed,
   });
@@ -649,6 +657,7 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
     discussionLog("group_threads_lookup_failed", {
       groupId,
       userId: profile.authUserId,
+      profileId: profile.id,
       code: error.code,
       message: error.message,
     });
