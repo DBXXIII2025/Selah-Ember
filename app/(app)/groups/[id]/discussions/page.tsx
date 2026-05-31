@@ -1,6 +1,5 @@
 import { MessageSquareText, Plus } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { getGroupThreads } from "@/app/actions/discussions";
 
 type GroupDiscussionsPageProps = {
@@ -27,7 +26,20 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
   const data = await getGroupThreads(id);
 
   if (!data.group) {
-    notFound();
+    return (
+      <section className="px-6 py-12 sm:px-10 lg:px-16">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-[#ead6c5] bg-white/75 p-8 text-center shadow-sm">
+          <MessageSquareText aria-hidden="true" className="mx-auto h-10 w-10 text-[#b94f22]" />
+          <h1 className="mt-4 text-3xl font-semibold">Group discussions unavailable</h1>
+          <p className="mt-3 text-[#67564c]">
+            This discussion space could not be found, or it is not available to your account.
+          </p>
+          <Link href="/groups" className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
+            Back to groups
+          </Link>
+        </div>
+      </section>
+    );
   }
 
   const group = data.group;
