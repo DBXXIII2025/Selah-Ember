@@ -3,6 +3,7 @@ import { getPlatformConversationData } from "@/app/actions/platform";
 import { SafeLink } from "@/components/media/safe-link";
 import { MessageComposer } from "@/components/messages/message-composer";
 import { MessageReactions } from "@/components/messages/message-reactions";
+import { PlatformConversationToolsMenu } from "@/components/messages/platform-conversation-tools-menu";
 
 type PlatformConversationPageProps = {
   params: Promise<{
@@ -147,13 +148,18 @@ export default async function PlatformConversationPage({ params, searchParams }:
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div>
             <div className="rounded-2xl border border-[#ead6c5] bg-white/70 p-6 shadow-sm">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
-                Support Conversation
-              </p>
-              <h1 className="mt-3 text-3xl font-semibold">{targetName}</h1>
-              <p className="mt-3 break-words text-sm text-[#67564c]">
-                Conversation ID: {conversation.id}
-              </p>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
+                    Support Conversation
+                  </p>
+                  <h1 className="mt-3 text-3xl font-semibold">{targetName}</h1>
+                  <p className="mt-3 break-words text-sm text-[#67564c]">
+                    Conversation ID: {conversation.id}
+                  </p>
+                </div>
+                <PlatformConversationToolsMenu />
+              </div>
             </div>
 
             {query.message ? (
@@ -178,7 +184,7 @@ export default async function PlatformConversationPage({ params, searchParams }:
                     );
 
                     return (
-                      <article key={message.id} className="rounded-xl border border-[#ead6c5] bg-white p-4">
+                      <article key={message.id} className="group rounded-xl border border-[#ead6c5] bg-white p-4">
                         <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
                           <p className="font-semibold">{sender?.display_name || "Selah Ember Member"}</p>
                           <p className="text-sm text-[#8a3f1e]">{formatDate(message.created_at)}</p>

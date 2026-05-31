@@ -1,11 +1,10 @@
 import Link from "next/link";
 import {
-  blockUser,
   deleteOwnMessage,
   getConversation,
   markConversationRead,
-  reportConversationOrMessage,
 } from "@/app/actions/messages";
+import { ConversationToolsMenu } from "@/components/messages/conversation-tools-menu";
 import { SafeLink } from "@/components/media/safe-link";
 import { MessageComposer } from "@/components/messages/message-composer";
 import { MessageReactions } from "@/components/messages/message-reactions";
@@ -158,11 +157,16 @@ export default async function ConversationPage({ params, searchParams }: Convers
           Back to messages
         </Link>
         <div className="mt-8 rounded-2xl border border-[#ead6c5] bg-white/70 p-6 shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
-            Conversation
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold">{title}</h1>
-          <p className="mt-3 break-words text-sm text-[#67564c]">{participantLabels}</p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
+                Conversation
+              </p>
+              <h1 className="mt-3 text-3xl font-semibold">{title}</h1>
+              <p className="mt-3 break-words text-sm text-[#67564c]">{participantLabels}</p>
+            </div>
+            <ConversationToolsMenu conversationId={conversation.id} otherParticipant={otherParticipant} />
+          </div>
         </div>
 
         {query.message ? (
@@ -170,61 +174,6 @@ export default async function ConversationPage({ params, searchParams }: Convers
             {query.message}
           </p>
         ) : null}
-
-        <div className="mt-6 rounded-2xl border border-[#ead6c5] bg-white/70 p-5 shadow-sm">
-          <h2 className="text-xl font-semibold">Conversation tools</h2>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <form action={reportConversationOrMessage} className="rounded-xl border border-[#ead6c5] bg-white/70 p-4">
-              <input type="hidden" name="conversation_id" value={conversation.id} />
-              <label className="block">
-                <span className="text-sm font-medium text-[#3b312b]">Report conversation</span>
-                <select
-                  name="reason"
-                  required
-                  defaultValue="safety"
-                  className="mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
-                >
-                  <option value="safety">Safety concern</option>
-                  <option value="harassment">Harassment</option>
-                  <option value="spam">Spam or scam</option>
-                  <option value="other">Other</option>
-                </select>
-              </label>
-              <label className="mt-3 block">
-                <span className="text-sm font-medium text-[#3b312b]">Details</span>
-                <textarea
-                  name="details"
-                  rows={2}
-                  maxLength={1000}
-                  className="mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
-                />
-              </label>
-              <button
-                type="submit"
-                className="mt-3 rounded-full border border-[#b42318]/30 bg-white px-4 py-2 text-sm font-semibold text-[#b42318] transition hover:bg-[#fff1f0]"
-              >
-                Submit report
-              </button>
-            </form>
-
-            {otherParticipant ? (
-              <form action={blockUser} className="rounded-xl border border-[#ead6c5] bg-white/70 p-4">
-                <input type="hidden" name="conversation_id" value={conversation.id} />
-                <input type="hidden" name="blocked_user_id" value={otherParticipant.user_id} />
-                <h3 className="text-sm font-semibold text-[#3b312b]">Block {otherParticipant.display_name}</h3>
-                <p className="mt-2 text-sm leading-6 text-[#67564c]">
-                  Blocking is private. This user will not be able to start or send messages to you.
-                </p>
-                <button
-                  type="submit"
-                  className="mt-3 rounded-full border border-[#b42318]/30 bg-white px-4 py-2 text-sm font-semibold text-[#b42318] transition hover:bg-[#fff1f0]"
-                >
-                  Block user
-                </button>
-              </form>
-            ) : null}
-          </div>
-        </div>
 
         <div className="mt-8 rounded-2xl border border-[#ead6c5] bg-white/70 p-5 shadow-sm">
           {conversation.messages.length === 0 ? (
@@ -240,7 +189,7 @@ export default async function ConversationPage({ params, searchParams }: Convers
                 const sender = conversation.participants.find((participant) => participant.user_id === message.sender_id);
 
                 return (
-                  <article key={message.id} className="rounded-xl border border-[#ead6c5] bg-white p-4">
+                  <article key={message.id} className="group rounded-xl border border-[#ead6c5] bg-white p-4">
                     <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
                       <div>
                         <p className="font-semibold">{sender?.display_name || "Selah Ember Member"}</p>
@@ -276,17 +225,6 @@ export default async function ConversationPage({ params, searchParams }: Convers
                             </button>
                           </form>
                         ) : null}
-                        <form action={reportConversationOrMessage}>
-                          <input type="hidden" name="conversation_id" value={conversation.id} />
-                          <input type="hidden" name="message_id" value={message.id} />
-                          <input type="hidden" name="reason" value="message" />
-                          <button
-                            type="submit"
-                            className="rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]"
-                          >
-                            Report
-                          </button>
-                        </form>
                       </div>
                     ) : null}
                   </article>

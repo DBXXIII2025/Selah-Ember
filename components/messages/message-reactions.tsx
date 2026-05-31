@@ -1,3 +1,7 @@
+"use client";
+
+import { SmilePlus } from "lucide-react";
+import { useState } from "react";
 import { addMessageReaction, removeMessageReaction, type MessageReaction } from "@/app/actions/messages";
 import { MESSAGE_REACTION_OPTIONS } from "@/lib/messages/reactions";
 
@@ -24,34 +28,69 @@ export function MessageReactions({
   for (const reaction of reactions) {
     reactionCounts.set(reaction.reaction, (reactionCounts.get(reaction.reaction) || 0) + 1);
   }
+  const [open, setOpen] = useState(false);
+  const visibleReactionCounts = MESSAGE_REACTION_OPTIONS.filter((reaction) => reactionCounts.has(reaction));
 
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[#ead6c5] pt-4">
-      {MESSAGE_REACTION_OPTIONS.map((reaction) => {
-        const hasReacted = currentUserReactions.has(reaction);
-        const count = reactionCounts.get(reaction) || 0;
+    <div className="relative mt-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap gap-1.5">
+        {visibleReactionCounts.map((reaction) => {
+          const hasReacted = currentUserReactions.has(reaction);
+          const count = reactionCounts.get(reaction) || 0;
 
-        return (
-          <form key={reaction} action={hasReacted ? removeMessageReaction : addMessageReaction}>
-            <input type="hidden" name="conversation_id" value={conversationId} />
-            <input type="hidden" name="message_id" value={messageId} />
-            <input type="hidden" name="reaction" value={reaction} />
-            {returnTo ? <input type="hidden" name="return_to" value={returnTo} /> : null}
-            <button
-              type="submit"
-              aria-label={`${hasReacted ? "Remove" : "Add"} ${reaction} reaction`}
-              className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+          return (
+            <span
+              key={reaction}
+              className={`inline-flex min-h-7 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${
                 hasReacted
-                  ? "border-[#cf5f2b] bg-[#fff4e8] text-[#8a3f1e] shadow-sm"
-                  : "border-[#2f2722]/15 bg-white/80 text-[#2f2722] hover:border-[#d79568] hover:bg-[#fff8ef]"
+                  ? "border-[#cf5f2b] bg-[#fff4e8] text-[#8a3f1e]"
+                  : "border-[#2f2722]/10 bg-[#fffaf4] text-[#67564c]"
               }`}
             >
               <span aria-hidden="true">{reaction}</span>
-              {count > 0 ? <span>{count}</span> : null}
-            </button>
-          </form>
-        );
-      })}
+              <span>{count}</span>
+            </span>
+          );
+        })}
+      </div>
+
+      <div className="relative ml-auto">
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d79568]/35 bg-white/85 text-[#8a3f1e] opacity-100 shadow-sm transition hover:border-[#cf5f2b] hover:bg-[#fff4e8] focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          aria-label="Add reaction"
+          aria-expanded={open}
+        >
+          <SmilePlus aria-hidden="true" className="h-4 w-4" />
+        </button>
+
+        {open ? (
+          <div className="absolute bottom-12 right-0 z-10 flex gap-1 rounded-2xl border border-[#ead6c5] bg-white p-2 shadow-xl shadow-[#2f1608]/15">
+            {MESSAGE_REACTION_OPTIONS.map((reaction) => {
+              const hasReacted = currentUserReactions.has(reaction);
+
+              return (
+                <form key={reaction} action={hasReacted ? removeMessageReaction : addMessageReaction}>
+                  <input type="hidden" name="conversation_id" value={conversationId} />
+                  <input type="hidden" name="message_id" value={messageId} />
+                  <input type="hidden" name="reaction" value={reaction} />
+                  {returnTo ? <input type="hidden" name="return_to" value={returnTo} /> : null}
+                  <button
+                    type="submit"
+                    aria-label={`${hasReacted ? "Remove" : "Add"} ${reaction} reaction`}
+                    className={`inline-flex h-10 w-10 items-center justify-center rounded-full text-lg transition ${
+                      hasReacted ? "bg-[#fff4e8] ring-1 ring-[#cf5f2b]" : "hover:bg-[#fff4e8]"
+                    }`}
+                  >
+                    <span aria-hidden="true">{reaction}</span>
+                  </button>
+                </form>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

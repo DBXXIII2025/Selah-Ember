@@ -1,6 +1,6 @@
 "use client";
 
-import { Image as ImageIcon, Link as LinkIcon, Paperclip, Send, Video, X } from "lucide-react";
+import { Image as ImageIcon, Link as LinkIcon, Paperclip, Send, SmilePlus, Video, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { sendDirectMessage } from "@/app/actions/messages";
 import { isSafeHttpUrl, MEDIA_LIMITS, validateImageFile, validateVideoFile } from "@/lib/media/validation";
@@ -12,6 +12,7 @@ type MessageComposerProps = {
 
 const imageAccept = "image/jpeg,image/png,image/webp,image/gif";
 const videoAccept = "video/mp4,video/webm,video/quicktime";
+const composerEmojiOptions = ["🙏", "👍", "😂", "😢", "🔥", "😊", "😄", "😭", "😮", "👏", "🙌", "🕊", "📖", "🌿"];
 
 type SelectedFile = {
   name: string;
@@ -36,8 +37,11 @@ function fileKindLabel(file: SelectedFile | null) {
 
 export function MessageComposer({ conversationId, returnTo }: MessageComposerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const [linkPanelOpen, setLinkPanelOpen] = useState(false);
+  const [body, setBody] = useState("");
   const [fileAccept, setFileAccept] = useState(imageAccept);
   const [linkDraft, setLinkDraft] = useState("");
   const [selectedLink, setSelectedLink] = useState("");
@@ -62,7 +66,29 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
   function chooseLink() {
     setLinkPanelOpen(true);
     setMenuOpen(false);
+    setEmojiOpen(false);
     setLinkError("");
+  }
+
+  function insertEmoji(emoji: string) {
+    const textarea = textareaRef.current;
+
+    if (!textarea) {
+      setBody((value) => `${value}${emoji}`);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const nextValue = `${body.slice(0, start)}${emoji}${body.slice(end)}`;
+    setBody(nextValue);
+    setEmojiOpen(false);
+
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const cursor = start + emoji.length;
+      textarea.setSelectionRange(cursor, cursor);
+    });
   }
 
   function applyLink() {
@@ -138,8 +164,11 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
           Message
         </label>
         <textarea
+          ref={textareaRef}
           id="message-body"
           name="body"
+          value={body}
+          onChange={(event) => setBody(event.target.value)}
           rows={4}
           maxLength={5000}
           placeholder="Write a message..."
@@ -184,18 +213,34 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
         />
 
         <div className="absolute bottom-3 left-3">
-          <button
-            type="button"
-            onClick={() => {
-              setMenuOpen((open) => !open);
-              setLinkPanelOpen(false);
-            }}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d79568]/50 bg-[#fff8ef] text-[#8a3f1e] shadow-sm transition hover:border-[#cf5f2b] hover:bg-[#fff0df] hover:shadow-[0_0_18px_rgba(207,95,43,0.18)]"
-            aria-label="Add attachment"
-            aria-expanded={menuOpen}
-          >
-            <Paperclip aria-hidden="true" className="h-4 w-4" />
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen((open) => !open);
+                setEmojiOpen(false);
+                setLinkPanelOpen(false);
+              }}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d79568]/50 bg-[#fff8ef] text-[#8a3f1e] shadow-sm transition hover:border-[#cf5f2b] hover:bg-[#fff0df] hover:shadow-[0_0_18px_rgba(207,95,43,0.18)]"
+              aria-label="Add attachment"
+              aria-expanded={menuOpen}
+            >
+              <Paperclip aria-hidden="true" className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmojiOpen((open) => !open);
+                setMenuOpen(false);
+                setLinkPanelOpen(false);
+              }}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d79568]/50 bg-[#fff8ef] text-[#8a3f1e] shadow-sm transition hover:border-[#cf5f2b] hover:bg-[#fff0df] hover:shadow-[0_0_18px_rgba(207,95,43,0.18)]"
+              aria-label="Add emoji"
+              aria-expanded={emojiOpen}
+            >
+              <SmilePlus aria-hidden="true" className="h-4 w-4" />
+            </button>
+          </div>
 
           {menuOpen ? (
             <div className="absolute bottom-12 left-0 z-10 w-48 overflow-hidden rounded-2xl border border-[#ead6c5] bg-white p-2 shadow-xl shadow-[#2f1608]/15">
@@ -223,6 +268,22 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
                 <LinkIcon aria-hidden="true" className="h-4 w-4" />
                 Link
               </button>
+            </div>
+          ) : null}
+
+          {emojiOpen ? (
+            <div className="absolute bottom-12 left-12 z-10 grid w-56 grid-cols-7 gap-1 rounded-2xl border border-[#ead6c5] bg-white p-2 shadow-xl shadow-[#2f1608]/15">
+              {composerEmojiOptions.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => insertEmoji(emoji)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full text-lg transition hover:bg-[#fff4e8]"
+                  aria-label={`Insert ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
             </div>
           ) : null}
         </div>
