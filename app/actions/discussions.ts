@@ -136,9 +136,7 @@ function discussionLog(
 ) {
   console.warn("[discussions]", event, {
     userId: details.userId,
-    userIdPresent: Boolean(details.userId),
     profileId: details.profileId,
-    profileIdPresent: Boolean(details.profileId),
     threadId: details.threadId,
     communityId: details.communityId,
     groupId: details.groupId,
@@ -283,26 +281,32 @@ async function getGroup(groupId: string) {
   };
 }
 
-async function getCommunityRole(communityId: string, profileId: string) {
+async function isChurchOwnerByUser(communityId: string, userId: string) {
   const admin = createAdminClient();
-  const { data, error, count } = await admin
-    .from("church_memberships")
-    .select("role", { count: "exact" })
-    .eq("church_id", communityId)
-    .eq("profile_id", profileId)
-    .limit(1);
+  const { data, error } = await admin.rpc("is_church_owner_by_user", {
+    target_church_id: communityId,
+    target_user_id: userId,
+  });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  const row = data?.[0];
+  return Boolean(data);
+}
 
-  return {
-    role: typeof row?.role === "string" ? row.role : null,
-    exists: Boolean(row),
-    count: count || 0,
-  };
+async function isChurchMemberByProfile(communityId: string, profileId: string) {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("is_church_member_by_profile", {
+    target_church_id: communityId,
+    target_profile_id: profileId,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return Boolean(data);
 }
 
 async function getCommunityAccess(communityId: string, profile: Profile | null): Promise<CommunityAccess> {
@@ -317,34 +321,47 @@ async function getCommunityAccess(communityId: string, profile: Profile | null):
     };
   }
 
-  const [community, membership] = await Promise.all([getCommunity(communityId), getCommunityRole(communityId, profile.id)]);
-  const ownerCheckPassed = community?.created_by === profile.authUserId;
-  const membershipCheckPassed = membership.exists;
+  const [ownerCheckPassed, membershipCheckPassed] = await Promise.all([
+    isChurchOwnerByUser(communityId, profile.authUserId),
+    isChurchMemberByProfile(communityId, profile.id),
+  ]);
 
   return {
     isSignedIn: true,
     isMember: ownerCheckPassed || membershipCheckPassed,
-    role: membership.role || (ownerCheckPassed ? "owner" : null),
+    role: ownerCheckPassed ? "owner" : membershipCheckPassed ? "member" : null,
     ownerCheckPassed,
     membershipCheckPassed,
-    membershipResultCount: membership.count,
+    membershipResultCount: membershipCheckPassed ? 1 : 0,
   };
 }
 
-async function getGroupRole(groupId: string, profileId: string) {
+async function isGroupOwnerByUser(groupId: string, userId: string) {
   const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("group_memberships")
-    .select("role")
-    .eq("group_id", groupId)
-    .eq("profile_id", profileId)
-    .maybeSingle();
+  const { data, error } = await admin.rpc("is_group_owner_by_user", {
+    target_group_id: groupId,
+    target_user_id: userId,
+  });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return typeof data?.role === "string" ? data.role : null;
+  return Boolean(data);
+}
+
+async function isGroupMemberByProfile(groupId: string, profileId: string) {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("is_group_member_by_profile", {
+    target_group_id: groupId,
+    target_profile_id: profileId,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return Boolean(data);
 }
 
 async function getGroupAccess(groupId: string, profile: Profile | null): Promise<GroupAccess> {
@@ -359,14 +376,15 @@ async function getGroupAccess(groupId: string, profile: Profile | null): Promise
     };
   }
 
-  const [group, role] = await Promise.all([getGroup(groupId), getGroupRole(groupId, profile.id)]);
-  const ownerCheckPassed = group?.created_by === profile.authUserId || group?.created_by === profile.id;
-  const membershipCheckPassed = Boolean(role);
+  const [ownerCheckPassed, membershipCheckPassed] = await Promise.all([
+    isGroupOwnerByUser(groupId, profile.authUserId),
+    isGroupMemberByProfile(groupId, profile.id),
+  ]);
 
   return {
     isSignedIn: true,
     isMember: ownerCheckPassed || membershipCheckPassed,
-    role: role || (ownerCheckPassed ? "owner" : null),
+    role: ownerCheckPassed ? "owner" : membershipCheckPassed ? "member" : null,
     ownerCheckPassed,
     membershipCheckPassed,
     membershipResultCount: membershipCheckPassed ? 1 : 0,
@@ -576,28 +594,22 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
   }
 
   if (!profile) {
-    discussionLog("community_discussion_access_checked", {
-      communityId,
-      ownerCheckPassed: false,
-      membershipCheckPassed: false,
-      membershipResultCount: 0,
-    });
     return { community, isSignedIn: false, isMember: false, role: null, threads: [] };
   }
 
   const access = await getCommunityAccess(communityId, profile);
   const { role } = access;
   const isMember = access.isMember;
-  discussionLog("community_discussion_access_checked", {
-    communityId,
-    userId: profile.authUserId,
-    profileId: profile.id,
-    ownerCheckPassed: access.ownerCheckPassed,
-    membershipCheckPassed: access.membershipCheckPassed,
-    membershipResultCount: access.membershipResultCount,
-  });
 
   if (!isMember) {
+    discussionLog("community_discussion_access_denied", {
+      communityId,
+      userId: profile.authUserId,
+      profileId: profile.id,
+      ownerCheckPassed: access.ownerCheckPassed,
+      membershipCheckPassed: access.membershipCheckPassed,
+      membershipResultCount: access.membershipResultCount,
+    });
     return { community, isSignedIn: true, isMember: false, role: null, threads: [] };
   }
 
@@ -640,28 +652,22 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
   }
 
   if (!profile) {
-    discussionLog("group_discussion_access_checked", {
-      groupId,
-      ownerCheckPassed: false,
-      membershipCheckPassed: false,
-      membershipResultCount: 0,
-    });
     return { group, isSignedIn: false, isMember: false, role: null, threads: [] };
   }
 
   const access = await getGroupAccess(groupId, profile);
   const { role } = access;
   const isMember = access.isMember;
-  discussionLog("group_discussion_access_checked", {
-    groupId,
-    userId: profile.authUserId,
-    profileId: profile.id,
-    ownerCheckPassed: access.ownerCheckPassed,
-    membershipCheckPassed: access.membershipCheckPassed,
-    membershipResultCount: access.membershipResultCount,
-  });
 
   if (!isMember) {
+    discussionLog("group_discussion_access_denied", {
+      groupId,
+      userId: profile.authUserId,
+      profileId: profile.id,
+      ownerCheckPassed: access.ownerCheckPassed,
+      membershipCheckPassed: access.membershipCheckPassed,
+      membershipResultCount: access.membershipResultCount,
+    });
     return { group, isSignedIn: true, isMember: false, role: null, threads: [] };
   }
 
