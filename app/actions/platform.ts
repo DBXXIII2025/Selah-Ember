@@ -88,6 +88,18 @@ export type PlatformDashboardData = {
     details: string | null;
     created_at: string;
   }>;
+  media_items: Array<{
+    id: string;
+    community_id: string;
+    community_name: string | null;
+    community_slug: string | null;
+    title: string;
+    media_type: string;
+    content_kind: string;
+    is_published: boolean;
+    deleted_at: string | null;
+    created_at: string;
+  }>;
 };
 
 export type PlatformMessageUser = PlatformProfileSummary & {
@@ -328,6 +340,7 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     bansResult,
     reportsResult,
     discussionReportsResult,
+    mediaResult,
     emailMap,
   ] = await Promise.all([
     admin
@@ -383,6 +396,11 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
       .select("id,reporter_id,thread_id,reply_id,reason,details,created_at")
       .order("created_at", { ascending: false })
       .limit(10),
+    admin
+      .from("media_items")
+      .select("id,community_id,title,media_type,content_kind,is_published,deleted_at,created_at, churches:community_id(name,slug)")
+      .order("created_at", { ascending: false })
+      .limit(10),
     getUserEmailMap(),
   ]);
 
@@ -398,9 +416,13 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     bansResult,
     reportsResult,
     discussionReportsResult,
+    mediaResult,
   ]) {
     if (result.error) {
-      if ((result === reportsResult || result === discussionReportsResult) && result.error.code === "42P01") {
+      if (
+        (result === reportsResult || result === discussionReportsResult || result === mediaResult) &&
+        result.error.code === "42P01"
+      ) {
         continue;
       }
 
@@ -446,6 +468,22 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     bans: ((bansResult.data || []) as unknown as PlatformDashboardData["bans"]),
     message_reports: ((reportsResult.data || []) as unknown as PlatformDashboardData["message_reports"]),
     discussion_reports: ((discussionReportsResult.data || []) as unknown as PlatformDashboardData["discussion_reports"]),
+    media_items: ((mediaResult.data || []) as unknown as Record<string, unknown>[]).map((row) => {
+      const community = row.churches as { name?: string; slug?: string } | null | undefined;
+
+      return {
+        id: String(row.id),
+        community_id: String(row.community_id),
+        community_name: community?.name || null,
+        community_slug: typeof community?.slug === "string" ? community.slug : null,
+        title: String(row.title),
+        media_type: String(row.media_type),
+        content_kind: String(row.content_kind),
+        is_published: row.is_published !== false,
+        deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
+        created_at: String(row.created_at),
+      };
+    }),
   };
 }
 
