@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/app/actions/notifications";
+import { isAllowedMessageReaction } from "@/lib/messages/reactions";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import {
   isSafeHttpUrl,
@@ -28,6 +29,14 @@ export type MessageAttachment = {
   filename: string | null;
   mime_type: string | null;
   size_bytes: number | null;
+  created_at: string;
+};
+
+export type MessageReaction = {
+  id: string;
+  message_id: string;
+  user_id: string;
+  reaction: string;
   created_at: string;
 };
 
@@ -64,6 +73,7 @@ export type ConversationDetail = ConversationSummary & {
     deleted_at: string | null;
     attachments: MessageAttachment[];
     read_by_others: boolean;
+    reactions: MessageReaction[];
   }>;
 };
 
@@ -108,6 +118,10 @@ function getConversationRedirectPath(formData: FormData, conversationId: string)
   }
 
   return `/messages/${conversationId}`;
+}
+
+function getScopedReturnPath(formData: FormData, conversationId: string) {
+  return getConversationRedirectPath(formData, conversationId);
 }
 
 function sanitizeFilename(name: string) {
@@ -546,6 +560,52 @@ async function getAttachmentsForMessages(messageIds: string[]) {
   return attachmentsByMessage;
 }
 
+async function getReactionsForMessages(messageIds: string[]) {
+  const validMessageIds = messageIds.filter(isUuid);
+
+  if (validMessageIds.length === 0) {
+    return new Map<string, MessageReaction[]>();
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("message_reactions")
+    .select("id,message_id,user_id,reaction,created_at")
+    .in("message_id", validMessageIds)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    if (error.code === "42P01") {
+      return new Map<string, MessageReaction[]>();
+    }
+
+    logMessageIssue("message_reaction_lookup_failed", {
+      code: error.code,
+      message: error.message,
+    });
+    return new Map<string, MessageReaction[]>();
+  }
+
+  const reactionsByMessage = new Map<string, MessageReaction[]>();
+
+  for (const row of data || []) {
+    const reaction = {
+      id: String(row.id),
+      message_id: String(row.message_id),
+      user_id: String(row.user_id),
+      reaction: String(row.reaction),
+      created_at: String(row.created_at),
+    };
+
+    reactionsByMessage.set(reaction.message_id, [
+      ...(reactionsByMessage.get(reaction.message_id) || []),
+      reaction,
+    ]);
+  }
+
+  return reactionsByMessage;
+}
+
 async function insertMessageAttachmentRows(
   messageId: string,
   conversationId: string,
@@ -706,6 +766,7 @@ async function buildConversationSummaries(conversationIds: string[], currentUser
         deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
         attachments: [],
         read_by_others: false,
+        reactions: [],
       },
     ]);
   }
@@ -815,14 +876,20 @@ export async function getConversation(conversationId: string): Promise<Conversat
 
       return new Date(String(participant.last_read_at)) >= new Date(String(row.created_at));
     }),
+    reactions: [],
   }));
-  const attachmentsByMessage = await getAttachmentsForMessages(messages.map((message) => message.id));
+  const messageIds = messages.map((message) => message.id);
+  const [attachmentsByMessage, reactionsByMessage] = await Promise.all([
+    getAttachmentsForMessages(messageIds),
+    getReactionsForMessages(messageIds),
+  ]);
 
   return {
     ...summary,
     messages: messages.map((message) => ({
       ...message,
       attachments: attachmentsByMessage.get(message.id) || [],
+      reactions: reactionsByMessage.get(message.id) || [],
     })),
   };
 }
@@ -1227,6 +1294,128 @@ export async function blockUser(formData: FormData) {
   revalidatePath("/messages");
   revalidatePath(`/messages/${conversationId}`);
   redirect(messagePath(conversationId, "User blocked."));
+}
+
+async function getReactableMessage(messageId: string, userId: string) {
+  if (!isUuid(messageId)) {
+    return null;
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("direct_messages")
+    .select("id,conversation_id,deleted_at")
+    .eq("id", messageId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const conversationId = String(data.conversation_id);
+  const participantIds = await getConversationParticipantUserIds(conversationId);
+
+  if (!participantIds?.includes(userId)) {
+    return null;
+  }
+
+  return {
+    id: String(data.id),
+    conversation_id: conversationId,
+    deleted_at: typeof data.deleted_at === "string" ? data.deleted_at : null,
+  };
+}
+
+export async function addMessageReaction(formData: FormData) {
+  const user = await getCurrentUser();
+  await assertNotBanned(user.id, "/messages?message=Your account cannot react right now.");
+  const messageId = getFormString(formData, "message_id");
+  const reaction = getFormString(formData, "reaction");
+  const message = await getReactableMessage(messageId, user.id);
+
+  if (!message) {
+    redirect("/messages?message=Message not found.");
+  }
+
+  const redirectPath = getScopedReturnPath(formData, message.conversation_id);
+
+  if (message.deleted_at) {
+    redirect(`${redirectPath}?message=Deleted messages cannot be reacted to.`);
+  }
+
+  if (!isAllowedMessageReaction(reaction)) {
+    redirect(`${redirectPath}?message=Choose a supported reaction.`);
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("message_reactions").upsert(
+    {
+      message_id: message.id,
+      user_id: user.id,
+      reaction,
+    },
+    {
+      onConflict: "message_id,user_id,reaction",
+      ignoreDuplicates: true,
+    },
+  );
+
+  if (error) {
+    if (error.code === "42P01") {
+      redirect(`${redirectPath}?message=Reactions are not available until the latest database migration is applied.`);
+    }
+
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/messages");
+  revalidatePath(`/messages/${message.conversation_id}`);
+  revalidatePath("/platform/messages");
+  revalidatePath(`/platform/messages/${message.conversation_id}`);
+  redirect(redirectPath);
+}
+
+export async function removeMessageReaction(formData: FormData) {
+  const user = await getCurrentUser();
+  const messageId = getFormString(formData, "message_id");
+  const reaction = getFormString(formData, "reaction");
+  const message = await getReactableMessage(messageId, user.id);
+
+  if (!message) {
+    redirect("/messages?message=Message not found.");
+  }
+
+  const redirectPath = getScopedReturnPath(formData, message.conversation_id);
+
+  if (!isAllowedMessageReaction(reaction)) {
+    redirect(`${redirectPath}?message=Choose a supported reaction.`);
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("message_reactions")
+    .delete()
+    .eq("message_id", message.id)
+    .eq("user_id", user.id)
+    .eq("reaction", reaction);
+
+  if (error) {
+    if (error.code === "42P01") {
+      redirect(`${redirectPath}?message=Reactions are not available until the latest database migration is applied.`);
+    }
+
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/messages");
+  revalidatePath(`/messages/${message.conversation_id}`);
+  revalidatePath("/platform/messages");
+  revalidatePath(`/platform/messages/${message.conversation_id}`);
+  redirect(redirectPath);
 }
 
 export async function markConversationRead(conversationId: string) {

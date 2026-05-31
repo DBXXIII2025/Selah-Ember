@@ -8,6 +8,7 @@ import {
 } from "@/app/actions/messages";
 import { SafeLink } from "@/components/media/safe-link";
 import { MessageComposer } from "@/components/messages/message-composer";
+import { MessageReactions } from "@/components/messages/message-reactions";
 
 type ConversationPageProps = {
   params: Promise<{
@@ -254,7 +255,15 @@ export default async function ConversationPage({ params, searchParams }: Convers
                     <MessageBody body={message.deleted_at ? "Message deleted" : message.body} />
                     {!message.deleted_at ? <MessageAttachments attachments={message.attachments} /> : null}
                     {!message.deleted_at ? (
-                      <div className="mt-4 flex flex-wrap gap-3 border-t border-[#ead6c5] pt-4">
+                      <MessageReactions
+                        conversationId={conversation.id}
+                        currentUserId={conversation.current_user_id}
+                        messageId={message.id}
+                        reactions={message.reactions}
+                      />
+                    ) : null}
+                    {!message.deleted_at ? (
+                      <div className="mt-3 flex flex-wrap gap-3">
                         {message.sender_id === conversation.current_user_id ? (
                           <form action={deleteOwnMessage}>
                             <input type="hidden" name="conversation_id" value={conversation.id} />

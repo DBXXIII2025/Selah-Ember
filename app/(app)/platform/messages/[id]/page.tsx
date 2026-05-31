@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getPlatformConversationData } from "@/app/actions/platform";
 import { SafeLink } from "@/components/media/safe-link";
 import { MessageComposer } from "@/components/messages/message-composer";
+import { MessageReactions } from "@/components/messages/message-reactions";
 
 type PlatformConversationPageProps = {
   params: Promise<{
@@ -184,6 +185,15 @@ export default async function PlatformConversationPage({ params, searchParams }:
                         </div>
                         <MessageBody body={message.deleted_at ? "Message deleted" : message.body} />
                         {!message.deleted_at ? <MessageAttachments attachments={message.attachments} /> : null}
+                        {!message.deleted_at ? (
+                          <MessageReactions
+                            conversationId={conversation.id}
+                            currentUserId={conversation.current_user_id}
+                            messageId={message.id}
+                            reactions={message.reactions}
+                            returnTo={`/platform/messages/${conversation.id}`}
+                          />
+                        ) : null}
                       </article>
                     );
                   })}
