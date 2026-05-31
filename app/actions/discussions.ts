@@ -19,6 +19,16 @@ type Profile = {
   role: string;
 };
 
+type CommunityAccess = {
+  isSignedIn: boolean;
+  isMember: boolean;
+  role: string | null;
+  ownerCheckPassed: boolean;
+  membershipCheckPassed: boolean;
+};
+
+type GroupAccess = CommunityAccess;
+
 export type DiscussionAuthor = {
   user_id: string;
   display_name: string;
@@ -110,13 +120,26 @@ function safeReturnPath(path: string, fallback: string) {
 
 function discussionLog(
   event: string,
-  details: { userId?: string; threadId?: string; communityId?: string; groupId?: string; code?: string; message?: string } = {},
+  details: {
+    userId?: string;
+    userIdPresent?: boolean;
+    threadId?: string;
+    communityId?: string;
+    groupId?: string;
+    ownerCheckPassed?: boolean;
+    membershipCheckPassed?: boolean;
+    code?: string;
+    message?: string;
+  } = {},
 ) {
   console.warn("[discussions]", event, {
     userId: details.userId,
+    userIdPresent: details.userIdPresent,
     threadId: details.threadId,
     communityId: details.communityId,
     groupId: details.groupId,
+    ownerCheckPassed: details.ownerCheckPassed,
+    membershipCheckPassed: details.membershipCheckPassed,
     code: details.code,
     message: details.message,
   });
@@ -205,7 +228,7 @@ async function getCommunity(communityId: string) {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("churches")
-    .select("id,name,slug,is_published")
+    .select("id,name,slug,is_published,created_by")
     .eq("id", communityId)
     .maybeSingle();
 
@@ -223,6 +246,7 @@ async function getCommunity(communityId: string) {
     name: String(data.name),
     slug: typeof data.slug === "string" ? data.slug : null,
     is_published: data.is_published !== false,
+    created_by: typeof data.created_by === "string" ? data.created_by : null,
   };
 }
 
@@ -234,7 +258,7 @@ async function getGroup(groupId: string) {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("study_groups")
-    .select("id,title,name")
+    .select("id,title,name,created_by")
     .eq("id", groupId)
     .maybeSingle();
 
@@ -250,6 +274,7 @@ async function getGroup(groupId: string) {
   return {
     id: String(data.id),
     title: typeof data.title === "string" ? data.title : String(data.name || "Study group"),
+    created_by: typeof data.created_by === "string" ? data.created_by : null,
   };
 }
 
@@ -269,6 +294,30 @@ async function getCommunityRole(communityId: string, profileId: string) {
   return typeof data?.role === "string" ? data.role : null;
 }
 
+async function getCommunityAccess(communityId: string, profile: Profile | null): Promise<CommunityAccess> {
+  if (!profile) {
+    return {
+      isSignedIn: false,
+      isMember: false,
+      role: null,
+      ownerCheckPassed: false,
+      membershipCheckPassed: false,
+    };
+  }
+
+  const [community, role] = await Promise.all([getCommunity(communityId), getCommunityRole(communityId, profile.id)]);
+  const ownerCheckPassed = community?.created_by === profile.id;
+  const membershipCheckPassed = Boolean(role);
+
+  return {
+    isSignedIn: true,
+    isMember: ownerCheckPassed || membershipCheckPassed,
+    role: role || (ownerCheckPassed ? "owner" : null),
+    ownerCheckPassed,
+    membershipCheckPassed,
+  };
+}
+
 async function getGroupRole(groupId: string, profileId: string) {
   const admin = createAdminClient();
   const { data, error } = await admin
@@ -283,6 +332,30 @@ async function getGroupRole(groupId: string, profileId: string) {
   }
 
   return typeof data?.role === "string" ? data.role : null;
+}
+
+async function getGroupAccess(groupId: string, profile: Profile | null): Promise<GroupAccess> {
+  if (!profile) {
+    return {
+      isSignedIn: false,
+      isMember: false,
+      role: null,
+      ownerCheckPassed: false,
+      membershipCheckPassed: false,
+    };
+  }
+
+  const [group, role] = await Promise.all([getGroup(groupId), getGroupRole(groupId, profile.id)]);
+  const ownerCheckPassed = group?.created_by === profile.id;
+  const membershipCheckPassed = Boolean(role);
+
+  return {
+    isSignedIn: true,
+    isMember: ownerCheckPassed || membershipCheckPassed,
+    role: role || (ownerCheckPassed ? "owner" : null),
+    ownerCheckPassed,
+    membershipCheckPassed,
+  };
 }
 
 async function getAuthorMap(userIds: string[]) {
@@ -404,16 +477,20 @@ async function canReadThread(thread: Record<string, unknown>, profile: Profile |
   }
 
   if (thread.scope_type === "community" && typeof thread.community_id === "string") {
-    const role = await getCommunityRole(thread.community_id, profile.id);
-    return { isSignedIn: true, isMember: Boolean(role), role };
+    return getCommunityAccess(thread.community_id, profile);
   }
 
   if (thread.scope_type === "group" && typeof thread.group_id === "string") {
-    const role = await getGroupRole(thread.group_id, profile.id);
-    return { isSignedIn: true, isMember: Boolean(role), role };
+    return getGroupAccess(thread.group_id, profile);
   }
 
-  return { isSignedIn: true, isMember: false, role: null };
+  return {
+    isSignedIn: true,
+    isMember: false,
+    role: null,
+    ownerCheckPassed: false,
+    membershipCheckPassed: false,
+  };
 }
 
 async function getThreadDetail(threadId: string, profile: Profile | null): Promise<DiscussionThreadDetail | null> {
@@ -471,15 +548,34 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
   const [profile, community] = await Promise.all([getOptionalProfile(), getCommunity(communityId)]);
 
   if (!community) {
+    discussionLog("community_discussion_community_unavailable", {
+      communityId,
+      userIdPresent: Boolean(profile?.user_id),
+      ownerCheckPassed: false,
+      membershipCheckPassed: false,
+    });
     return { community: null, isSignedIn: Boolean(profile), isMember: false, role: null, threads: [] };
   }
 
   if (!profile) {
+    discussionLog("community_discussion_access_checked", {
+      communityId,
+      userIdPresent: false,
+      ownerCheckPassed: false,
+      membershipCheckPassed: false,
+    });
     return { community, isSignedIn: false, isMember: false, role: null, threads: [] };
   }
 
-  const role = await getCommunityRole(communityId, profile.id);
-  const isMember = Boolean(role);
+  const access = await getCommunityAccess(communityId, profile);
+  const { role } = access;
+  const isMember = access.isMember;
+  discussionLog("community_discussion_access_checked", {
+    communityId,
+    userIdPresent: Boolean(profile.user_id),
+    ownerCheckPassed: access.ownerCheckPassed,
+    membershipCheckPassed: access.membershipCheckPassed,
+  });
 
   if (!isMember) {
     return { community, isSignedIn: true, isMember: false, role: null, threads: [] };
@@ -511,15 +607,34 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
   const [profile, group] = await Promise.all([getOptionalProfile(), getGroup(groupId)]);
 
   if (!group) {
+    discussionLog("group_discussion_group_unavailable", {
+      groupId,
+      userIdPresent: Boolean(profile?.user_id),
+      ownerCheckPassed: false,
+      membershipCheckPassed: false,
+    });
     return { group: null, isSignedIn: Boolean(profile), isMember: false, role: null, threads: [] };
   }
 
   if (!profile) {
+    discussionLog("group_discussion_access_checked", {
+      groupId,
+      userIdPresent: false,
+      ownerCheckPassed: false,
+      membershipCheckPassed: false,
+    });
     return { group, isSignedIn: false, isMember: false, role: null, threads: [] };
   }
 
-  const role = await getGroupRole(groupId, profile.id);
-  const isMember = Boolean(role);
+  const access = await getGroupAccess(groupId, profile);
+  const { role } = access;
+  const isMember = access.isMember;
+  discussionLog("group_discussion_access_checked", {
+    groupId,
+    userIdPresent: Boolean(profile.user_id),
+    ownerCheckPassed: access.ownerCheckPassed,
+    membershipCheckPassed: access.membershipCheckPassed,
+  });
 
   if (!isMember) {
     return { group, isSignedIn: true, isMember: false, role: null, threads: [] };
@@ -661,9 +776,9 @@ export async function createCommunityThread(formData: FormData) {
 
   validateThreadInput(title, body, redirectPath);
 
-  const role = await getCommunityRole(communityId, profile.id);
+  const access = await getCommunityAccess(communityId, profile);
 
-  if (!role) {
+  if (!access.isMember) {
     redirect(`/communities/${communityId}/discussions?message=Join this community to start a discussion.`);
   }
 
@@ -707,9 +822,9 @@ export async function createGroupThread(formData: FormData) {
 
   validateThreadInput(title, body, redirectPath);
 
-  const role = await getGroupRole(groupId, profile.id);
+  const access = await getGroupAccess(groupId, profile);
 
-  if (!role) {
+  if (!access.isMember) {
     redirect(`/groups/${groupId}/discussions?message=Join this group to start a discussion.`);
   }
 
