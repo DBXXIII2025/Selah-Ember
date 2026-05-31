@@ -13,7 +13,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{1
 
 type Profile = {
   id: string;
-  user_id: string;
+  authUserId: string;
   display_name: string;
   username: string | null;
   role: string;
@@ -122,7 +122,6 @@ function discussionLog(
   event: string,
   details: {
     userId?: string;
-    userIdPresent?: boolean;
     threadId?: string;
     communityId?: string;
     groupId?: string;
@@ -134,7 +133,7 @@ function discussionLog(
 ) {
   console.warn("[discussions]", event, {
     userId: details.userId,
-    userIdPresent: details.userIdPresent,
+    userIdPresent: Boolean(details.userId),
     threadId: details.threadId,
     communityId: details.communityId,
     groupId: details.groupId,
@@ -198,7 +197,7 @@ async function getProfileForUser(user: Awaited<ReturnType<typeof getCurrentUser>
 
   return {
     id: String(data.id),
-    user_id: String(data.user_id),
+    authUserId: user.id,
     display_name: String(data.display_name),
     username: typeof data.username === "string" ? data.username : null,
     role: typeof data.role === "string" ? data.role : "user",
@@ -503,7 +502,7 @@ async function getThreadDetail(threadId: string, profile: Profile | null): Promi
   const access = await canReadThread(threadRow, profile);
 
   if (!access.isMember) {
-    discussionLog("thread_inaccessible", { threadId, userId: profile?.user_id });
+    discussionLog("thread_inaccessible", { threadId, userId: profile?.authUserId });
     return null;
   }
 
@@ -550,7 +549,7 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
   if (!community) {
     discussionLog("community_discussion_community_unavailable", {
       communityId,
-      userIdPresent: Boolean(profile?.user_id),
+      userId: profile?.authUserId,
       ownerCheckPassed: false,
       membershipCheckPassed: false,
     });
@@ -560,7 +559,6 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
   if (!profile) {
     discussionLog("community_discussion_access_checked", {
       communityId,
-      userIdPresent: false,
       ownerCheckPassed: false,
       membershipCheckPassed: false,
     });
@@ -572,7 +570,7 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
   const isMember = access.isMember;
   discussionLog("community_discussion_access_checked", {
     communityId,
-    userIdPresent: Boolean(profile.user_id),
+    userId: profile.authUserId,
     ownerCheckPassed: access.ownerCheckPassed,
     membershipCheckPassed: access.membershipCheckPassed,
   });
@@ -592,7 +590,7 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
   if (error) {
     discussionLog("community_threads_lookup_failed", {
       communityId,
-      userId: profile.user_id,
+      userId: profile.authUserId,
       code: error.code,
       message: error.message,
     });
@@ -609,7 +607,7 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
   if (!group) {
     discussionLog("group_discussion_group_unavailable", {
       groupId,
-      userIdPresent: Boolean(profile?.user_id),
+      userId: profile?.authUserId,
       ownerCheckPassed: false,
       membershipCheckPassed: false,
     });
@@ -619,7 +617,6 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
   if (!profile) {
     discussionLog("group_discussion_access_checked", {
       groupId,
-      userIdPresent: false,
       ownerCheckPassed: false,
       membershipCheckPassed: false,
     });
@@ -631,7 +628,7 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
   const isMember = access.isMember;
   discussionLog("group_discussion_access_checked", {
     groupId,
-    userIdPresent: Boolean(profile.user_id),
+    userId: profile.authUserId,
     ownerCheckPassed: access.ownerCheckPassed,
     membershipCheckPassed: access.membershipCheckPassed,
   });
@@ -651,7 +648,7 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
   if (error) {
     discussionLog("group_threads_lookup_failed", {
       groupId,
-      userId: profile.user_id,
+      userId: profile.authUserId,
       code: error.code,
       message: error.message,
     });
@@ -667,17 +664,17 @@ export async function getDiscussionThread(threadId: string): Promise<DiscussionT
   const threadRow = await getThreadRow(threadId);
 
   if (!threadRow) {
-    return { thread: null, isSignedIn: Boolean(profile), isMember: false, role: null, current_user_id: profile?.user_id || null };
+    return { thread: null, isSignedIn: Boolean(profile), isMember: false, role: null, current_user_id: profile?.authUserId || null };
   }
 
   const access = await canReadThread(threadRow, profile);
 
   if (!access.isMember) {
-    return { thread: null, ...access, current_user_id: profile?.user_id || null };
+    return { thread: null, ...access, current_user_id: profile?.authUserId || null };
   }
 
   const thread = await getThreadDetail(threadId, profile);
-  return { thread, ...access, current_user_id: profile?.user_id || null };
+  return { thread, ...access, current_user_id: profile?.authUserId || null };
 }
 
 async function notifyCommunityOwners(communityId: string, actorUserId: string, threadId: string, title: string) {
@@ -764,7 +761,7 @@ function validateReplyInput(body: string, redirectPath: string) {
 
 export async function createCommunityThread(formData: FormData) {
   const profile = await getCurrentProfile();
-  await assertNotBanned(profile.user_id, "/communities?message=Your account cannot create discussions right now.");
+  await assertNotBanned(profile.authUserId, "/communities?message=Your account cannot create discussions right now.");
   const communityId = getFormString(formData, "community_id");
   const title = getFormString(formData, "title");
   const body = getFormString(formData, "body");
@@ -788,7 +785,7 @@ export async function createCommunityThread(formData: FormData) {
     .insert({
       scope_type: "community",
       community_id: communityId,
-      author_id: profile.user_id,
+      author_id: profile.authUserId,
       title,
       body,
     })
@@ -800,7 +797,7 @@ export async function createCommunityThread(formData: FormData) {
   }
 
   const threadId = String(data.id);
-  await notifyCommunityOwners(communityId, profile.user_id, threadId, title);
+  await notifyCommunityOwners(communityId, profile.authUserId, threadId, title);
 
   revalidatePath(`/communities/${communityId}/discussions`);
   revalidatePath(`/communities/${communityId}/discussions/${threadId}`);
@@ -810,7 +807,7 @@ export async function createCommunityThread(formData: FormData) {
 
 export async function createGroupThread(formData: FormData) {
   const profile = await getCurrentProfile();
-  await assertNotBanned(profile.user_id, "/groups?message=Your account cannot create discussions right now.");
+  await assertNotBanned(profile.authUserId, "/groups?message=Your account cannot create discussions right now.");
   const groupId = getFormString(formData, "group_id");
   const title = getFormString(formData, "title");
   const body = getFormString(formData, "body");
@@ -834,7 +831,7 @@ export async function createGroupThread(formData: FormData) {
     .insert({
       scope_type: "group",
       group_id: groupId,
-      author_id: profile.user_id,
+      author_id: profile.authUserId,
       title,
       body,
     })
@@ -846,7 +843,7 @@ export async function createGroupThread(formData: FormData) {
   }
 
   const threadId = String(data.id);
-  await notifyGroupLeaders(groupId, profile.user_id, threadId, title);
+  await notifyGroupLeaders(groupId, profile.authUserId, threadId, title);
 
   revalidatePath(`/groups/${groupId}/discussions`);
   revalidatePath(`/groups/${groupId}/discussions/${threadId}`);
@@ -856,7 +853,7 @@ export async function createGroupThread(formData: FormData) {
 
 export async function createDiscussionReply(formData: FormData) {
   const profile = await getCurrentProfile();
-  await assertNotBanned(profile.user_id, "/messages?message=Your account cannot reply right now.");
+  await assertNotBanned(profile.authUserId, "/messages?message=Your account cannot reply right now.");
   const threadId = getFormString(formData, "thread_id");
   const body = getFormString(formData, "body");
   const returnPath = safeReturnPath(getFormString(formData, "return_path"), "/communities");
@@ -886,7 +883,7 @@ export async function createDiscussionReply(formData: FormData) {
   const admin = createAdminClient();
   const { error } = await admin.from("discussion_replies").insert({
     thread_id: threadId,
-    author_id: profile.user_id,
+    author_id: profile.authUserId,
     body,
   });
 
@@ -894,10 +891,10 @@ export async function createDiscussionReply(formData: FormData) {
     redirect(`${returnPath}?message=${safeMessage(error.message)}`);
   }
 
-  if (String(thread.author_id) !== profile.user_id) {
+  if (String(thread.author_id) !== profile.authUserId) {
     await createNotification({
       userId: String(thread.author_id),
-      actorUserId: profile.user_id,
+      actorUserId: profile.authUserId,
       type: "discussion_reply",
       title: "New discussion reply",
       body: previewText(body),
@@ -921,7 +918,7 @@ export async function deleteOwnThread(formData: FormData) {
 
   const thread = await getThreadRow(threadId);
 
-  if (!thread || String(thread.author_id) !== profile.user_id) {
+  if (!thread || String(thread.author_id) !== profile.authUserId) {
     redirect(`${returnPath}?message=You can only delete your own discussion.`);
   }
 
@@ -930,7 +927,7 @@ export async function deleteOwnThread(formData: FormData) {
     .from("discussion_threads")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", threadId)
-    .eq("author_id", profile.user_id);
+    .eq("author_id", profile.authUserId);
 
   if (error) {
     redirect(`${returnPath}?message=${safeMessage("Could not delete discussion.")}`);
@@ -960,7 +957,7 @@ export async function deleteOwnReply(formData: FormData) {
     throw new Error(lookupError.message);
   }
 
-  if (!reply || String(reply.author_id) !== profile.user_id) {
+  if (!reply || String(reply.author_id) !== profile.authUserId) {
     redirect(`${returnPath}?message=You can only delete your own reply.`);
   }
 
@@ -968,7 +965,7 @@ export async function deleteOwnReply(formData: FormData) {
     .from("discussion_replies")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", replyId)
-    .eq("author_id", profile.user_id);
+    .eq("author_id", profile.authUserId);
 
   if (error) {
     redirect(`${returnPath}?message=${safeMessage("Could not delete reply.")}`);
@@ -1003,7 +1000,7 @@ export async function reportDiscussionThread(formData: FormData) {
 
   const admin = createAdminClient();
   const { error } = await admin.from("discussion_reports").insert({
-    reporter_id: profile.user_id,
+    reporter_id: profile.authUserId,
     thread_id: threadId,
     reason,
     details: details || null,
@@ -1051,7 +1048,7 @@ export async function reportDiscussionReply(formData: FormData) {
   }
 
   const { error } = await admin.from("discussion_reports").insert({
-    reporter_id: profile.user_id,
+    reporter_id: profile.authUserId,
     thread_id: String(reply.thread_id),
     reply_id: replyId,
     reason,
