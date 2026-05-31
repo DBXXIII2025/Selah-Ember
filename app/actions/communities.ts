@@ -329,23 +329,31 @@ export async function getCommunityMembershipStatus(
   }
 
   const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("church_memberships")
-    .select("role")
-    .eq("church_id", communityId)
-    .eq("profile_id", profile.id)
-    .maybeSingle();
+  const [{ data: community, error: communityError }, { data: membership, error: membershipError }] = await Promise.all([
+    admin.from("churches").select("created_by").eq("id", communityId).maybeSingle(),
+    admin
+      .from("church_memberships")
+      .select("role")
+      .eq("church_id", communityId)
+      .eq("profile_id", profile.id)
+      .maybeSingle(),
+  ]);
 
-  if (error) {
-    throw new Error(error.message);
+  if (communityError) {
+    throw new Error(communityError.message);
   }
 
-  const role = typeof data?.role === "string" ? data.role : null;
+  if (membershipError) {
+    throw new Error(membershipError.message);
+  }
+
+  const isOwner = typeof community?.created_by === "string" && community.created_by === profile.id;
+  const role = isOwner ? "owner" : typeof membership?.role === "string" ? membership.role : null;
 
   return {
     isSignedIn: true,
     isMember: Boolean(role),
-    isOwner: role === "owner",
+    isOwner,
     role,
   };
 }

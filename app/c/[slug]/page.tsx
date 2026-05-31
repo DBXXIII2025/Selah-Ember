@@ -1,6 +1,7 @@
 import { MapPin, MessageSquareText, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { signOut } from "@/app/actions/auth";
 import {
   getCommunityMembershipStatus,
   getPublicCommunityBySlug,
@@ -45,9 +46,17 @@ export default async function PublicCommunityPage({
             <Link href="/discover" className="text-[#67564c] hover:text-[#b94f22]">
               Discover
             </Link>
-            <Link href="/signin" className="text-[#8a3f1e] hover:text-[#b94f22]">
-              Sign in
-            </Link>
+            {status.isSignedIn ? (
+              <form action={signOut}>
+                <button type="submit" className="text-[#8a3f1e] hover:text-[#b94f22]">
+                  Sign out
+                </button>
+              </form>
+            ) : (
+              <Link href="/signin" className="text-[#8a3f1e] hover:text-[#b94f22]">
+                Sign in
+              </Link>
+            )}
           </div>
         </nav>
 

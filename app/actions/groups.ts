@@ -314,6 +314,7 @@ export async function getStudyGroupById(id: string): Promise<StudyGroup | null> 
   const admin = createAdminClient();
   const supportsPhase5Columns = await hasColumn("study_groups", "title");
   let role: string | null = null;
+  let createdBy: string | null = null;
 
   if (profile) {
     const { data: membership, error: membershipError } = await admin
@@ -345,6 +346,12 @@ export async function getStudyGroupById(id: string): Promise<StudyGroup | null> 
   }
 
   const row = data as unknown as Record<string, unknown>;
+  createdBy = typeof row.created_by === "string" ? row.created_by : null;
+  const isOwnerByCreatedBy = Boolean(profile && createdBy && profile.id === createdBy);
+
+  if (isOwnerByCreatedBy) {
+    role = "owner";
+  }
 
   if (!role && row.is_public === false) {
     return null;
@@ -390,23 +397,31 @@ export async function getMembershipStatus(groupId: string): Promise<GroupMembers
   }
 
   const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("group_memberships")
-    .select("role")
-    .eq("group_id", groupId)
-    .eq("profile_id", profile.id)
-    .maybeSingle();
+  const [{ data: group, error: groupError }, { data: membership, error: membershipError }] = await Promise.all([
+    admin.from("study_groups").select("created_by").eq("id", groupId).maybeSingle(),
+    admin
+      .from("group_memberships")
+      .select("role")
+      .eq("group_id", groupId)
+      .eq("profile_id", profile.id)
+      .maybeSingle(),
+  ]);
 
-  if (error) {
-    throw new Error(error.message);
+  if (groupError) {
+    throw new Error(groupError.message);
   }
 
-  const role = typeof data?.role === "string" ? data.role : null;
+  if (membershipError) {
+    throw new Error(membershipError.message);
+  }
+
+  const isOwnerByCreatedBy = typeof group?.created_by === "string" && group.created_by === profile.id;
+  const role = isOwnerByCreatedBy ? "owner" : typeof membership?.role === "string" ? membership.role : null;
 
   return {
     isSignedIn: true,
     isMember: Boolean(role),
-    isOwner: role === "owner" || role === "leader",
+    isOwner: isOwnerByCreatedBy || role === "owner" || role === "leader",
     role,
   };
 }
