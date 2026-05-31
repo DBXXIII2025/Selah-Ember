@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/app/actions/notifications";
+import { getCommunityViewerState } from "@/app/actions/communities";
+import { getGroupViewerState } from "@/app/actions/groups";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -282,8 +284,10 @@ async function getGroup(groupId: string) {
   };
 }
 
-async function getCommunityAccess(communityId: string, profile: Profile | null): Promise<CommunityAccess> {
-  if (!profile) {
+async function getCommunityAccess(communityId: string): Promise<CommunityAccess> {
+  const viewer = await getCommunityViewerState(communityId);
+
+  if (!viewer.isSignedIn) {
     return {
       isSignedIn: false,
       isMember: false,
@@ -294,40 +298,23 @@ async function getCommunityAccess(communityId: string, profile: Profile | null):
     };
   }
 
-  const admin = createAdminClient();
-  const [{ data: community, error: communityError }, { data: membership, error: membershipError }] = await Promise.all([
-    admin.from("churches").select("id,created_by").eq("id", communityId).maybeSingle(),
-    admin
-      .from("church_memberships")
-      .select("id,role")
-      .eq("church_id", communityId)
-      .eq("profile_id", profile.id)
-      .maybeSingle(),
-  ]);
-
-  if (communityError) {
-    throw new Error(communityError.message);
-  }
-
-  if (membershipError) {
-    throw new Error(membershipError.message);
-  }
-
-  const ownerCheckPassed = typeof community?.created_by === "string" && community.created_by === profile.id;
-  const membershipCheckPassed = Boolean(membership);
+  const ownerCheckPassed = viewer.isOwner;
+  const membershipCheckPassed = viewer.isMember && !viewer.isOwner;
 
   return {
-    isSignedIn: true,
-    isMember: ownerCheckPassed || membershipCheckPassed,
-    role: ownerCheckPassed ? "owner" : typeof membership?.role === "string" ? membership.role : null,
+    isSignedIn: viewer.isSignedIn,
+    isMember: viewer.isMember,
+    role: viewer.role,
     ownerCheckPassed,
     membershipCheckPassed,
     membershipResultCount: membershipCheckPassed ? 1 : 0,
   };
 }
 
-async function getGroupAccess(groupId: string, profile: Profile | null): Promise<GroupAccess> {
-  if (!profile) {
+async function getGroupAccess(groupId: string): Promise<GroupAccess> {
+  const viewer = await getGroupViewerState(groupId);
+
+  if (!viewer.isSignedIn) {
     return {
       isSignedIn: false,
       isMember: false,
@@ -338,32 +325,13 @@ async function getGroupAccess(groupId: string, profile: Profile | null): Promise
     };
   }
 
-  const admin = createAdminClient();
-  const [{ data: group, error: groupError }, { data: membership, error: membershipError }] = await Promise.all([
-    admin.from("study_groups").select("id,created_by").eq("id", groupId).maybeSingle(),
-    admin
-      .from("group_memberships")
-      .select("id,role")
-      .eq("group_id", groupId)
-      .eq("profile_id", profile.id)
-      .maybeSingle(),
-  ]);
-
-  if (groupError) {
-    throw new Error(groupError.message);
-  }
-
-  if (membershipError) {
-    throw new Error(membershipError.message);
-  }
-
-  const ownerCheckPassed = typeof group?.created_by === "string" && group.created_by === profile.id;
-  const membershipCheckPassed = Boolean(membership);
+  const ownerCheckPassed = viewer.isOwner;
+  const membershipCheckPassed = viewer.isMember && !viewer.isOwner;
 
   return {
-    isSignedIn: true,
-    isMember: ownerCheckPassed || membershipCheckPassed,
-    role: ownerCheckPassed ? "owner" : typeof membership?.role === "string" ? membership.role : null,
+    isSignedIn: viewer.isSignedIn,
+    isMember: viewer.isMember,
+    role: viewer.role,
     ownerCheckPassed,
     membershipCheckPassed,
     membershipResultCount: membershipCheckPassed ? 1 : 0,
@@ -489,11 +457,11 @@ async function canReadThread(thread: Record<string, unknown>, profile: Profile |
   }
 
   if (thread.scope_type === "community" && typeof thread.community_id === "string") {
-    return getCommunityAccess(thread.community_id, profile);
+    return getCommunityAccess(thread.community_id);
   }
 
   if (thread.scope_type === "group" && typeof thread.group_id === "string") {
-    return getGroupAccess(thread.group_id, profile);
+    return getGroupAccess(thread.group_id);
   }
 
   return {
@@ -576,7 +544,7 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
     return { community, isSignedIn: false, isMember: false, role: null, threads: [] };
   }
 
-  const access = await getCommunityAccess(communityId, profile);
+  const access = await getCommunityAccess(communityId);
   const { role } = access;
   const isMember = access.isMember;
 
@@ -634,7 +602,7 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
     return { group, isSignedIn: false, isMember: false, role: null, threads: [] };
   }
 
-  const access = await getGroupAccess(groupId, profile);
+  const access = await getGroupAccess(groupId);
   const { role } = access;
   const isMember = access.isMember;
 
@@ -794,7 +762,7 @@ export async function createCommunityThread(formData: FormData) {
 
   validateThreadInput(title, body, redirectPath);
 
-  const access = await getCommunityAccess(communityId, profile);
+  const access = await getCommunityAccess(communityId);
 
   if (!access.isMember) {
     redirect(`/communities/${communityId}/discussions?message=Join this community to start a discussion.`);
@@ -840,7 +808,7 @@ export async function createGroupThread(formData: FormData) {
 
   validateThreadInput(title, body, redirectPath);
 
-  const access = await getGroupAccess(groupId, profile);
+  const access = await getGroupAccess(groupId);
 
   if (!access.isMember) {
     redirect(`/groups/${groupId}/discussions?message=Join this group to start a discussion.`);
@@ -945,9 +913,9 @@ export async function deleteOwnThread(formData: FormData) {
 
   const access =
     thread.scope_type === "community" && typeof thread.community_id === "string"
-      ? await getCommunityAccess(thread.community_id, profile)
+      ? await getCommunityAccess(thread.community_id)
       : thread.scope_type === "group" && typeof thread.group_id === "string"
-        ? await getGroupAccess(thread.group_id, profile)
+        ? await getGroupAccess(thread.group_id)
         : null;
 
   const isAuthor = String(thread.author_id) === profile.authUserId;
@@ -1014,9 +982,9 @@ export async function deleteOwnReply(formData: FormData) {
 
   const access =
     thread && thread.scope_type === "community" && typeof thread.community_id === "string"
-      ? await getCommunityAccess(thread.community_id, profile)
+      ? await getCommunityAccess(thread.community_id)
       : thread && thread.scope_type === "group" && typeof thread.group_id === "string"
-        ? await getGroupAccess(thread.group_id, profile)
+        ? await getGroupAccess(thread.group_id)
         : null;
 
   const isAuthor = String(reply.author_id) === profile.authUserId;

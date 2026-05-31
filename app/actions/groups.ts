@@ -39,6 +39,15 @@ export type GroupMembershipStatus = {
   role: string | null;
 };
 
+export type GroupViewerState = {
+  isSignedIn: boolean;
+  authUserId: string | null;
+  profileId: string | null;
+  isOwner: boolean;
+  isMember: boolean;
+  role: string | null;
+};
+
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -119,6 +128,60 @@ async function getProfileForUser(user: Awaited<ReturnType<typeof getCurrentUser>
   }
 
   return data;
+}
+
+export async function getCurrentProfileForUser(user: Awaited<ReturnType<typeof getOptionalUser>>) {
+  if (!user) {
+    return null;
+  }
+
+  return getProfileForUser(user as Awaited<ReturnType<typeof getCurrentUser>>);
+}
+
+export async function getGroupViewerState(groupId: string): Promise<GroupViewerState> {
+  const profile = await getOptionalProfile();
+
+  if (!profile) {
+    return {
+      isSignedIn: false,
+      authUserId: null,
+      profileId: null,
+      isOwner: false,
+      isMember: false,
+      role: null,
+    };
+  }
+
+  const admin = createAdminClient();
+  const [{ data: group, error: groupError }, { data: membership, error: membershipError }] = await Promise.all([
+    admin.from("study_groups").select("created_by").eq("id", groupId).maybeSingle(),
+    admin
+      .from("group_memberships")
+      .select("role")
+      .eq("group_id", groupId)
+      .eq("profile_id", profile.id)
+      .maybeSingle(),
+  ]);
+
+  if (groupError) {
+    throw new Error(groupError.message);
+  }
+
+  if (membershipError) {
+    throw new Error(membershipError.message);
+  }
+
+  const isOwner = typeof group?.created_by === "string" && group.created_by === profile.id;
+  const role = isOwner ? "owner" : typeof membership?.role === "string" ? membership.role : null;
+
+  return {
+    isSignedIn: true,
+    authUserId: profile.user_id,
+    profileId: profile.id,
+    isOwner,
+    isMember: Boolean(role),
+    role,
+  };
 }
 
 async function hasColumn(table: string, column: string) {
@@ -385,44 +448,13 @@ export async function getDiscoverStudyGroups(): Promise<StudyGroup[]> {
 }
 
 export async function getMembershipStatus(groupId: string): Promise<GroupMembershipStatus> {
-  const profile = await getOptionalProfile();
-
-  if (!profile) {
-    return {
-      isSignedIn: false,
-      isMember: false,
-      isOwner: false,
-      role: null,
-    };
-  }
-
-  const admin = createAdminClient();
-  const [{ data: group, error: groupError }, { data: membership, error: membershipError }] = await Promise.all([
-    admin.from("study_groups").select("created_by").eq("id", groupId).maybeSingle(),
-    admin
-      .from("group_memberships")
-      .select("role")
-      .eq("group_id", groupId)
-      .eq("profile_id", profile.id)
-      .maybeSingle(),
-  ]);
-
-  if (groupError) {
-    throw new Error(groupError.message);
-  }
-
-  if (membershipError) {
-    throw new Error(membershipError.message);
-  }
-
-  const isOwnerByCreatedBy = typeof group?.created_by === "string" && group.created_by === profile.id;
-  const role = isOwnerByCreatedBy ? "owner" : typeof membership?.role === "string" ? membership.role : null;
+  const viewer = await getGroupViewerState(groupId);
 
   return {
-    isSignedIn: true,
-    isMember: Boolean(role),
-    isOwner: isOwnerByCreatedBy || role === "owner" || role === "leader",
-    role,
+    isSignedIn: viewer.isSignedIn,
+    isMember: viewer.isMember,
+    isOwner: viewer.isOwner || viewer.role === "leader",
+    role: viewer.role,
   };
 }
 
@@ -510,6 +542,8 @@ export async function joinGroup(formData: FormData) {
   revalidatePath("/groups");
   revalidatePath("/discover/groups");
   revalidatePath(`/groups/${groupId}`);
+  revalidatePath(`/groups/${groupId}/discussions`);
+  revalidatePath(`/groups/${groupId}/discussions/new`);
   redirect(`/groups/${groupId}`);
 }
 
@@ -554,6 +588,8 @@ export async function leaveGroup(formData: FormData) {
   revalidatePath("/groups");
   revalidatePath("/discover/groups");
   revalidatePath(`/groups/${groupId}`);
+  revalidatePath(`/groups/${groupId}/discussions`);
+  revalidatePath(`/groups/${groupId}/discussions/new`);
   redirect(`/groups/${groupId}`);
 }
 

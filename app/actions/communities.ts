@@ -30,6 +30,15 @@ export type CommunityMembershipStatus = {
   role: string | null;
 };
 
+export type CommunityViewerState = {
+  isSignedIn: boolean;
+  authUserId: string | null;
+  profileId: string | null;
+  isOwner: boolean;
+  isMember: boolean;
+  role: string | null;
+};
+
 type Profile = {
   id: string;
   user_id: string;
@@ -127,6 +136,60 @@ async function getProfileForUser(user: Awaited<ReturnType<typeof getCurrentUser>
   }
 
   return data;
+}
+
+export async function getCurrentProfileForUser(user: Awaited<ReturnType<typeof getOptionalUser>>) {
+  if (!user) {
+    return null;
+  }
+
+  return getProfileForUser(user as Awaited<ReturnType<typeof getCurrentUser>>);
+}
+
+export async function getCommunityViewerState(communityId: string): Promise<CommunityViewerState> {
+  const profile = await getOptionalProfile();
+
+  if (!profile) {
+    return {
+      isSignedIn: false,
+      authUserId: null,
+      profileId: null,
+      isOwner: false,
+      isMember: false,
+      role: null,
+    };
+  }
+
+  const admin = createAdminClient();
+  const [{ data: community, error: communityError }, { data: membership, error: membershipError }] = await Promise.all([
+    admin.from("churches").select("created_by").eq("id", communityId).maybeSingle(),
+    admin
+      .from("church_memberships")
+      .select("role")
+      .eq("church_id", communityId)
+      .eq("profile_id", profile.id)
+      .maybeSingle(),
+  ]);
+
+  if (communityError) {
+    throw new Error(communityError.message);
+  }
+
+  if (membershipError) {
+    throw new Error(membershipError.message);
+  }
+
+  const isOwner = typeof community?.created_by === "string" && community.created_by === profile.id;
+  const role = isOwner ? "owner" : typeof membership?.role === "string" ? membership.role : null;
+
+  return {
+    isSignedIn: true,
+    authUserId: profile.user_id,
+    profileId: profile.id,
+    isOwner,
+    isMember: Boolean(role),
+    role,
+  };
 }
 
 async function getMembershipCounts(communityIds: string[]) {
@@ -317,44 +380,13 @@ export async function getDiscoverCommunities(): Promise<Community[]> {
 export async function getCommunityMembershipStatus(
   communityId: string,
 ): Promise<CommunityMembershipStatus> {
-  const profile = await getOptionalProfile();
-
-  if (!profile) {
-    return {
-      isSignedIn: false,
-      isMember: false,
-      isOwner: false,
-      role: null,
-    };
-  }
-
-  const admin = createAdminClient();
-  const [{ data: community, error: communityError }, { data: membership, error: membershipError }] = await Promise.all([
-    admin.from("churches").select("created_by").eq("id", communityId).maybeSingle(),
-    admin
-      .from("church_memberships")
-      .select("role")
-      .eq("church_id", communityId)
-      .eq("profile_id", profile.id)
-      .maybeSingle(),
-  ]);
-
-  if (communityError) {
-    throw new Error(communityError.message);
-  }
-
-  if (membershipError) {
-    throw new Error(membershipError.message);
-  }
-
-  const isOwner = typeof community?.created_by === "string" && community.created_by === profile.id;
-  const role = isOwner ? "owner" : typeof membership?.role === "string" ? membership.role : null;
+  const viewer = await getCommunityViewerState(communityId);
 
   return {
-    isSignedIn: true,
-    isMember: Boolean(role),
-    isOwner,
-    role,
+    isSignedIn: viewer.isSignedIn,
+    isMember: viewer.isMember,
+    isOwner: viewer.isOwner,
+    role: viewer.role,
   };
 }
 
@@ -431,6 +463,8 @@ export async function joinCommunity(formData: FormData) {
   revalidatePath("/discover");
   revalidatePath("/communities");
   revalidatePath(`/c/${slug}`);
+  revalidatePath(`/communities/${communityId}/discussions`);
+  revalidatePath(`/communities/${communityId}/discussions/new`);
   redirect(`/c/${slug}`);
 }
 
@@ -477,6 +511,8 @@ export async function leaveCommunity(formData: FormData) {
   revalidatePath("/discover");
   revalidatePath("/communities");
   revalidatePath(`/c/${slug}`);
+  revalidatePath(`/communities/${communityId}/discussions`);
+  revalidatePath(`/communities/${communityId}/discussions/new`);
   redirect(`/c/${slug}`);
 }
 
