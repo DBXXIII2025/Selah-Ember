@@ -326,9 +326,20 @@ async function getCommunityAccess(communityId: string, profile: Profile | null):
     isChurchMemberByProfile(communityId, profile.id),
   ]);
 
+  const admin = createAdminClient();
+  const { data: accessData, error: accessError } = await admin.rpc("can_access_community_discussions", {
+    target_church_id: communityId,
+    target_auth_user_id: profile.authUserId,
+    target_profile_id: profile.id,
+  });
+
+  if (accessError) {
+    throw new Error(accessError.message);
+  }
+
   return {
     isSignedIn: true,
-    isMember: ownerCheckPassed || membershipCheckPassed,
+    isMember: Boolean(accessData),
     role: ownerCheckPassed ? "owner" : membershipCheckPassed ? "member" : null,
     ownerCheckPassed,
     membershipCheckPassed,
@@ -381,9 +392,20 @@ async function getGroupAccess(groupId: string, profile: Profile | null): Promise
     isGroupMemberByProfile(groupId, profile.id),
   ]);
 
+  const admin = createAdminClient();
+  const { data: accessData, error: accessError } = await admin.rpc("can_access_group_discussions", {
+    target_group_id: groupId,
+    target_auth_user_id: profile.authUserId,
+    target_profile_id: profile.id,
+  });
+
+  if (accessError) {
+    throw new Error(accessError.message);
+  }
+
   return {
     isSignedIn: true,
-    isMember: ownerCheckPassed || membershipCheckPassed,
+    isMember: Boolean(accessData),
     role: ownerCheckPassed ? "owner" : membershipCheckPassed ? "member" : null,
     ownerCheckPassed,
     membershipCheckPassed,
