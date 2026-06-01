@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/app/actions/notifications";
+import { getCurrentProfile, getOptionalAuthAndProfile } from "@/lib/auth/current";
+import { canCreateEvent } from "@/lib/auth/ownership";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 export type EventRecord = {
   id: string;
@@ -69,76 +70,14 @@ function nullableFormString(formData: FormData, key: string) {
   return value.length > 0 ? value : null;
 }
 
-async function getCurrentUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/signin");
-  }
-
-  return user;
+async function getOptionalProfile(): Promise<Profile | null> {
+  const auth = await getOptionalAuthAndProfile();
+  return auth?.profile || null;
 }
 
 async function getOptionalUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  return user;
-}
-
-async function getCurrentProfile(): Promise<Profile> {
-  const user = await getCurrentUser();
-  return getProfileForUser(user);
-}
-
-async function getOptionalProfile(): Promise<Profile | null> {
-  const user = await getOptionalUser();
-
-  if (!user) {
-    return null;
-  }
-
-  return getProfileForUser(user);
-}
-
-async function getProfileForUser(user: Awaited<ReturnType<typeof getCurrentUser>>): Promise<Profile> {
-  const admin = createAdminClient();
-  const displayName =
-    typeof user.user_metadata.display_name === "string"
-      ? user.user_metadata.display_name
-      : user.email?.split("@")[0] || "Selah Ember Member";
-
-  const { error: upsertError } = await admin.from("profiles").upsert(
-    {
-      user_id: user.id,
-      display_name: displayName,
-    },
-    {
-      onConflict: "user_id",
-      ignoreDuplicates: true,
-    },
-  );
-
-  if (upsertError) {
-    throw new Error(upsertError.message);
-  }
-
-  const { data, error } = await admin
-    .from("profiles")
-    .select("id,user_id,display_name,role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data;
+  const auth = await getOptionalAuthAndProfile();
+  return auth?.user || null;
 }
 
 async function hasTable(table: string) {
@@ -257,20 +196,8 @@ export async function createEvent(formData: FormData) {
     redirect("/events/new?message=Choose a community for this official event.");
   }
 
-  if (profile.role !== "platform_engineer") {
-    const { data: community, error: communityError } = await admin
-      .from("churches")
-      .select("created_by,is_published")
-      .eq("id", communityId)
-      .maybeSingle();
-
-    if (communityError) {
-      throw new Error(communityError.message);
-    }
-
-    if (!community || String(community.created_by) !== profile.id) {
-      redirect("/events/new?message=You can only create events for communities you lead.");
-    }
+  if (!(await canCreateEvent(communityId, { profile }))) {
+    redirect("/events/new?message=You can only create events for communities you lead.");
   }
 
   const payload: Record<string, string | null> = {
@@ -600,10 +527,7 @@ export async function deleteOwnedEvent(formData: FormData) {
     redirect("/events?message=Event not found.");
   }
 
-  const isOwner = String(event.created_by) === profile.id;
-  const isPlatformEngineer = profile.role === "platform_engineer";
-
-  if (!isOwner && !isPlatformEngineer) {
+  if (profile.role !== "platform_engineer" && String(event.created_by) !== profile.id) {
     redirect(`/events/${eventId}?message=You can only delete events you own.`);
   }
 

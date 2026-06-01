@@ -64,16 +64,27 @@ async function getProfileForUser(user: NonNullable<Awaited<ReturnType<typeof get
 }
 
 export async function getCurrentAuthAndProfile(): Promise<CurrentAuthAndProfile> {
+  const user = await getCurrentAuthUser();
+
+  return {
+    user,
+    profile: await getProfileForUser(user),
+  };
+}
+
+export async function getCurrentAuthUser() {
   const user = await getOptionalUser();
 
   if (!user) {
     redirect("/signin");
   }
 
-  return {
-    user,
-    profile: await getProfileForUser(user),
-  };
+  return user;
+}
+
+export async function getCurrentProfile(): Promise<CurrentProfile> {
+  const { profile } = await getCurrentAuthAndProfile();
+  return profile;
 }
 
 export async function getOptionalAuthAndProfile(): Promise<CurrentAuthAndProfile | null> {

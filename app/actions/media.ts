@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createNotification } from "@/app/actions/notifications";
 import { getPublicCommunityBySlug } from "@/app/actions/communities";
 import { getCurrentAuthAndProfile } from "@/lib/auth/current";
+import { canCreateEvent } from "@/lib/auth/ownership";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import { type ContentKind, type MediaType } from "@/lib/media/library";
 import {
@@ -175,9 +176,7 @@ async function getCommunityForManager(communityId: string, profile: Profile) {
     is_published: data.is_published !== false,
   };
 
-  const canManageAsOwner = community.created_by === profile.id && profile.role === "church_leader";
-
-  if (!canManageAsOwner && profile.role !== "platform_engineer") {
+  if (!(await canCreateEvent(communityId, { profile }))) {
     return null;
   }
 
@@ -450,9 +449,7 @@ async function requireMediaManager(communityId: string) {
     is_published: community.is_published !== false,
   };
 
-  const canManageAsOwner = communityRecord.created_by === profile.id && profile.role === "church_leader";
-
-  if (!canManageAsOwner && profile.role !== "platform_engineer") {
+  if (!(await canCreateEvent(communityId, { profile }))) {
     return { user, profile, community: null };
   }
 
@@ -871,12 +868,7 @@ export async function deleteMediaItem(formData: FormData) {
     redirect(`${returnTo}?message=Community not found.`);
   }
 
-  const canManage =
-    profile.role === "platform_engineer" ||
-    (profile.role === "church_leader" && String(community.created_by) === profile.id) ||
-    (profile.role === "church_leader" && String(existing.created_by) === profile.id);
-
-  if (!canManage) {
+  if (!(await canCreateEvent(String(existing.community_id), { profile }))) {
     redirect(`${returnTo}?message=You can only delete media you manage.`);
   }
 

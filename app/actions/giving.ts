@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentAuthAndProfile, getOptionalAuthAndProfile } from "@/lib/auth/current";
+import { canCreateEvent } from "@/lib/auth/ownership";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import { requirePlatformEngineer } from "@/lib/platform/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -166,10 +167,7 @@ async function getCommunityForManager(communityId: string) {
   }
 
   const community = mapCommunity(data as unknown as Record<string, unknown>);
-  const isPlatformEngineer = profile.role === "platform_engineer";
-  const isVerifiedOwner = profile.role === "church_leader" && community.created_by === profile.id;
-
-  if (!isPlatformEngineer && !isVerifiedOwner) {
+  if (!(await canCreateEvent(communityId, { profile }))) {
     return { user, profile, community: null };
   }
 

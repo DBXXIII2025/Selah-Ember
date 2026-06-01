@@ -4,10 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/app/actions/notifications";
 import {
-  getCurrentAuthAndProfile,
+  getCurrentProfile as getCanonicalCurrentProfile,
   getCurrentProfileForUser as resolveCurrentProfileForUser,
   getOptionalAuthAndProfile,
 } from "@/lib/auth/current";
+import { canManageGroup, isGroupMember, isGroupOwner } from "@/lib/auth/ownership";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -63,8 +64,7 @@ function nullableFormString(formData: FormData, key: string) {
 }
 
 async function getCurrentProfile(): Promise<Profile> {
-  const { profile } = await getCurrentAuthAndProfile();
-  return profile;
+  return getCanonicalCurrentProfile();
 }
 
 async function getOptionalProfile(): Promise<Profile | null> {
@@ -97,33 +97,29 @@ export async function getGroupViewerState(groupId: string): Promise<GroupViewerS
   }
 
   const admin = createAdminClient();
-  const [{ data: group, error: groupError }, { data: membership, error: membershipError }] = await Promise.all([
-    admin.from("study_groups").select("created_by").eq("id", groupId).maybeSingle(),
+  const [{ data: membership, error: membershipError }, owner, member] = await Promise.all([
     admin
       .from("group_memberships")
       .select("role")
       .eq("group_id", groupId)
       .eq("profile_id", profile.id)
       .maybeSingle(),
+    isGroupOwner(groupId, { profile }),
+    isGroupMember(groupId, { profile }),
   ]);
-
-  if (groupError) {
-    throw new Error(groupError.message);
-  }
 
   if (membershipError) {
     throw new Error(membershipError.message);
   }
 
-  const isOwner = typeof group?.created_by === "string" && group.created_by === profile.id;
-  const role = isOwner ? "owner" : typeof membership?.role === "string" ? membership.role : null;
+  const role = owner ? "owner" : typeof membership?.role === "string" ? membership.role : null;
 
   return {
     isSignedIn: true,
     authUserId: profile.user_id,
     profileId: profile.id,
-    isOwner,
-    isMember: Boolean(role),
+    isOwner: owner,
+    isMember: member || Boolean(role),
     role,
   };
 }
@@ -565,10 +561,7 @@ export async function deleteOwnedGroup(formData: FormData) {
     redirect("/groups?message=Group not found.");
   }
 
-  const isOwner = String(group.created_by) === profile.id;
-  const isPlatformEngineer = profile.role === "platform_engineer";
-
-  if (!isOwner && !isPlatformEngineer) {
+  if (!(await canManageGroup(groupId, { profile }))) {
     redirect(`/groups/${groupId}?message=You can only delete groups you own.`);
   }
 

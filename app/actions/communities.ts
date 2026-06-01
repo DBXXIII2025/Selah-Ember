@@ -4,10 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/app/actions/notifications";
 import {
-  getCurrentAuthAndProfile,
+  getCurrentProfile as getCanonicalCurrentProfile,
   getCurrentProfileForUser as resolveCurrentProfileForUser,
   getOptionalAuthAndProfile,
 } from "@/lib/auth/current";
+import { canCreateCommunity, canManageCommunity, isCommunityMember, isCommunityOwner } from "@/lib/auth/ownership";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -78,11 +79,6 @@ function slugify(value: string) {
   );
 }
 
-async function getCurrentProfile(): Promise<Profile> {
-  const { profile } = await getCurrentAuthAndProfile();
-  return profile;
-}
-
 async function getOptionalProfile(): Promise<Profile | null> {
   const result = await getOptionalAuthAndProfile();
   return result?.profile || null;
@@ -113,33 +109,29 @@ export async function getCommunityViewerState(communityId: string): Promise<Comm
   }
 
   const admin = createAdminClient();
-  const [{ data: community, error: communityError }, { data: membership, error: membershipError }] = await Promise.all([
-    admin.from("churches").select("created_by").eq("id", communityId).maybeSingle(),
+  const [{ data: membership, error: membershipError }, owner, member] = await Promise.all([
     admin
       .from("church_memberships")
       .select("role")
       .eq("church_id", communityId)
       .eq("profile_id", profile.id)
       .maybeSingle(),
+    isCommunityOwner(communityId, { profile }),
+    isCommunityMember(communityId, { profile }),
   ]);
-
-  if (communityError) {
-    throw new Error(communityError.message);
-  }
 
   if (membershipError) {
     throw new Error(membershipError.message);
   }
 
-  const isOwner = typeof community?.created_by === "string" && community.created_by === profile.id;
-  const role = isOwner ? "owner" : typeof membership?.role === "string" ? membership.role : null;
+  const role = owner ? "owner" : typeof membership?.role === "string" ? membership.role : null;
 
   return {
     isSignedIn: true,
     authUserId: profile.user_id,
     profileId: profile.id,
-    isOwner,
-    isMember: Boolean(role),
+    isOwner: owner,
+    isMember: member || Boolean(role),
     role,
   };
 }
@@ -213,14 +205,13 @@ export async function createCommunity(formData: FormData) {
     redirect("/communities/new?message=Community name is required.");
   }
 
-  const profile = await getCurrentProfile();
+  const profile = await getCanonicalCurrentProfile();
   await assertNotBanned(profile.user_id);
 
   const isPlatformEngineer = profile.role === "platform_engineer";
   const isVerifiedLeader = profile.role === "church_leader";
-  const isPendingLeader = profile.role === "church_leader_pending";
 
-  if (!isPlatformEngineer && !isVerifiedLeader && !isPendingLeader) {
+  if (!canCreateCommunity(profile)) {
     redirect("/communities/new?message=Only church leaders can create communities. You can still join communities or create a Bible study group.");
   }
 
@@ -264,7 +255,7 @@ export async function createCommunity(formData: FormData) {
 }
 
 export async function getCurrentUserCommunities(): Promise<CommunityMembership[]> {
-  const profile = await getCurrentProfile();
+  const profile = await getCanonicalCurrentProfile();
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("church_memberships")
@@ -355,7 +346,7 @@ export async function getCommunityMembershipStatus(
 }
 
 export async function getCommunityCreationAccess(): Promise<CommunityCreationAccess> {
-  const profile = await getCurrentProfile();
+  const profile = await getCanonicalCurrentProfile();
   const role = profile.role || "user";
 
   if (role === "platform_engineer" || role === "church_leader") {
@@ -465,7 +456,7 @@ export async function leaveCommunity(formData: FormData) {
     redirect("/communities");
   }
 
-  const profile = await getCurrentProfile();
+  const profile = await getCanonicalCurrentProfile();
   const admin = createAdminClient();
   const { data: membership, error: membershipError } = await admin
     .from("church_memberships")
@@ -517,7 +508,7 @@ export async function deleteOwnedCommunity(formData: FormData) {
     redirect(`/communities/${communityId}?message=Type DELETE to confirm community deletion.`);
   }
 
-  const profile = await getCurrentProfile();
+  const profile = await getCanonicalCurrentProfile();
   const admin = createAdminClient();
   const { data: community, error } = await admin
     .from("churches")
@@ -533,10 +524,7 @@ export async function deleteOwnedCommunity(formData: FormData) {
     redirect("/communities?message=Community not found.");
   }
 
-  const isOwner = String(community.created_by) === profile.id;
-  const isPlatformEngineer = profile.role === "platform_engineer";
-
-  if (!isOwner && !isPlatformEngineer) {
+  if (!(await canManageCommunity(communityId, { profile }))) {
     redirect(`/communities/${communityId}?message=You can only delete communities you own.`);
   }
 

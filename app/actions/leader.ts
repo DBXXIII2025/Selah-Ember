@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCurrentProfile } from "@/lib/auth/current";
+import { canManageCommunity } from "@/lib/auth/ownership";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 export type LeaderCommunity = {
   id: string;
@@ -73,55 +74,6 @@ function nullableFormString(formData: FormData, key: string) {
   return value.length > 0 ? value : null;
 }
 
-async function getCurrentUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/signin");
-  }
-
-  return user;
-}
-
-async function getCurrentProfile(): Promise<Profile> {
-  const user = await getCurrentUser();
-  const admin = createAdminClient();
-  const displayName =
-    typeof user.user_metadata.display_name === "string"
-      ? user.user_metadata.display_name
-      : user.email?.split("@")[0] || "Selah Ember Member";
-
-  const { error: upsertError } = await admin.from("profiles").upsert(
-    {
-      user_id: user.id,
-      display_name: displayName,
-    },
-    {
-      onConflict: "user_id",
-      ignoreDuplicates: true,
-    },
-  );
-
-  if (upsertError) {
-    throw new Error(upsertError.message);
-  }
-
-  const { data, error } = await admin
-    .from("profiles")
-    .select("id,user_id,display_name,role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return { ...data, role: typeof (data as { role?: unknown }).role === "string" ? String((data as { role?: unknown }).role) : "user" };
-}
-
 async function hasColumn(table: string, column: string) {
   const admin = createAdminClient();
   const { error } = await admin.from(table).select(column).limit(1);
@@ -129,23 +81,11 @@ async function hasColumn(table: string, column: string) {
 }
 
 async function requireOwnedCommunity(communityId: string, profile: Profile) {
-  const admin = createAdminClient();
-  const { data: membership, error: membershipError } = await admin
-    .from("church_memberships")
-    .select("role")
-    .eq("church_id", communityId)
-    .eq("profile_id", profile.id)
-    .eq("role", "owner")
-    .maybeSingle();
-
-  if (membershipError) {
-    throw new Error(membershipError.message);
-  }
-
-  if (!membership) {
+  if (!(await canManageCommunity(communityId, { profile }))) {
     return null;
   }
 
+  const admin = createAdminClient();
   const { data: community, error } = await admin
     .from("churches")
     .select("id,name,slug,description,location,banner_url,created_by,is_published")
