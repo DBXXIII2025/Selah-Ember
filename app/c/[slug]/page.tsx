@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { signOut } from "@/app/actions/auth";
 import { getPublicCommunityPosts } from "@/app/actions/community-posts";
+import { getPublicGivingCampaigns } from "@/app/actions/giving";
 import {
   getCommunityMembershipStatus,
   getPublicCommunityBySlug,
@@ -36,9 +37,10 @@ export default async function PublicCommunityPage({
     notFound();
   }
 
-  const [status, updates] = await Promise.all([
+  const [status, updates, givingCampaigns] = await Promise.all([
     getCommunityMembershipStatus(community.id),
     getPublicCommunityPosts(community.id, 3),
+    getPublicGivingCampaigns(community.id),
   ]);
 
   return (
@@ -128,6 +130,20 @@ export default async function PublicCommunityPage({
                 Official news and updates from verified community leaders.
               </p>
             </div>
+            {givingCampaigns.length > 0 ? (
+              <div className="mt-4 rounded-2xl border border-white/55 bg-white/65 p-5 shadow-sm">
+                <p className="text-sm font-semibold text-[#8a3f1e]">Giving</p>
+                <p className="mt-2 text-sm leading-6 text-[#594a42]">
+                  View active giving campaigns. Online payments are not live yet.
+                </p>
+                <Link
+                  href={`/c/${community.slug}/give`}
+                  className="mt-4 inline-flex rounded-full bg-[#cf5f2b] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+                >
+                  Give
+                </Link>
+              </div>
+            ) : null}
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/45 bg-[#211b17]/90 shadow-2xl shadow-[#3b2117]/30">

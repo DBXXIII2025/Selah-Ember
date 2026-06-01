@@ -91,6 +91,12 @@ export default async function LeaderPage() {
                   >
                     Updates
                   </Link>
+                  <Link
+                    href={`/leader/communities/${community.id}/giving`}
+                    className="mt-3 inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]"
+                  >
+                    Giving
+                  </Link>
                 </div>
               </article>
             ))}
