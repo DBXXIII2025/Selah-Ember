@@ -371,6 +371,9 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
           </Panel>
 
           <Panel title="Discussion reports">
+            <p className="mb-5 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
+              Group discussion reports remain active. Community discussion reports are legacy records.
+            </p>
             <div className="space-y-3">
               {data.discussion_reports.length === 0 ? (
                 <p className="text-sm text-[#67564c]">No discussion reports yet.</p>

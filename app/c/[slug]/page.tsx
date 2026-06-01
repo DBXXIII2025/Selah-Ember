@@ -1,4 +1,4 @@
-import { MapPin, MessageSquareText, LibraryBig, UsersRound } from "lucide-react";
+import { LibraryBig, MapPin, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { signOut } from "@/app/actions/auth";
@@ -87,27 +87,6 @@ export default async function PublicCommunityPage({
             <div className="mt-8">
               <CommunityMembershipForm community={community} status={status} />
             </div>
-            <div className="mt-6 rounded-2xl border border-white/55 bg-white/65 p-5 shadow-sm">
-              <p className="flex items-center gap-2 text-sm font-semibold text-[#8a3f1e]">
-                <MessageSquareText aria-hidden="true" className="h-4 w-4" />
-                Discussions
-              </p>
-              <p className="mt-2 text-sm leading-6 text-[#594a42]">
-                Member-only threads for fellowship, questions, and shared resources.
-              </p>
-              {status.isMember ? (
-                <Link
-                  href={`/communities/${community.id}/discussions`}
-                  className="mt-4 inline-flex rounded-full bg-[#cf5f2b] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
-                >
-                  Open discussions
-                </Link>
-              ) : (
-                <p className="mt-4 text-sm font-semibold text-[#8a3f1e]">
-                  {status.isSignedIn ? "Join this community to view discussions." : "Sign in and join to view discussions."}
-                </p>
-              )}
-            </div>
             <div className="mt-4 rounded-2xl border border-white/55 bg-white/65 p-5 shadow-sm">
               <p className="flex items-center gap-2 text-sm font-semibold text-[#8a3f1e]">
                 <LibraryBig aria-hidden="true" className="h-4 w-4" />
@@ -121,6 +100,21 @@ export default async function PublicCommunityPage({
                 className="mt-4 inline-flex rounded-full bg-[#cf5f2b] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
               >
                 Open media library
+              </Link>
+            </div>
+            <div className="mt-4 rounded-2xl border border-white/55 bg-white/65 p-5 shadow-sm">
+              <p className="flex items-center gap-2 text-sm font-semibold text-[#8a3f1e]">
+                <UsersRound aria-hidden="true" className="h-4 w-4" />
+                Bible Study Groups
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[#594a42]">
+                Discussions now belong to Bible study groups. Communities remain home for membership, events, prayer, media, and groups.
+              </p>
+              <Link
+                href="/discover/groups"
+                className="mt-4 inline-flex rounded-full bg-[#cf5f2b] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+              >
+                Find study groups
               </Link>
             </div>
           </div>

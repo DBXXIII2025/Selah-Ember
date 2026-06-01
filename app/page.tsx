@@ -10,7 +10,7 @@ const fellowshipPillars = [
   },
   {
     title: "Bible Study Groups",
-    description: "Create spaces for study rhythms, discussion, and discipleship across every season.",
+    description: "Create Bible study groups for study rhythms, discussion, and discipleship across every season.",
     icon: UsersRound,
   },
   {
