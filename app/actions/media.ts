@@ -175,7 +175,9 @@ async function getCommunityForManager(communityId: string, profile: Profile) {
     is_published: data.is_published !== false,
   };
 
-  if (community.created_by !== profile.id && profile.role !== "platform_engineer") {
+  const canManageAsOwner = community.created_by === profile.id && profile.role === "church_leader";
+
+  if (!canManageAsOwner && profile.role !== "platform_engineer") {
     return null;
   }
 
@@ -448,7 +450,9 @@ async function requireMediaManager(communityId: string) {
     is_published: community.is_published !== false,
   };
 
-  if (communityRecord.created_by !== profile.id && profile.role !== "platform_engineer") {
+  const canManageAsOwner = communityRecord.created_by === profile.id && profile.role === "church_leader";
+
+  if (!canManageAsOwner && profile.role !== "platform_engineer") {
     return { user, profile, community: null };
   }
 
@@ -868,7 +872,9 @@ export async function deleteMediaItem(formData: FormData) {
   }
 
   const canManage =
-    profile.role === "platform_engineer" || String(community.created_by) === profile.id || String(existing.created_by) === profile.id;
+    profile.role === "platform_engineer" ||
+    (profile.role === "church_leader" && String(community.created_by) === profile.id) ||
+    (profile.role === "church_leader" && String(existing.created_by) === profile.id);
 
   if (!canManage) {
     redirect(`${returnTo}?message=You can only delete media you manage.`);

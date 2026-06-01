@@ -2,17 +2,20 @@ import { createCommunity } from "@/app/actions/communities";
 
 type CommunityFormProps = {
   message?: string;
+  draftMode?: boolean;
 };
 
 const fieldClassName =
   "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
 
-export function CommunityForm({ message }: CommunityFormProps) {
+export function CommunityForm({ message, draftMode = false }: CommunityFormProps) {
   return (
     <section className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
       <h2 className="text-2xl font-semibold">Create community</h2>
       <p className="mt-3 leading-7 text-[#67564c]">
-        Start with the essentials. Members, groups, and deeper church tools can come later.
+        {draftMode
+          ? "Pending Verification - your community is saved as a draft until your leader application is approved."
+          : "Start with the essentials. Members, groups, and deeper church tools can come later."}
       </p>
 
       {message ? (
@@ -42,7 +45,7 @@ export function CommunityForm({ message }: CommunityFormProps) {
           type="submit"
           className="rounded-full bg-[#cf5f2b] px-6 py-3 font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
         >
-          Create community
+          {draftMode ? "Create draft community" : "Create community"}
         </button>
       </form>
     </section>

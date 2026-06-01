@@ -12,6 +12,7 @@ export type LeaderCommunity = {
   description: string | null;
   location: string | null;
   banner_url: string | null;
+  is_published: boolean;
   member_count: number;
 };
 
@@ -59,6 +60,7 @@ type Profile = {
   id: string;
   user_id: string;
   display_name: string;
+  role: string;
 };
 
 function getFormString(formData: FormData, key: string) {
@@ -109,7 +111,7 @@ async function getCurrentProfile(): Promise<Profile> {
 
   const { data, error } = await admin
     .from("profiles")
-    .select("id,user_id,display_name")
+    .select("id,user_id,display_name,role")
     .eq("user_id", user.id)
     .single();
 
@@ -117,7 +119,7 @@ async function getCurrentProfile(): Promise<Profile> {
     throw new Error(error.message);
   }
 
-  return data;
+  return { ...data, role: typeof (data as { role?: unknown }).role === "string" ? String((data as { role?: unknown }).role) : "user" };
 }
 
 async function hasColumn(table: string, column: string) {
@@ -146,7 +148,7 @@ async function requireOwnedCommunity(communityId: string, profile: Profile) {
 
   const { data: community, error } = await admin
     .from("churches")
-    .select("id,name,slug,description,location,banner_url,created_by")
+    .select("id,name,slug,description,location,banner_url,created_by,is_published")
     .eq("id", communityId)
     .maybeSingle();
 
@@ -252,6 +254,7 @@ function normalizeCommunity(row: Record<string, unknown>, memberCount = 0): Lead
     description: typeof row.description === "string" ? row.description : null,
     location: typeof row.location === "string" ? row.location : null,
     banner_url: typeof row.banner_url === "string" ? row.banner_url : null,
+    is_published: row.is_published !== false,
     member_count: memberCount,
   };
 }
@@ -261,7 +264,7 @@ export async function getOwnedCommunities(): Promise<LeaderCommunity[]> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("church_memberships")
-    .select("churches:church_id(id,name,slug,description,location,banner_url,created_by)")
+    .select("churches:church_id(id,name,slug,description,location,banner_url,created_by,is_published)")
     .eq("profile_id", profile.id)
     .eq("role", "owner")
     .order("created_at", { ascending: false });

@@ -46,6 +46,12 @@ export type EventGroupOption = {
   title: string;
 };
 
+export type EventCreationAccess = {
+  role: string;
+  canCreate: boolean;
+  message: string | null;
+};
+
 type Profile = {
   id: string;
   user_id: string;
@@ -150,12 +156,38 @@ async function hasColumn(table: string, column: string) {
 export async function getEventCommunityOptions(): Promise<EventCommunityOption[]> {
   const profile = await getCurrentProfile();
   await assertNotBanned(profile.user_id);
+
+  if (profile.role !== "church_leader" && profile.role !== "platform_engineer") {
+    return [];
+  }
+
   const admin = createAdminClient();
-  const { data, error } = await admin
+
+  if (profile.role === "platform_engineer") {
+    const { data, error } = await admin
+      .from("churches")
+      .select("id,name")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return ((data || []) as unknown as Record<string, unknown>[]).map((community) => ({
+      id: String(community.id),
+      name: String(community.name),
+    }));
+  }
+
+  let query = admin
     .from("church_memberships")
     .select("churches:church_id(id,name)")
-    .eq("profile_id", profile.id)
+    .eq("role", "owner")
     .order("created_at", { ascending: false });
+
+  query = query.eq("profile_id", profile.id);
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);
@@ -164,6 +196,17 @@ export async function getEventCommunityOptions(): Promise<EventCommunityOption[]
   return (data || [])
     .filter((membership) => membership.churches)
     .map((membership) => membership.churches as unknown as EventCommunityOption);
+}
+
+export async function getEventCreationAccess(): Promise<EventCreationAccess> {
+  const profile = await getCurrentProfile();
+  const canCreate = profile.role === "church_leader" || profile.role === "platform_engineer";
+
+  return {
+    role: profile.role || "user",
+    canCreate,
+    message: canCreate ? null : "Only verified church leaders can create official community events.",
+  };
 }
 
 export async function getEventGroupOptions(): Promise<EventGroupOption[]> {
@@ -205,6 +248,31 @@ export async function createEvent(formData: FormData) {
   const supportsEventTime = await hasColumn("events", "event_time");
   const supportsCommunityId = await hasColumn("events", "community_id");
   const communityId = nullableFormString(formData, "community_id");
+
+  if (profile.role !== "church_leader" && profile.role !== "platform_engineer") {
+    redirect("/events/new?message=Only verified church leaders can create official community events.");
+  }
+
+  if (!communityId) {
+    redirect("/events/new?message=Choose a community for this official event.");
+  }
+
+  if (profile.role !== "platform_engineer") {
+    const { data: community, error: communityError } = await admin
+      .from("churches")
+      .select("created_by,is_published")
+      .eq("id", communityId)
+      .maybeSingle();
+
+    if (communityError) {
+      throw new Error(communityError.message);
+    }
+
+    if (!community || String(community.created_by) !== profile.id) {
+      redirect("/events/new?message=You can only create events for communities you lead.");
+    }
+  }
+
   const payload: Record<string, string | null> = {
     title,
     description: nullableFormString(formData, "description"),

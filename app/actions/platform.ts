@@ -522,6 +522,49 @@ export async function updatePlatformSettings(formData: FormData) {
   redirect("/platform?message=Site settings updated.");
 }
 
+export async function updatePlatformUserRole(formData: FormData) {
+  const actor = await requirePlatformEngineer();
+  const profileId = getFormString(formData, "profile_id");
+  const nextRole = getFormString(formData, "role");
+
+  if (!profileId || !["user", "church_leader_pending", "church_leader"].includes(nextRole)) {
+    redirect("/platform?message=Choose a valid user role.");
+  }
+
+  const admin = createAdminClient();
+  const { data: target, error: lookupError } = await admin
+    .from("profiles")
+    .select("id,user_id,role")
+    .eq("id", profileId)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new Error(lookupError.message);
+  }
+
+  if (!target) {
+    redirect("/platform?message=User profile not found.");
+  }
+
+  if (target.user_id === actor.user_id && nextRole !== "platform_engineer") {
+    redirect("/platform?message=You cannot demote yourself.");
+  }
+
+  if (target.role === "platform_engineer") {
+    redirect("/platform?message=Platform engineer roles must be managed directly.");
+  }
+
+  const { error } = await admin.from("profiles").update({ role: nextRole }).eq("id", profileId);
+
+  if (error) {
+    redirect(`/platform?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/platform");
+  revalidatePath("/platform/leader-applications");
+  redirect("/platform?message=User role updated.");
+}
+
 export async function savePlatformPlan(formData: FormData) {
   const profile = await requirePlatformEngineer();
   const name = getFormString(formData, "name");

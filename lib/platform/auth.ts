@@ -6,7 +6,7 @@ export type PlatformProfile = {
   id: string;
   user_id: string;
   display_name: string;
-  role: "user" | "church_owner" | "platform_engineer";
+  role: "user" | "church_leader_pending" | "church_leader" | "platform_engineer";
 };
 
 export async function getCurrentUserOrRedirect() {

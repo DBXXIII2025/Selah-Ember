@@ -20,6 +20,12 @@ export default async function LeaderPage() {
           <p className="mt-4 max-w-2xl leading-7 text-[#67564c]">
             Review the church communities you lead and keep their public details current.
           </p>
+          <Link
+            href="/leader/apply"
+            className="mt-6 inline-flex items-center justify-center rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+          >
+            Apply for leader verification
+          </Link>
         </div>
 
         {communities.length === 0 ? (
@@ -47,6 +53,11 @@ export default async function LeaderPage() {
                 </div>
                 <div className="p-6">
                   <h2 className="text-2xl font-semibold">{community.name}</h2>
+                  {!community.is_published ? (
+                    <p className="mt-3 inline-flex rounded-full bg-[#fff4e8] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#8a3f1e]">
+                      Draft
+                    </p>
+                  ) : null}
                   <p className="mt-4 line-clamp-3 leading-7 text-[#67564c]">
                     {community.description || "A Selah Ember fellowship space ready to be shaped."}
                   </p>
@@ -73,6 +84,12 @@ export default async function LeaderPage() {
                     className="mt-3 inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]"
                   >
                     Media library
+                  </Link>
+                  <Link
+                    href={`/leader/communities/${community.id}/updates`}
+                    className="mt-3 inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]"
+                  >
+                    Updates
                   </Link>
                 </div>
               </article>

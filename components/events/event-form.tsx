@@ -46,8 +46,8 @@ export function EventForm({ communities, groups, message }: EventFormProps) {
         </label>
         <label className="block">
           <span className="text-sm font-medium text-[#3b312b]">Community</span>
-          <select name="community_id" className={fieldClassName} defaultValue="">
-            <option value="">No community</option>
+          <select name="community_id" className={fieldClassName} defaultValue="" required>
+            <option value="">Choose a community</option>
             {communities.map((community) => (
               <option key={community.id} value={community.id}>
                 {community.name}

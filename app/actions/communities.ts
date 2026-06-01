@@ -19,6 +19,7 @@ export type Community = {
   location: string | null;
   banner_url: string | null;
   created_by: string | null;
+  is_published: boolean;
   member_count: number;
 };
 
@@ -48,6 +49,13 @@ type Profile = {
   user_id: string;
   display_name: string;
   role: string;
+};
+
+export type CommunityCreationAccess = {
+  role: string;
+  canCreate: boolean;
+  createsDraft: boolean;
+  message: string | null;
 };
 
 function getFormString(formData: FormData, key: string) {
@@ -173,6 +181,7 @@ function normalizeCommunity(row: Record<string, unknown>, memberCount = 0): Comm
     location: typeof row.location === "string" ? row.location : null,
     banner_url: typeof row.banner_url === "string" ? row.banner_url : null,
     created_by: typeof row.created_by === "string" ? row.created_by : null,
+    is_published: row.is_published !== false,
     member_count: memberCount,
   };
 }
@@ -206,8 +215,18 @@ export async function createCommunity(formData: FormData) {
 
   const profile = await getCurrentProfile();
   await assertNotBanned(profile.user_id);
+
+  const isPlatformEngineer = profile.role === "platform_engineer";
+  const isVerifiedLeader = profile.role === "church_leader";
+  const isPendingLeader = profile.role === "church_leader_pending";
+
+  if (!isPlatformEngineer && !isVerifiedLeader && !isPendingLeader) {
+    redirect("/communities/new?message=Only church leaders can create communities. You can still join communities or create a Bible study group.");
+  }
+
   const admin = createAdminClient();
   const slug = await getAvailableSlug(name);
+  const isPublished = isPlatformEngineer || isVerifiedLeader;
 
   const { data: community, error } = await admin
     .from("churches")
@@ -218,7 +237,7 @@ export async function createCommunity(formData: FormData) {
       location: nullableFormString(formData, "location"),
       banner_url: nullableFormString(formData, "banner_url"),
       created_by: profile.id,
-      is_published: true,
+      is_published: isPublished,
     })
     .select("id,name,slug,description,location,banner_url,created_by")
     .single();
@@ -240,7 +259,8 @@ export async function createCommunity(formData: FormData) {
 
   revalidatePath("/communities");
   revalidatePath(`/c/${community.slug}`);
-  redirect("/communities");
+  revalidatePath("/leader");
+  redirect(isPublished ? "/communities" : `/leader/communities/${community.id}?message=Pending Verification - your community is saved as a draft.`);
 }
 
 export async function getCurrentUserCommunities(): Promise<CommunityMembership[]> {
@@ -249,7 +269,7 @@ export async function getCurrentUserCommunities(): Promise<CommunityMembership[]
   const { data, error } = await admin
     .from("church_memberships")
     .select(
-      "role, churches:church_id(id,name,slug,description,location,banner_url,created_by)",
+      "role, churches:church_id(id,name,slug,description,location,banner_url,created_by,is_published)",
     )
     .eq("profile_id", profile.id)
     .order("created_at", { ascending: false });
@@ -331,6 +351,31 @@ export async function getCommunityMembershipStatus(
     isMember: viewer.isMember,
     isOwner: viewer.isOwner,
     role: viewer.role,
+  };
+}
+
+export async function getCommunityCreationAccess(): Promise<CommunityCreationAccess> {
+  const profile = await getCurrentProfile();
+  const role = profile.role || "user";
+
+  if (role === "platform_engineer" || role === "church_leader") {
+    return { role, canCreate: true, createsDraft: false, message: null };
+  }
+
+  if (role === "church_leader_pending") {
+    return {
+      role,
+      canCreate: true,
+      createsDraft: true,
+      message: "Pending Verification - your community is saved as a draft.",
+    };
+  }
+
+  return {
+    role,
+    canCreate: false,
+    createsDraft: false,
+    message: "Only church leaders can create communities. You can still join communities or create a Bible study group.",
   };
 }
 

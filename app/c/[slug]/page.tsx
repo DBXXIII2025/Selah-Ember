@@ -2,11 +2,13 @@ import { LibraryBig, MapPin, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { signOut } from "@/app/actions/auth";
+import { getPublicCommunityPosts } from "@/app/actions/community-posts";
 import {
   getCommunityMembershipStatus,
   getPublicCommunityBySlug,
 } from "@/app/actions/communities";
 import { CommunityMembershipForm } from "@/components/church/community-membership-form";
+import { CommunityPostDisplay } from "@/components/community/community-post-display";
 import { BrandMark } from "@/components/ui/brand-mark";
 
 type PublicCommunityPageProps = {
@@ -34,7 +36,10 @@ export default async function PublicCommunityPage({
     notFound();
   }
 
-  const status = await getCommunityMembershipStatus(community.id);
+  const [status, updates] = await Promise.all([
+    getCommunityMembershipStatus(community.id),
+    getPublicCommunityPosts(community.id, 3),
+  ]);
 
   return (
     <main className="min-h-screen bg-[#f7ead7] text-[#211814]">
@@ -117,6 +122,12 @@ export default async function PublicCommunityPage({
                 Find study groups
               </Link>
             </div>
+            <div className="mt-4 rounded-2xl border border-white/55 bg-white/65 p-5 shadow-sm">
+              <p className="text-sm font-semibold text-[#8a3f1e]">Community Updates</p>
+              <p className="mt-2 text-sm leading-6 text-[#594a42]">
+                Official news and updates from verified community leaders.
+              </p>
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/45 bg-[#211b17]/90 shadow-2xl shadow-[#3b2117]/30">
@@ -128,6 +139,27 @@ export default async function PublicCommunityPage({
                 <UsersRound aria-hidden="true" className="h-16 w-16 text-[#fff8ed]" />
               )}
             </div>
+          </div>
+        </div>
+
+        <div className="mx-auto mt-10 max-w-7xl">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#8a3f1e]">Community Updates</p>
+              <h2 className="mt-3 text-3xl font-semibold">Latest from {community.name}</h2>
+            </div>
+          </div>
+          <div className="mt-6 grid gap-5">
+            {updates.length === 0 ? (
+              <div className="rounded-2xl border border-white/55 bg-white/65 p-8 text-center shadow-sm">
+                <h3 className="text-2xl font-semibold">No updates yet</h3>
+                <p className="mx-auto mt-3 max-w-xl leading-7 text-[#67564c]">
+                  Official community updates will appear here when leaders publish them.
+                </p>
+              </div>
+            ) : (
+              updates.map((post) => <CommunityPostDisplay key={post.id} post={post} compact />)
+            )}
           </div>
         </div>
       </section>

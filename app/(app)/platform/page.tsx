@@ -9,6 +9,7 @@ import {
   savePlatformPlan,
   savePromoCode,
   sendPlatformAnnouncement,
+  updatePlatformUserRole,
   updatePlatformSettings,
 } from "@/app/actions/platform";
 import { deleteOwnReply, deleteOwnThread } from "@/app/actions/discussions";
@@ -289,6 +290,15 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
             </Link>
           </Panel>
 
+          <Panel title="Leader verification">
+            <p className="mb-5 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
+              Review applications, then approve verified church leaders for official communities, events, media, and updates.
+            </p>
+            <Link href="/platform/leader-applications" className={buttonClassName}>
+              Open leader applications
+            </Link>
+          </Panel>
+
           <Panel title="Moderation">
             <form className="mb-6">
               <Field label="Search users" name="search" defaultValue={params.search} />
@@ -304,6 +314,30 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                     {user.email || "No email"} · {user.role} · {user.user_id}
                   </p>
                 </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel title="User roles">
+            <div className="space-y-3">
+              {data.users.map((user) => (
+                <form key={user.id} action={updatePlatformUserRole} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
+                  <input type="hidden" name="profile_id" value={user.id} />
+                  <p className="font-semibold">{user.display_name}</p>
+                  <p className="mt-1 break-words text-[#67564c]">
+                    {user.email || "No email"} · current role: {user.role}
+                  </p>
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                    <select name="role" defaultValue={user.role === "platform_engineer" ? "user" : user.role} disabled={user.role === "platform_engineer"} className={inputClassName}>
+                      <option value="user">User</option>
+                      <option value="church_leader_pending">Church leader pending</option>
+                      <option value="church_leader">Church leader</option>
+                    </select>
+                    <button type="submit" disabled={user.role === "platform_engineer"} className={buttonClassName}>
+                      Update role
+                    </button>
+                  </div>
+                </form>
               ))}
             </div>
           </Panel>

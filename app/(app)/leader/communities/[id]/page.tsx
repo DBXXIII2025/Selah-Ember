@@ -57,6 +57,11 @@ export default async function LeaderCommunityPage({
               Community Management
             </p>
             <h1 className="mt-3 text-4xl font-semibold">{community.name}</h1>
+            {!community.is_published ? (
+              <p className="mt-4 inline-flex rounded-full bg-[#fff4e8] px-4 py-2 text-sm font-semibold text-[#8a3f1e]">
+                Pending Verification - your community is saved as a draft.
+              </p>
+            ) : null}
             <p className="mt-4 max-w-2xl leading-7 text-[#67564c]">
               {community.description || "Keep this community's public details current."}
             </p>
@@ -83,6 +88,12 @@ export default async function LeaderCommunityPage({
               className="mt-3 inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]"
             >
               Manage media
+            </Link>
+            <Link
+              href={`/leader/communities/${community.id}/updates`}
+              className="mt-3 inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]"
+            >
+              Manage updates
             </Link>
           </div>
 

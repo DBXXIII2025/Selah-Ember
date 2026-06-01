@@ -11,7 +11,7 @@ export default async function CommunityDiscussionsPage({ params }: CommunityDisc
     <section className="px-6 py-12 sm:px-10 lg:px-16">
       <div className="mx-auto max-w-3xl rounded-2xl border border-[#ead6c5] bg-white/75 p-8 text-center shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">Discussions moved</p>
-        <h1 className="mt-4 text-3xl font-semibold">Community discussions have moved to study groups.</h1>
+        <h1 className="mt-4 text-3xl font-semibold">Community discussions have moved to Bible study groups.</h1>
         <p className="mt-4 leading-7 text-[#67564c]">
           Discussions belong to Bible Study Groups. Communities are for membership, events, prayer, media, and groups.
         </p>
