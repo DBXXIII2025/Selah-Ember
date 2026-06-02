@@ -6,11 +6,15 @@ import { getCurrentAuthAndProfile, getOptionalAuthAndProfile } from "@/lib/auth/
 import { canCreateEvent } from "@/lib/auth/ownership";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import { isSafeHttpUrl, validateImageFile, validateVideoFile } from "@/lib/media/validation";
+import { getDisplayProfiles } from "@/lib/profiles/display";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const COMMUNITY_FEED_BUCKET = "community-feed-media";
 const MAX_TITLE_LENGTH = 160;
 const MAX_BODY_LENGTH = 10000;
+const COMMUNITY_REACTIONS = ["like", "pray", "fire", "laugh"] as const;
+
+export type CommunityReaction = (typeof COMMUNITY_REACTIONS)[number];
 
 export type CommunityPost = {
   id: string;
@@ -30,7 +34,10 @@ export type CommunityPost = {
   deleted_at: string | null;
   signed_url: string | null;
   author_name: string | null;
+  author_avatar_url: string | null;
   comment_count: number;
+  reaction_counts: Record<CommunityReaction, number>;
+  viewer_reactions: CommunityReaction[];
   can_delete: boolean;
 };
 
@@ -43,6 +50,7 @@ export type CommunityPostComment = {
   updated_at: string;
   deleted_at: string | null;
   author_name: string | null;
+  author_avatar_url: string | null;
   can_delete: boolean;
 };
 
@@ -92,6 +100,19 @@ function isMediaKind(value: string): value is "text" | "link" | "image" | "video
   return ["text", "link", "image", "video"].includes(value);
 }
 
+function isCommunityReaction(value: string): value is CommunityReaction {
+  return COMMUNITY_REACTIONS.includes(value as CommunityReaction);
+}
+
+function emptyReactionCounts(): Record<CommunityReaction, number> {
+  return {
+    like: 0,
+    pray: 0,
+    fire: 0,
+    laugh: 0,
+  };
+}
+
 function mapCommunity(row: Record<string, unknown>): CommunityRecord {
   return {
     id: String(row.id),
@@ -129,7 +150,10 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
     deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
     signed_url: null,
     author_name: null,
+    author_avatar_url: null,
     comment_count: typeof row.comment_count === "number" ? row.comment_count : Number(row.comment_count || 0),
+    reaction_counts: emptyReactionCounts(),
+    viewer_reactions: [],
     can_delete: false,
   };
 }
@@ -144,6 +168,7 @@ function mapComment(row: Record<string, unknown>, currentUserId: string | null, 
     updated_at: String(row.updated_at),
     deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
     author_name: null,
+    author_avatar_url: null,
     can_delete: canModerate || Boolean(currentUserId && row.author_id === currentUserId),
   };
 }
@@ -165,6 +190,32 @@ async function signPost(post: CommunityPost) {
 
 async function signPosts(posts: CommunityPost[]) {
   return Promise.all(posts.map((post) => signPost(post)));
+}
+
+async function hydratePostAuthors(posts: CommunityPost[]) {
+  const profiles = await getDisplayProfiles(posts.map((post) => post.author_id));
+  return posts.map((post) => {
+    const profile = profiles.get(post.author_id);
+
+    return {
+      ...post,
+      author_name: profile?.display_name || "Member",
+      author_avatar_url: profile?.avatar_url || null,
+    };
+  });
+}
+
+async function hydrateCommentAuthors(comments: CommunityPostComment[]) {
+  const profiles = await getDisplayProfiles(comments.map((comment) => comment.author_id));
+  return comments.map((comment) => {
+    const profile = profiles.get(comment.author_id);
+
+    return {
+      ...comment,
+      author_name: profile?.display_name || "Member",
+      author_avatar_url: profile?.avatar_url || null,
+    };
+  });
 }
 
 export async function getDefaultCommunity() {
@@ -324,6 +375,55 @@ async function addCommentCounts(posts: CommunityPost[], currentUserId: string | 
   }));
 }
 
+async function addReactionState(posts: CommunityPost[], currentUserId: string | null) {
+  if (posts.length === 0) {
+    return posts;
+  }
+
+  const admin = createAdminClient();
+  const postIds = posts.map((post) => post.id);
+  const { data, error } = await admin
+    .from("community_post_reactions")
+    .select("post_id,author_id,reaction")
+    .in("post_id", postIds);
+
+  if (error) {
+    if (error.code === "42P01") {
+      return posts;
+    }
+
+    throw new Error(error.message);
+  }
+
+  const counts = new Map<string, Record<CommunityReaction, number>>();
+  const viewerReactions = new Map<string, CommunityReaction[]>();
+
+  for (const reaction of (data || []) as unknown as Record<string, unknown>[]) {
+    const postId = typeof reaction.post_id === "string" ? reaction.post_id : "";
+    const reactionKind = typeof reaction.reaction === "string" && isCommunityReaction(reaction.reaction) ? reaction.reaction : null;
+
+    if (!postId || !reactionKind) {
+      continue;
+    }
+
+    const postCounts = counts.get(postId) || emptyReactionCounts();
+    postCounts[reactionKind] += 1;
+    counts.set(postId, postCounts);
+
+    if (currentUserId && reaction.author_id === currentUserId) {
+      const current = viewerReactions.get(postId) || [];
+      current.push(reactionKind);
+      viewerReactions.set(postId, current);
+    }
+  }
+
+  return posts.map((post) => ({
+    ...post,
+    reaction_counts: counts.get(post.id) || emptyReactionCounts(),
+    viewer_reactions: viewerReactions.get(post.id) || [],
+  }));
+}
+
 export async function getOpenCommunityFeed() {
   const [community, auth] = await Promise.all([getDefaultCommunity(), getOptionalAuthAndProfile()]);
 
@@ -331,10 +431,16 @@ export async function getOpenCommunityFeed() {
     return { community: null, posts: [] as CommunityPost[], isSignedIn: Boolean(auth) };
   }
 
-  const posts = await addCommentCounts(
-    await loadPostRows(community.id, true),
-    auth?.user.id || null,
-    auth?.profile.role === "platform_engineer",
+  const currentUserId = auth?.user.id || null;
+  const posts = await hydratePostAuthors(
+    await addReactionState(
+      await addCommentCounts(
+        await loadPostRows(community.id, true),
+        currentUserId,
+        auth?.profile.role === "platform_engineer",
+      ),
+      currentUserId,
+    ),
   );
   return { community, posts, isSignedIn: Boolean(auth) };
 }
@@ -365,10 +471,12 @@ export async function getOpenCommunityPost(postId: string) {
   }
 
   const canModerate = auth?.profile.role === "platform_engineer";
-  const [post] = await addCommentCounts(
-    await signPosts([mapPost(data as unknown as Record<string, unknown>)]),
-    auth?.user.id || null,
-    canModerate,
+  const currentUserId = auth?.user.id || null;
+  const [post] = await hydratePostAuthors(
+    await addReactionState(
+      await addCommentCounts(await signPosts([mapPost(data as unknown as Record<string, unknown>)]), currentUserId, canModerate),
+      currentUserId,
+    ),
   );
   const { data: commentRows, error: commentsError } = await admin
     .from("community_post_comments")
@@ -381,12 +489,16 @@ export async function getOpenCommunityPost(postId: string) {
     throw new Error(commentsError.message);
   }
 
+  const comments = await hydrateCommentAuthors(
+    ((commentRows || []) as unknown as Record<string, unknown>[]).map((row) =>
+      mapComment(row, currentUserId, canModerate),
+    ),
+  );
+
   return {
     community,
     post,
-    comments: ((commentRows || []) as unknown as Record<string, unknown>[]).map((row) =>
-      mapComment(row, auth?.user.id || null, canModerate),
-    ),
+    comments,
     isSignedIn: Boolean(auth),
   };
 }
@@ -480,6 +592,59 @@ export async function createOpenCommunityComment(formData: FormData) {
 
   if (error) {
     redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/community");
+  revalidatePath(returnTo);
+  redirect(returnTo);
+}
+
+export async function toggleOpenCommunityPostReaction(formData: FormData) {
+  const postId = getFormString(formData, "post_id");
+  const reaction = getFormString(formData, "reaction");
+  const returnTo = safeReturnPath(getFormString(formData, "return_to"), postId ? `/community/posts/${postId}` : "/community");
+
+  if (!postId || !isCommunityReaction(reaction)) {
+    redirect(`${returnTo}?message=Reaction unavailable.`);
+  }
+
+  const { user } = await getCurrentAuthAndProfile();
+  await assertNotBanned(user.id, `${returnTo}?message=Your account cannot react right now.`);
+
+  const admin = createAdminClient();
+  const { data: existing, error: existingError } = await admin
+    .from("community_post_reactions")
+    .select("id")
+    .eq("post_id", postId)
+    .eq("author_id", user.id)
+    .eq("reaction", reaction)
+    .maybeSingle();
+
+  if (existingError && existingError.code !== "42P01") {
+    redirect(`${returnTo}?message=${encodeURIComponent(existingError.message)}`);
+  }
+
+  if (existing) {
+    const { error } = await admin
+      .from("community_post_reactions")
+      .delete()
+      .eq("post_id", postId)
+      .eq("author_id", user.id)
+      .eq("reaction", reaction);
+
+    if (error) {
+      redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
+    }
+  } else {
+    const { error } = await admin.from("community_post_reactions").insert({
+      post_id: postId,
+      author_id: user.id,
+      reaction,
+    });
+
+    if (error) {
+      redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
+    }
   }
 
   revalidatePath("/community");

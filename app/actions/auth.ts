@@ -59,7 +59,7 @@ export async function signUp(formData: FormData) {
   }
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect("/community");
 }
 
 export async function signIn(formData: FormData) {
@@ -81,7 +81,7 @@ export async function signIn(formData: FormData) {
   }
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect("/community");
 }
 
 export async function signOut() {

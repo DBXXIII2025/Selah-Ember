@@ -1,21 +1,18 @@
-import { createCommunity } from "@/app/actions/communities";
+import Link from "next/link";
 
 type CommunityFormProps = {
   message?: string;
   draftMode?: boolean;
 };
 
-const fieldClassName =
-  "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
-
 export function CommunityForm({ message, draftMode = false }: CommunityFormProps) {
+  void draftMode;
+
   return (
     <section className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
-      <h2 className="text-2xl font-semibold">Create community</h2>
+      <h2 className="text-2xl font-semibold">Open community</h2>
       <p className="mt-3 leading-7 text-[#67564c]">
-        {draftMode
-          ? "Pending Verification - your community is saved as a draft until your leader application is approved."
-          : "Start with the essentials. Members, groups, and deeper church tools can come later."}
+        Selah Ember now uses one open community feed. Create a Bible study group when you need a focused space.
       </p>
 
       {message ? (
@@ -24,30 +21,14 @@ export function CommunityForm({ message, draftMode = false }: CommunityFormProps
         </p>
       ) : null}
 
-      <form action={createCommunity} className="mt-8 space-y-5">
-        <label className="block">
-          <span className="text-sm font-medium text-[#3b312b]">Community name</span>
-          <input required name="name" type="text" className={fieldClassName} />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-[#3b312b]">Description</span>
-          <textarea name="description" rows={4} className={fieldClassName} />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-[#3b312b]">Location</span>
-          <input name="location" type="text" className={fieldClassName} />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-[#3b312b]">Banner URL</span>
-          <input name="banner_url" type="url" className={fieldClassName} />
-        </label>
-        <button
-          type="submit"
-          className="rounded-full bg-[#cf5f2b] px-6 py-3 font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
-        >
-          {draftMode ? "Create draft community" : "Create community"}
-        </button>
-      </form>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <Link href="/community" className="inline-flex justify-center rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
+          Open community
+        </Link>
+        <Link href="/groups/new" className="inline-flex justify-center rounded-full border border-[#2f2722]/20 px-5 py-3 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]">
+          Create group
+        </Link>
+      </div>
     </section>
   );
 }

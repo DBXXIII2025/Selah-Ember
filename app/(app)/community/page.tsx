@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { deleteOpenCommunityPost, getOpenCommunityFeed } from "@/app/actions/community-posts";
+import { getVisibleEvents } from "@/app/actions/events";
+import { getDiscoverStudyGroups } from "@/app/actions/groups";
+import { getVisiblePrayerRequests } from "@/app/actions/prayer";
 import { CommunityPostDisplay } from "@/components/community/community-post-display";
 
 type CommunityPageProps = {
@@ -9,7 +12,11 @@ type CommunityPageProps = {
 };
 
 export default async function CommunityPage({ searchParams }: CommunityPageProps) {
-  const [data, params] = await Promise.all([getOpenCommunityFeed(), searchParams]);
+  const [data, groups, params] = await Promise.all([getOpenCommunityFeed(), getDiscoverStudyGroups(), searchParams]);
+  const [prayers, events] = data.isSignedIn
+    ? await Promise.all([getVisiblePrayerRequests(), getVisibleEvents()])
+    : [[], []];
+  const upcomingEvents = events.slice(0, 3);
 
   return (
     <section className="px-6 py-10 sm:px-10 lg:px-16">
@@ -38,6 +45,58 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
             {params.message}
           </div>
         ) : null}
+
+        <div className="mt-8 grid gap-5 lg:grid-cols-3">
+          <aside className="rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Prayer</h2>
+              <Link href="/prayer" className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
+                View
+              </Link>
+            </div>
+            <div className="mt-4 space-y-3">
+              {prayers.slice(0, 3).map((prayer) => (
+                <p key={prayer.id} className="line-clamp-2 text-sm leading-6 text-[#67564c]">{prayer.title}</p>
+              ))}
+              {prayers.length === 0 ? <p className="text-sm text-[#67564c]">No public prayer requests yet.</p> : null}
+            </div>
+          </aside>
+
+          <aside className="rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Groups</h2>
+              <Link href="/discover/groups" className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
+                Discover
+              </Link>
+            </div>
+            <div className="mt-4 space-y-3">
+              {groups.slice(0, 3).map((group) => (
+                <Link key={group.id} href={`/groups/${group.id}`} className="block line-clamp-2 text-sm font-medium leading-6 text-[#67564c] hover:text-[#8a3f1e]">
+                  {group.title}
+                </Link>
+              ))}
+              {groups.length === 0 ? <p className="text-sm text-[#67564c]">No public groups yet.</p> : null}
+            </div>
+          </aside>
+
+          <aside className="rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Events</h2>
+              <Link href="/events" className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
+                View
+              </Link>
+            </div>
+            <div className="mt-4 space-y-3">
+              {upcomingEvents.map((event) => (
+                <Link key={event.id} href={`/events/${event.id}`} className="block text-sm leading-6 text-[#67564c] hover:text-[#8a3f1e]">
+                  <span className="font-medium">{event.title}</span>
+                  <span className="block text-xs">{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(event.event_time))}</span>
+                </Link>
+              ))}
+              {upcomingEvents.length === 0 ? <p className="text-sm text-[#67564c]">No upcoming events yet.</p> : null}
+            </div>
+          </aside>
+        </div>
 
         {!data.community ? (
           <div className="mt-8 rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">

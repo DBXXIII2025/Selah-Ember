@@ -60,9 +60,22 @@ export default async function CommunityPostPage({ params, searchParams }: Commun
               data.comments.map((comment) => (
                 <article key={comment.id} className="rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm">
                   <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                    <div>
-                      <p className="text-sm font-semibold text-[#3b312b]">{comment.author_name || "Community member"}</p>
-                      <p className="mt-1 text-xs text-[#8a7467]">{new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(comment.created_at))}</p>
+                    <div className="flex gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#ffe2cb] text-sm font-semibold text-[#8a3f1e]">
+                        {comment.author_avatar_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={comment.author_avatar_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          (comment.author_name || "Member").slice(0, 1).toUpperCase()
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-[#3b312b]">{comment.author_name || "Member"}</p>
+                        <p className="mt-1 text-xs text-[#8a7467]">
+                          {new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(comment.created_at))}
+                          {Math.abs(new Date(comment.updated_at).getTime() - new Date(comment.created_at).getTime()) > 1000 ? " - edited" : ""}
+                        </p>
+                      </div>
                     </div>
                     {comment.can_delete ? (
                       <form action={deleteOpenCommunityComment}>

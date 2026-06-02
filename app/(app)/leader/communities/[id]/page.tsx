@@ -48,18 +48,18 @@ export default async function LeaderCommunityPage({
     <section className="px-6 py-12 sm:px-10 lg:px-16">
       <div className="mx-auto max-w-7xl">
         <Link href="/leader" className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
-          Back to leader dashboard
+          Back
         </Link>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
-              Community Management
+              Legacy community
             </p>
             <h1 className="mt-3 text-4xl font-semibold">{community.name}</h1>
             {!community.is_published ? (
               <p className="mt-4 inline-flex rounded-full bg-[#fff4e8] px-4 py-2 text-sm font-semibold text-[#8a3f1e]">
-                Pending Verification - your community is saved as a draft.
+                Draft community
               </p>
             ) : null}
             <p className="mt-4 max-w-2xl leading-7 text-[#67564c]">

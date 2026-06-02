@@ -53,13 +53,13 @@ export default function Home() {
                 href="/signup"
                 className="inline-flex items-center justify-center rounded-full bg-[#d97834] px-6 py-3 text-base font-semibold text-[#fff8ed] shadow-lg shadow-[#d97834]/25 transition hover:bg-[#f09a4b]"
               >
-                Create Community
+                Join Community
               </a>
               <a
                 href="/discover"
                 className="inline-flex items-center justify-center rounded-full border border-[#c8874d]/45 bg-[#fff4df]/10 px-6 py-3 text-base font-semibold text-[#fff4df] shadow-sm backdrop-blur transition hover:bg-[#fff4df]/18"
               >
-                Discover Communities
+                Discover Groups
               </a>
             </div>
           </div>

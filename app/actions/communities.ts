@@ -202,7 +202,7 @@ export async function createCommunity(formData: FormData) {
   const name = getFormString(formData, "name");
 
   if (!name) {
-    redirect("/communities/new?message=Community name is required.");
+    redirect("/community?message=Selah Ember now uses one open community.");
   }
 
   const profile = await getCanonicalCurrentProfile();
@@ -211,7 +211,7 @@ export async function createCommunity(formData: FormData) {
   const isPlatformEngineer = profile.role === "platform_engineer";
 
   if (!canCreateCommunity(profile)) {
-    redirect("/communities/new?message=Selah Ember now uses one open community. You can post in the community feed or create a group.");
+    redirect("/community?message=Selah Ember now uses one open community. You can post in the community feed or create a group.");
   }
 
   const admin = createAdminClient();
@@ -233,7 +233,7 @@ export async function createCommunity(formData: FormData) {
     .single();
 
   if (error) {
-    redirect(`/communities/new?message=${encodeURIComponent(error.message)}`);
+    redirect(`/community?message=${encodeURIComponent(error.message)}`);
   }
 
   await admin.from("church_memberships").upsert(
