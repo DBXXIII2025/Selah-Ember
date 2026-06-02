@@ -85,17 +85,8 @@ export async function isGroupMember(groupId: string, context?: OwnershipContext)
 
 export async function canManageCommunity(communityId: string, context?: OwnershipContext) {
   const auth = await getContext(context);
-  const { profile } = auth;
 
-  if (profile.role === "platform_engineer") {
-    return true;
-  }
-
-  if (profile.role !== "church_leader" && profile.role !== "church_leader_pending") {
-    return false;
-  }
-
-  return isCommunityOwner(communityId, auth);
+  return auth.profile.role === "platform_engineer";
 }
 
 export async function canManageGroup(groupId: string, context?: OwnershipContext) {
@@ -126,23 +117,11 @@ export async function canManageGroup(groupId: string, context?: OwnershipContext
 }
 
 export function canCreateCommunity(profile: Pick<OwnershipProfile, "role">) {
-  return (
-    profile.role === "church_leader_pending" ||
-    profile.role === "church_leader" ||
-    profile.role === "platform_engineer"
-  );
+  return profile.role === "platform_engineer";
 }
 
 export async function canCreateEvent(communityId: string, context?: OwnershipContext) {
   const auth = await getContext(context);
 
-  if (auth.profile.role === "platform_engineer") {
-    return true;
-  }
-
-  if (auth.profile.role !== "church_leader") {
-    return false;
-  }
-
-  return isCommunityOwner(communityId, auth);
+  return auth.profile.role === "platform_engineer";
 }

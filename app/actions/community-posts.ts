@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getCurrentAuthAndProfile } from "@/lib/auth/current";
+import { getCurrentAuthAndProfile, getOptionalAuthAndProfile } from "@/lib/auth/current";
 import { canCreateEvent } from "@/lib/auth/ownership";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import { isSafeHttpUrl, validateImageFile, validateVideoFile } from "@/lib/media/validation";
@@ -29,6 +29,21 @@ export type CommunityPost = {
   updated_at: string;
   deleted_at: string | null;
   signed_url: string | null;
+  author_name: string | null;
+  comment_count: number;
+  can_delete: boolean;
+};
+
+export type CommunityPostComment = {
+  id: string;
+  post_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  author_name: string | null;
+  can_delete: boolean;
 };
 
 type CommunityRecord = {
@@ -113,6 +128,23 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
     updated_at: String(row.updated_at),
     deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
     signed_url: null,
+    author_name: null,
+    comment_count: typeof row.comment_count === "number" ? row.comment_count : Number(row.comment_count || 0),
+    can_delete: false,
+  };
+}
+
+function mapComment(row: Record<string, unknown>, currentUserId: string | null, canModerate = false): CommunityPostComment {
+  return {
+    id: String(row.id),
+    post_id: String(row.post_id),
+    author_id: String(row.author_id),
+    body: String(row.body),
+    created_at: String(row.created_at),
+    updated_at: String(row.updated_at),
+    deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
+    author_name: null,
+    can_delete: canModerate || Boolean(currentUserId && row.author_id === currentUserId),
   };
 }
 
@@ -133,6 +165,26 @@ async function signPost(post: CommunityPost) {
 
 async function signPosts(posts: CommunityPost[]) {
   return Promise.all(posts.map((post) => signPost(post)));
+}
+
+export async function getDefaultCommunity() {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("churches")
+    .select("id,name,slug,created_by,is_published")
+    .eq("is_default", true)
+    .eq("is_published", true)
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === "42703") {
+      return null;
+    }
+
+    throw new Error(error.message);
+  }
+
+  return data ? mapCommunity(data as unknown as Record<string, unknown>) : null;
 }
 
 async function getCommunityForManager(communityId: string) {
@@ -236,9 +288,262 @@ async function loadPostRows(communityId: string, publishedOnly: boolean) {
   return signPosts(((data || []) as unknown as Record<string, unknown>[]).map(mapPost));
 }
 
+async function addCommentCounts(posts: CommunityPost[], currentUserId: string | null, canModerate = false) {
+  if (posts.length === 0) {
+    return posts;
+  }
+
+  const admin = createAdminClient();
+  const postIds = posts.map((post) => post.id);
+  const { data, error } = await admin
+    .from("community_post_comments")
+    .select("post_id")
+    .in("post_id", postIds)
+    .is("deleted_at", null);
+
+  if (error) {
+    if (error.code === "42P01") {
+      return posts;
+    }
+
+    throw new Error(error.message);
+  }
+
+  const counts = new Map<string, number>();
+  for (const comment of data || []) {
+    const postId = typeof comment.post_id === "string" ? comment.post_id : "";
+    if (postId) {
+      counts.set(postId, (counts.get(postId) || 0) + 1);
+    }
+  }
+
+  return posts.map((post) => ({
+    ...post,
+    comment_count: counts.get(post.id) || 0,
+    can_delete: canModerate || Boolean(currentUserId && currentUserId === post.author_id),
+  }));
+}
+
+export async function getOpenCommunityFeed() {
+  const [community, auth] = await Promise.all([getDefaultCommunity(), getOptionalAuthAndProfile()]);
+
+  if (!community) {
+    return { community: null, posts: [] as CommunityPost[], isSignedIn: Boolean(auth) };
+  }
+
+  const posts = await addCommentCounts(
+    await loadPostRows(community.id, true),
+    auth?.user.id || null,
+    auth?.profile.role === "platform_engineer",
+  );
+  return { community, posts, isSignedIn: Boolean(auth) };
+}
+
+export async function getOpenCommunityPost(postId: string) {
+  const [community, auth] = await Promise.all([getDefaultCommunity(), getOptionalAuthAndProfile()]);
+
+  if (!community) {
+    return { community: null, post: null, comments: [] as CommunityPostComment[], isSignedIn: Boolean(auth) };
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("community_posts")
+    .select("id,community_id,author_id,title,body,media_url,media_kind,storage_path,file_name,mime_type,size_bytes,is_published,created_at,updated_at,deleted_at")
+    .eq("id", postId)
+    .eq("community_id", community.id)
+    .eq("is_published", true)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    return { community, post: null, comments: [] as CommunityPostComment[], isSignedIn: Boolean(auth) };
+  }
+
+  const canModerate = auth?.profile.role === "platform_engineer";
+  const [post] = await addCommentCounts(
+    await signPosts([mapPost(data as unknown as Record<string, unknown>)]),
+    auth?.user.id || null,
+    canModerate,
+  );
+  const { data: commentRows, error: commentsError } = await admin
+    .from("community_post_comments")
+    .select("id,post_id,author_id,body,created_at,updated_at,deleted_at")
+    .eq("post_id", postId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
+
+  if (commentsError && commentsError.code !== "42P01") {
+    throw new Error(commentsError.message);
+  }
+
+  return {
+    community,
+    post,
+    comments: ((commentRows || []) as unknown as Record<string, unknown>[]).map((row) =>
+      mapComment(row, auth?.user.id || null, canModerate),
+    ),
+    isSignedIn: Boolean(auth),
+  };
+}
+
 export async function getPublicCommunityPosts(communityId: string, limit = 3) {
   const rows = await loadPostRows(communityId, true);
   return rows.slice(0, limit);
+}
+
+export async function createOpenCommunityPost(formData: FormData) {
+  const returnTo = safeReturnPath(getFormString(formData, "return_to"), "/community");
+  const title = nullableFormString(formData, "title");
+  const body = nullableFormString(formData, "body");
+  const kindInput = getFormString(formData, "media_kind") || "text";
+  const externalUrl = nullableFormString(formData, "media_url");
+  const file = getOptionalFile(formData, "media_file");
+
+  if (!isMediaKind(kindInput)) {
+    redirect(`${returnTo}?message=Choose a valid post type.`);
+  }
+
+  const [{ user }, community] = await Promise.all([getCurrentAuthAndProfile(), getDefaultCommunity()]);
+  await assertNotBanned(user.id, `${returnTo}?message=Your account cannot post right now.`);
+
+  if (!community) {
+    redirect(`${returnTo}?message=Community feed is not ready yet.`);
+  }
+
+  validatePostInput({ returnTo, title, body, kind: kindInput, externalUrl, file, hasExistingMedia: false });
+
+  let uploadedFile: Awaited<ReturnType<typeof uploadPostMedia>> | null = null;
+
+  if (file) {
+    uploadedFile = await uploadPostMedia({ communityId: community.id, userId: user.id, file });
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("community_posts")
+    .insert({
+      community_id: community.id,
+      author_id: user.id,
+      title,
+      body,
+      media_url: kindInput === "link" ? externalUrl : null,
+      media_kind: kindInput === "text" ? null : kindInput,
+      storage_path: uploadedFile?.storage_path || null,
+      file_name: uploadedFile?.file_name || null,
+      mime_type: uploadedFile?.mime_type || null,
+      size_bytes: uploadedFile?.size_bytes || null,
+      is_published: true,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    await deleteStoredPostObject(uploadedFile?.storage_path || null);
+    redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/community");
+  redirect(`/community/posts/${data.id}`);
+}
+
+export async function createOpenCommunityComment(formData: FormData) {
+  const postId = getFormString(formData, "post_id");
+  const returnTo = safeReturnPath(getFormString(formData, "return_to"), postId ? `/community/posts/${postId}` : "/community");
+  const body = getFormString(formData, "body");
+
+  if (!postId) {
+    redirect("/community?message=Post not found.");
+  }
+
+  if (!body) {
+    redirect(`${returnTo}?message=Comment is required.`);
+  }
+
+  if (body.length > 5000) {
+    redirect(`${returnTo}?message=Comment must be 5000 characters or fewer.`);
+  }
+
+  const { user } = await getCurrentAuthAndProfile();
+  await assertNotBanned(user.id, `${returnTo}?message=Your account cannot comment right now.`);
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("community_post_comments").insert({
+    post_id: postId,
+    author_id: user.id,
+    body,
+  });
+
+  if (error) {
+    redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/community");
+  revalidatePath(returnTo);
+  redirect(returnTo);
+}
+
+export async function deleteOpenCommunityPost(formData: FormData) {
+  const postId = getFormString(formData, "post_id");
+  const returnTo = safeReturnPath(getFormString(formData, "return_to"), "/community");
+
+  if (!postId) {
+    redirect(`${returnTo}?message=Post not found.`);
+  }
+
+  const { user, profile } = await getCurrentAuthAndProfile();
+  const admin = createAdminClient();
+  let query = admin
+    .from("community_posts")
+    .update({ deleted_at: new Date().toISOString(), is_published: false })
+    .eq("id", postId);
+
+  if (profile.role !== "platform_engineer") {
+    query = query.eq("author_id", user.id);
+  }
+
+  const { error } = await query;
+
+  if (error) {
+    redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/community");
+  redirect(returnTo);
+}
+
+export async function deleteOpenCommunityComment(formData: FormData) {
+  const commentId = getFormString(formData, "comment_id");
+  const returnTo = safeReturnPath(getFormString(formData, "return_to"), "/community");
+
+  if (!commentId) {
+    redirect(`${returnTo}?message=Comment not found.`);
+  }
+
+  const { user, profile } = await getCurrentAuthAndProfile();
+  const admin = createAdminClient();
+  let query = admin
+    .from("community_post_comments")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", commentId);
+
+  if (profile.role !== "platform_engineer") {
+    query = query.eq("author_id", user.id);
+  }
+
+  const { error } = await query;
+
+  if (error) {
+    redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/community");
+  revalidatePath(returnTo);
+  redirect(returnTo);
 }
 
 export async function getCommunityPostsForLeader(communityId: string) {
@@ -339,7 +644,7 @@ export async function createCommunityPost(formData: FormData) {
   const { user, community } = await getCommunityForManager(communityId);
 
   if (!community) {
-    redirect("/leader?message=Only verified community leaders can create official updates.");
+    redirect("/leader?message=Only platform engineers can manage official legacy updates.");
   }
 
   validatePostInput({ returnTo, title, body, kind: kindInput, externalUrl, file, hasExistingMedia: false });
@@ -393,7 +698,7 @@ export async function updateCommunityPost(formData: FormData) {
   const { user, community } = await getCommunityForManager(communityId);
 
   if (!community) {
-    redirect("/leader?message=Only verified community leaders can edit official updates.");
+    redirect("/leader?message=Only platform engineers can manage official legacy updates.");
   }
 
   const data = await getCommunityPostForLeader(communityId, postId);
@@ -471,7 +776,7 @@ export async function deleteCommunityPost(formData: FormData) {
   const { community } = await getCommunityForManager(communityId);
 
   if (!community) {
-    redirect("/leader?message=Only verified community leaders can delete official updates.");
+    redirect("/leader?message=Only platform engineers can manage official legacy updates.");
   }
 
   const admin = createAdminClient();

@@ -4,6 +4,7 @@ import type { CommunityPost } from "@/app/actions/community-posts";
 
 type CommunityPostDisplayProps = {
   post: CommunityPost;
+  href?: string | null;
   editHref?: string | null;
   compact?: boolean;
 };
@@ -45,16 +46,26 @@ function Media({ post }: Readonly<{ post: CommunityPost }>) {
   return null;
 }
 
-export function CommunityPostDisplay({ post, editHref, compact = false }: Readonly<CommunityPostDisplayProps>) {
+export function CommunityPostDisplay({ post, href, editHref, compact = false }: Readonly<CommunityPostDisplayProps>) {
+  const title = post.title || "Community post";
+
   return (
     <article className="rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
-            Community Update
+            {post.author_name ? `Posted by ${post.author_name}` : "Community post"}
           </p>
           {post.title ? (
-            <h2 className={`mt-3 font-semibold ${compact ? "text-xl" : "text-2xl"}`}>{post.title}</h2>
+            href ? (
+              <Link href={href} className="inline-flex">
+                <h2 className={`mt-3 font-semibold transition hover:text-[#b94f22] ${compact ? "text-xl" : "text-2xl"}`}>
+                  {title}
+                </h2>
+              </Link>
+            ) : (
+              <h2 className={`mt-3 font-semibold ${compact ? "text-xl" : "text-2xl"}`}>{title}</h2>
+            )
           ) : null}
           <p className="mt-2 text-sm text-[#8a7467]">{formatDate(post.created_at)}</p>
         </div>
@@ -74,6 +85,11 @@ export function CommunityPostDisplay({ post, editHref, compact = false }: Readon
       </div>
       {post.deleted_at ? <p className="mt-4 text-sm font-semibold text-[#8a3f1e]">Deleted</p> : null}
       {!post.is_published ? <p className="mt-4 text-sm font-semibold text-[#8a3f1e]">Draft</p> : null}
+      {href ? (
+        <Link href={href} className="mt-4 inline-flex text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
+          {post.comment_count === 1 ? "1 comment" : `${post.comment_count} comments`}
+        </Link>
+      ) : null}
     </article>
   );
 }

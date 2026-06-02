@@ -209,15 +209,14 @@ export async function createCommunity(formData: FormData) {
   await assertNotBanned(profile.user_id);
 
   const isPlatformEngineer = profile.role === "platform_engineer";
-  const isVerifiedLeader = profile.role === "church_leader";
 
   if (!canCreateCommunity(profile)) {
-    redirect("/communities/new?message=Only church leaders can create communities. You can still join communities or create a Bible study group.");
+    redirect("/communities/new?message=Selah Ember now uses one open community. You can post in the community feed or create a group.");
   }
 
   const admin = createAdminClient();
   const slug = await getAvailableSlug(name);
-  const isPublished = isPlatformEngineer || isVerifiedLeader;
+  const isPublished = isPlatformEngineer;
 
   const { data: community, error } = await admin
     .from("churches")
@@ -251,7 +250,7 @@ export async function createCommunity(formData: FormData) {
   revalidatePath("/communities");
   revalidatePath(`/c/${community.slug}`);
   revalidatePath("/leader");
-  redirect(isPublished ? "/communities" : `/leader/communities/${community.id}?message=Pending Verification - your community is saved as a draft.`);
+  redirect(isPublished ? "/communities" : "/community");
 }
 
 export async function getCurrentUserCommunities(): Promise<CommunityMembership[]> {
@@ -349,24 +348,15 @@ export async function getCommunityCreationAccess(): Promise<CommunityCreationAcc
   const profile = await getCanonicalCurrentProfile();
   const role = profile.role || "user";
 
-  if (role === "platform_engineer" || role === "church_leader") {
+  if (role === "platform_engineer") {
     return { role, canCreate: true, createsDraft: false, message: null };
-  }
-
-  if (role === "church_leader_pending") {
-    return {
-      role,
-      canCreate: true,
-      createsDraft: true,
-      message: "Pending Verification - your community is saved as a draft.",
-    };
   }
 
   return {
     role,
     canCreate: false,
     createsDraft: false,
-    message: "Only church leaders can create communities. You can still join communities or create a Bible study group.",
+    message: "Selah Ember now uses one open community. You can post in the community feed or create a Bible study group.",
   };
 }
 

@@ -17,12 +17,13 @@ export default async function ProtectedLayout({
   const pathname = headerStore.get("x-selah-pathname") || "";
   const isPublicGroupDetail = /^\/groups\/[^/]+$/.test(pathname);
   const isPublicEventDetail = /^\/events\/[^/]+$/.test(pathname);
+  const isPublicCommunityFeed = pathname === "/community" || /^\/community\/posts\/[^/]+$/.test(pathname);
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && !isPublicGroupDetail && !isPublicEventDetail) {
+  if (!user && !isPublicGroupDetail && !isPublicEventDetail && !isPublicCommunityFeed) {
     redirect("/signin");
   }
 
@@ -35,6 +36,9 @@ export default async function ProtectedLayout({
             <nav className="flex items-center gap-4 text-sm font-semibold text-[#d8bea3]">
               <Link href="/discover" className="transition hover:text-[#f0a35c]">
                 Discover
+              </Link>
+              <Link href="/community" className="transition hover:text-[#f0a35c]">
+                Community
               </Link>
               <Link href="/discover/groups" className="transition hover:text-[#f0a35c]">
                 Groups
@@ -94,14 +98,8 @@ export default async function ProtectedLayout({
               <Link href="/profile" className="transition hover:text-[#f0a35c]">
                 Profile
               </Link>
-              <Link href="/leader" className="transition hover:text-[#f0a35c]">
-                Leader Dashboard
-              </Link>
-              <Link href="/discover" className="transition hover:text-[#f0a35c]">
-                Discover
-              </Link>
-              <Link href="/communities" className="transition hover:text-[#f0a35c]">
-                Communities
+              <Link href="/community" className="transition hover:text-[#f0a35c]">
+                Community
               </Link>
               <Link href="/prayer" className="transition hover:text-[#f0a35c]">
                 Prayer

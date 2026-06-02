@@ -96,7 +96,7 @@ export async function getEventCommunityOptions(): Promise<EventCommunityOption[]
   const profile = await getCurrentProfile();
   await assertNotBanned(profile.user_id);
 
-  if (profile.role !== "church_leader" && profile.role !== "platform_engineer") {
+  if (profile.role !== "platform_engineer") {
     return [];
   }
 
@@ -139,12 +139,12 @@ export async function getEventCommunityOptions(): Promise<EventCommunityOption[]
 
 export async function getEventCreationAccess(): Promise<EventCreationAccess> {
   const profile = await getCurrentProfile();
-  const canCreate = profile.role === "church_leader" || profile.role === "platform_engineer";
+  const canCreate = profile.role === "platform_engineer";
 
   return {
     role: profile.role || "user",
     canCreate,
-    message: canCreate ? null : "Only verified church leaders can create official community events.",
+    message: canCreate ? null : "Only platform engineers can create official events right now.",
   };
 }
 
@@ -188,8 +188,8 @@ export async function createEvent(formData: FormData) {
   const supportsCommunityId = await hasColumn("events", "community_id");
   const communityId = nullableFormString(formData, "community_id");
 
-  if (profile.role !== "church_leader" && profile.role !== "platform_engineer") {
-    redirect("/events/new?message=Only verified church leaders can create official community events.");
+  if (profile.role !== "platform_engineer") {
+    redirect("/events/new?message=Only platform engineers can create official events right now.");
   }
 
   if (!communityId) {

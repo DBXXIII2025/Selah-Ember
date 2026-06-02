@@ -317,7 +317,7 @@ export async function createGivingCampaign(formData: FormData) {
   const { user, community } = await getCommunityForManager(communityId);
 
   if (!community) {
-    redirect("/leader?message=Only verified community leaders can manage giving campaigns.");
+    redirect("/leader?message=Only platform engineers can manage legacy giving campaigns right now.");
   }
 
   const admin = createAdminClient();
@@ -359,7 +359,7 @@ export async function updateGivingCampaign(formData: FormData) {
   const { community } = await getCommunityForManager(communityId);
 
   if (!community) {
-    redirect("/leader?message=Only verified community leaders can manage giving campaigns.");
+    redirect("/leader?message=Only platform engineers can manage legacy giving campaigns right now.");
   }
 
   const admin = createAdminClient();
@@ -405,7 +405,7 @@ export async function deactivateGivingCampaign(formData: FormData) {
   if (communityId) {
     const { community } = await getCommunityForManager(communityId);
     if (!community) {
-      redirect("/leader?message=Only verified community leaders can manage giving campaigns.");
+      redirect("/leader?message=Only platform engineers can manage legacy giving campaigns right now.");
     }
     slug = community.slug;
   } else {

@@ -5,6 +5,7 @@ type CommunityPostFormProps = {
   communityId: string;
   returnTo: string;
   submitLabel: string;
+  showPublishToggle?: boolean;
   post?: {
     id: string;
     title: string | null;
@@ -24,6 +25,7 @@ export function CommunityPostForm({
   communityId,
   returnTo,
   submitLabel,
+  showPublishToggle = true,
   post = null,
 }: Readonly<CommunityPostFormProps>) {
   return (
@@ -66,10 +68,12 @@ export function CommunityPostForm({
         {formatBytes(MEDIA_LIMITS.betaVideoBytes)}.
       </p>
 
-      <label className="flex items-center gap-3 text-sm font-medium text-[#3b312b]">
-        <input name="is_published" type="checkbox" defaultChecked={post?.is_published ?? true} className="h-4 w-4" />
-        Publish
-      </label>
+      {showPublishToggle ? (
+        <label className="flex items-center gap-3 text-sm font-medium text-[#3b312b]">
+          <input name="is_published" type="checkbox" defaultChecked={post?.is_published ?? true} className="h-4 w-4" />
+          Publish
+        </label>
+      ) : null}
 
       {post?.file_name ? <p className="text-sm text-[#67564c]">Current file: {post.file_name}</p> : null}
 

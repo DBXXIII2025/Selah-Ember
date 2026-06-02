@@ -13,6 +13,7 @@ import {
   updatePlatformSettings,
 } from "@/app/actions/platform";
 import { deleteOwnReply, deleteOwnThread } from "@/app/actions/discussions";
+import { deleteOpenCommunityComment, deleteOpenCommunityPost } from "@/app/actions/community-posts";
 import { deactivateGivingCampaign, getPlatformGivingData } from "@/app/actions/giving";
 import { deleteMediaItem } from "@/app/actions/media";
 import { formatCents } from "@/lib/giving/format";
@@ -295,12 +296,12 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
             </Link>
           </Panel>
 
-          <Panel title="Leader verification">
+          <Panel title="Open community model">
             <p className="mb-5 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-              Review applications, then approve verified church leaders for official communities, events, media, and updates.
+              Pastor verification has been retired. Normal users can post, pray, create groups, message, and join group discussions.
             </p>
-            <Link href="/platform/leader-applications" className={buttonClassName}>
-              Open leader applications
+            <Link href="/community" className={buttonClassName}>
+              Open community feed
             </Link>
           </Panel>
 
@@ -333,10 +334,9 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                     {user.email || "No email"} · current role: {user.role}
                   </p>
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                    <select name="role" defaultValue={user.role === "platform_engineer" ? "user" : user.role} disabled={user.role === "platform_engineer"} className={inputClassName}>
+                    <select name="role" defaultValue={user.role === "platform_engineer" ? "platform_engineer" : "user"} disabled={user.role === "platform_engineer"} className={inputClassName}>
                       <option value="user">User</option>
-                      <option value="church_leader_pending">Church leader pending</option>
-                      <option value="church_leader">Church leader</option>
+                      <option value="platform_engineer">Platform engineer</option>
                     </select>
                     <button type="submit" disabled={user.role === "platform_engineer"} className={buttonClassName}>
                       Update role
@@ -406,6 +406,68 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                   </div>
                 ))
               )}
+            </div>
+          </Panel>
+
+          <Panel title="Community feed moderation">
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold">Recent posts</h3>
+                <div className="mt-3 space-y-3">
+                  {data.community_posts.length === 0 ? (
+                    <p className="text-sm text-[#67564c]">No community posts yet.</p>
+                  ) : (
+                    data.community_posts.map((post) => (
+                      <div key={post.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
+                        <p className="font-semibold">{post.title || "Untitled post"}</p>
+                        <p className="mt-1 text-[#67564c]">
+                          {post.author_name || post.author_id} - {new Date(post.created_at).toLocaleString()}
+                          {post.deleted_at ? " - deleted" : ""}
+                        </p>
+                        {post.body ? <p className="mt-2 line-clamp-3 text-[#67564c]">{post.body}</p> : null}
+                        {!post.deleted_at ? (
+                          <form action={deleteOpenCommunityPost} className="mt-3 border-t border-[#ead6c5] pt-3">
+                            <input type="hidden" name="post_id" value={post.id} />
+                            <input type="hidden" name="return_to" value="/platform" />
+                            <button type="submit" className={deleteButtonClassName}>
+                              Delete post
+                            </button>
+                          </form>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold">Recent comments</h3>
+                <div className="mt-3 space-y-3">
+                  {data.community_post_comments.length === 0 ? (
+                    <p className="text-sm text-[#67564c]">No community comments yet.</p>
+                  ) : (
+                    data.community_post_comments.map((comment) => (
+                      <div key={comment.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
+                        <p className="font-semibold">{comment.author_name || comment.author_id}</p>
+                        <p className="mt-1 text-[#67564c]">
+                          Post {comment.post_id} - {new Date(comment.created_at).toLocaleString()}
+                          {comment.deleted_at ? " - deleted" : ""}
+                        </p>
+                        <p className="mt-2 line-clamp-3 text-[#67564c]">{comment.body}</p>
+                        {!comment.deleted_at ? (
+                          <form action={deleteOpenCommunityComment} className="mt-3 border-t border-[#ead6c5] pt-3">
+                            <input type="hidden" name="comment_id" value={comment.id} />
+                            <input type="hidden" name="return_to" value="/platform" />
+                            <button type="submit" className={deleteButtonClassName}>
+                              Delete comment
+                            </button>
+                          </form>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </Panel>
 

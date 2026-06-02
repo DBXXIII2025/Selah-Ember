@@ -33,7 +33,7 @@ export default async function NewEventPage({ searchParams }: NewEventPageProps) 
         {access.canCreate ? (
           <>
             <p className="mt-4 max-w-2xl leading-7 text-[#67564c]">
-              Official community events can be created by verified church leaders for communities they own.
+              Official community events are managed by platform engineers while the open community model is simplified.
             </p>
             <div className="mt-10">
               <EventForm communities={communities} groups={groups} message={params.message} />
@@ -41,10 +41,10 @@ export default async function NewEventPage({ searchParams }: NewEventPageProps) 
           </>
         ) : (
           <div className="mt-10 rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
-            <h2 className="text-2xl font-semibold">Leader verification required</h2>
+            <h2 className="text-2xl font-semibold">Official event creation is limited</h2>
             <p className="mt-3 leading-7 text-[#67564c]">{params.message || access.message}</p>
-            <Link href="/leader/apply" className="mt-6 inline-flex rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
-              Apply as leader
+            <Link href="/events" className="mt-6 inline-flex rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
+              Back to events
             </Link>
           </div>
         )}

@@ -100,6 +100,24 @@ export type PlatformDashboardData = {
     deleted_at: string | null;
     created_at: string;
   }>;
+  community_posts: Array<{
+    id: string;
+    title: string | null;
+    body: string | null;
+    author_id: string;
+    author_name: string | null;
+    created_at: string;
+    deleted_at: string | null;
+  }>;
+  community_post_comments: Array<{
+    id: string;
+    post_id: string;
+    body: string;
+    author_id: string;
+    author_name: string | null;
+    created_at: string;
+    deleted_at: string | null;
+  }>;
 };
 
 export type PlatformMessageUser = PlatformProfileSummary & {
@@ -341,6 +359,8 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     reportsResult,
     discussionReportsResult,
     mediaResult,
+    communityPostsResult,
+    communityCommentsResult,
     emailMap,
   ] = await Promise.all([
     admin
@@ -401,6 +421,16 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
       .select("id,community_id,title,media_type,content_kind,is_published,deleted_at,created_at, churches:community_id(name,slug)")
       .order("created_at", { ascending: false })
       .limit(10),
+    admin
+      .from("community_posts")
+      .select("id,title,body,author_id,created_at,deleted_at")
+      .order("created_at", { ascending: false })
+      .limit(10),
+    admin
+      .from("community_post_comments")
+      .select("id,post_id,body,author_id,created_at,deleted_at")
+      .order("created_at", { ascending: false })
+      .limit(10),
     getUserEmailMap(),
   ]);
 
@@ -417,10 +447,16 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     reportsResult,
     discussionReportsResult,
     mediaResult,
+    communityPostsResult,
+    communityCommentsResult,
   ]) {
     if (result.error) {
       if (
-        (result === reportsResult || result === discussionReportsResult || result === mediaResult) &&
+        (result === reportsResult ||
+          result === discussionReportsResult ||
+          result === mediaResult ||
+          result === communityPostsResult ||
+          result === communityCommentsResult) &&
         result.error.code === "42P01"
       ) {
         continue;
@@ -484,6 +520,28 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
         created_at: String(row.created_at),
       };
     }),
+    community_posts: ((communityPostsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => {
+      return {
+        id: String(row.id),
+        title: typeof row.title === "string" ? row.title : null,
+        body: typeof row.body === "string" ? row.body : null,
+        author_id: String(row.author_id),
+        author_name: null,
+        created_at: String(row.created_at),
+        deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
+      };
+    }),
+    community_post_comments: ((communityCommentsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => {
+      return {
+        id: String(row.id),
+        post_id: String(row.post_id),
+        body: String(row.body),
+        author_id: String(row.author_id),
+        author_name: null,
+        created_at: String(row.created_at),
+        deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
+      };
+    }),
   };
 }
 
@@ -527,7 +585,7 @@ export async function updatePlatformUserRole(formData: FormData) {
   const profileId = getFormString(formData, "profile_id");
   const nextRole = getFormString(formData, "role");
 
-  if (!profileId || !["user", "church_leader_pending", "church_leader"].includes(nextRole)) {
+  if (!profileId || !["user", "platform_engineer"].includes(nextRole)) {
     redirect("/platform?message=Choose a valid user role.");
   }
 
@@ -550,8 +608,8 @@ export async function updatePlatformUserRole(formData: FormData) {
     redirect("/platform?message=You cannot demote yourself.");
   }
 
-  if (target.role === "platform_engineer") {
-    redirect("/platform?message=Platform engineer roles must be managed directly.");
+  if (target.role === "platform_engineer" && nextRole !== "platform_engineer") {
+    redirect("/platform?message=You cannot demote a platform engineer from this panel.");
   }
 
   const { error } = await admin.from("profiles").update({ role: nextRole }).eq("id", profileId);

@@ -20,7 +20,7 @@ const dashboardCards = [
   },
   {
     title: "Community",
-    body: "Shape a peaceful member home before deeper features arrive.",
+    body: "Post encouragement, updates, safe links, images, and comments in the open community feed.",
     icon: HeartHandshake,
   },
 ];
@@ -39,7 +39,7 @@ export default async function DashboardPage() {
         </p>
         <h1 className="mt-3 text-4xl font-semibold">Welcome, {user?.email}</h1>
         <p className="mt-4 max-w-2xl leading-7 text-[#67564c]">
-          This is the first protected Selah Ember area. Auth is wired, profiles are created, and the next phase can build real community workflows here.
+          Join the open Selah Ember community, pray with others, create Bible study groups, message friends, and stay connected.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
@@ -49,10 +49,10 @@ export default async function DashboardPage() {
             Edit profile
           </Link>
           <Link
-            href="/communities"
+            href="/community"
             className="inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 bg-white/70 px-5 py-3 text-sm font-semibold text-[#2f2722] transition hover:bg-white"
           >
-            View communities
+            Open community
           </Link>
           <Link
             href="/prayer"

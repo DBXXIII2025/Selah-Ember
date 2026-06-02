@@ -1,4 +1,4 @@
-import { MapPin, Plus, UsersRound } from "lucide-react";
+import { MapPin, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { deleteOwnedCommunity, getCurrentUserCommunities } from "@/app/actions/communities";
 
@@ -19,15 +19,14 @@ export default async function CommunitiesPage() {
             </p>
             <h1 className="mt-3 text-4xl font-semibold">Your fellowship spaces</h1>
             <p className="mt-4 max-w-2xl leading-7 text-[#67564c]">
-              Create and gather the church communities you own or have joined.
+              Selah Ember now centers one open community feed. Historical community memberships are shown below when present.
             </p>
           </div>
           <Link
-            href="/communities/new"
+            href="/community"
             className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
           >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            New community
+            Open community
           </Link>
         </div>
 
@@ -36,15 +35,15 @@ export default async function CommunitiesPage() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#ffe2cb] text-[#b94f22]">
               <UsersRound aria-hidden="true" className="h-5 w-5" />
             </div>
-            <h2 className="mt-5 text-2xl font-semibold">No communities yet</h2>
+            <h2 className="mt-5 text-2xl font-semibold">Use the open community</h2>
             <p className="mx-auto mt-3 max-w-xl leading-7 text-[#67564c]">
-              Create your first Selah Ember community for a church, small group, or fellowship circle.
+              You no longer need to create a church community. Post in the main feed or create a Bible study group.
             </p>
             <Link
-              href="/communities/new"
+              href="/community"
               className="mt-6 inline-flex items-center justify-center rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#b94f22]"
             >
-              Create community
+              Open community
             </Link>
           </div>
         ) : (
