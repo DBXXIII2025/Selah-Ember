@@ -405,10 +405,11 @@ async function getGroupAccess(groupId: string): Promise<GroupAccess> {
     });
   }
 
-  const membershipCheckPassed = groupAccessAllowed === true;
   const directMembershipCount = typeof count === "number" ? count : Array.isArray(membershipRows) ? membershipRows.length : 0;
-  const membershipResultCount = membershipCheckPassed ? Math.max(1, directMembershipCount) : directMembershipCount;
   const membershipRole = Array.isArray(membershipRows) && membershipRows.length > 0 ? (membershipRows[0] as Record<string, unknown>).role : null;
+  const directMembershipPassed = directMembershipCount > 0;
+  const membershipCheckPassed = groupAccessAllowed === true || directMembershipPassed || ownerCheckPassed;
+  const membershipResultCount = membershipCheckPassed ? Math.max(1, directMembershipCount) : directMembershipCount;
 
   return {
     state: membershipCheckPassed ? "allowed" : "non_member",
