@@ -441,6 +441,23 @@ export async function joinGroup(formData: FormData) {
     redirect(`/groups/${groupId}?message=${encodeURIComponent(error.message)}`);
   }
 
+  const { data: confirmedMembership, error: confirmedMembershipError } = await admin
+    .from("group_memberships")
+    .select("id,group_id,profile_id,role")
+    .eq("group_id", groupId)
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+
+  if (confirmedMembershipError) {
+    redirect(`/groups/${groupId}?message=${encodeURIComponent(confirmedMembershipError.message)}`);
+  }
+
+  if (!confirmedMembership) {
+    redirect(
+      `/groups/${groupId}?message=${encodeURIComponent("We could not confirm your group membership. Please try joining again.")}`,
+    );
+  }
+
   if (!existingMembership) {
     const { data: group, error: groupError } = await admin
       .from("study_groups")
