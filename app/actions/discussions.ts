@@ -406,13 +406,14 @@ async function getGroupAccess(groupId: string): Promise<GroupAccess> {
   }
 
   const membershipCheckPassed = groupAccessAllowed === true;
-  const membershipResultCount = typeof count === "number" ? count : Array.isArray(membershipRows) ? membershipRows.length : 0;
+  const directMembershipCount = typeof count === "number" ? count : Array.isArray(membershipRows) ? membershipRows.length : 0;
+  const membershipResultCount = membershipCheckPassed ? Math.max(1, directMembershipCount) : directMembershipCount;
   const membershipRole = Array.isArray(membershipRows) && membershipRows.length > 0 ? (membershipRows[0] as Record<string, unknown>).role : null;
 
   return {
-    state: ownerCheckPassed || membershipCheckPassed ? "allowed" : "non_member",
+    state: membershipCheckPassed ? "allowed" : "non_member",
     isSignedIn: true,
-    isMember: ownerCheckPassed || membershipCheckPassed,
+    isMember: membershipCheckPassed,
     role: ownerCheckPassed ? "owner" : typeof membershipRole === "string" ? membershipRole : membershipResultCount > 0 ? "member" : null,
     ownerCheckPassed,
     membershipCheckPassed,
