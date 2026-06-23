@@ -31,12 +31,15 @@ const reactionLabels = {
 function Media({ post }: Readonly<{ post: CommunityPost }>) {
   if (post.media_kind === "link" && post.media_url) {
     return (
-      <SafeLink
-        href={post.media_url}
-        className="inline-flex break-all rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-white"
-      >
-        Open link
-      </SafeLink>
+      <div className="rounded-xl border border-[#ead6c5] bg-[#fffaf4] p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8a7467]">Link</p>
+        <SafeLink
+          href={post.media_url}
+          className="mt-2 block break-all text-sm font-semibold text-[#8a3f1e] transition hover:text-[#b94f22]"
+        >
+          {post.media_url}
+        </SafeLink>
+      </div>
     );
   }
 
@@ -63,7 +66,7 @@ export function CommunityPostDisplay({ post, href, editHref, compact = false }: 
   const title = post.title || "Community post";
 
   return (
-    <article className="rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm">
+    <article className="rounded-2xl border border-[#ead6c5] bg-white/80 p-5 shadow-sm">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div className="flex gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#ffe2cb] text-sm font-semibold text-[#8a3f1e]">

@@ -14,9 +14,7 @@ import {
 } from "@/app/actions/platform";
 import { deleteOwnReply, deleteOwnThread } from "@/app/actions/discussions";
 import { deleteOpenCommunityComment, deleteOpenCommunityPost } from "@/app/actions/community-posts";
-import { deactivateGivingCampaign, getPlatformGivingData } from "@/app/actions/giving";
 import { deleteMediaItem } from "@/app/actions/media";
-import { formatCents } from "@/lib/giving/format";
 import Link from "next/link";
 
 type PlatformPageProps = {
@@ -71,10 +69,7 @@ function Panel({ title, children }: Readonly<{ title: string; children: React.Re
 
 export default async function PlatformPage({ searchParams }: PlatformPageProps) {
   const params = await searchParams;
-  const [data, giving] = await Promise.all([
-    getPlatformDashboardData(params.search || ""),
-    getPlatformGivingData(),
-  ]);
+  const data = await getPlatformDashboardData(params.search || "");
 
   return (
     <section className="px-6 py-12 sm:px-10 lg:px-16">
@@ -544,51 +539,6 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                         </button>
                       </div>
                     </form>
-                  </div>
-                ))
-              )}
-            </div>
-          </Panel>
-
-          <Panel title="Giving moderation">
-            <p className="mb-5 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-              Payments are not live yet. These are giving campaigns and non-payment intents only.
-            </p>
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Recent campaigns</h3>
-              {giving.campaigns.length === 0 ? (
-                <p className="text-sm text-[#67564c]">No giving campaigns yet.</p>
-              ) : (
-                giving.campaigns.map((campaign) => (
-                  <div key={campaign.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
-                    <p className="font-semibold">{campaign.title}</p>
-                    <p className="mt-1 text-[#67564c]">
-                      {campaign.community?.name || "Unknown community"} · {campaign.is_active ? "Active" : "Inactive"} · {formatCents(campaign.total_completed_cents, campaign.currency)}
-                    </p>
-                    <form action={deactivateGivingCampaign} className="mt-4 border-t border-[#ead6c5] pt-4">
-                      <input type="hidden" name="campaign_id" value={campaign.id} />
-                      <input type="hidden" name="return_to" value="/platform" />
-                      <div className="flex flex-col gap-3 sm:flex-row">
-                        <input name="confirmation" type="text" placeholder="DELETE" className={inputClassName} />
-                        <button type="submit" className={deleteButtonClassName}>
-                          Deactivate
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                ))
-              )}
-              <h3 className="pt-4 text-lg font-semibold">Recent giving intents</h3>
-              {giving.intents.length === 0 ? (
-                <p className="text-sm text-[#67564c]">No giving intents yet.</p>
-              ) : (
-                giving.intents.map((intent) => (
-                  <div key={intent.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
-                    <p className="font-semibold">{formatCents(intent.amount_cents, intent.currency)} · {intent.status}</p>
-                    <p className="mt-1 text-[#67564c]">
-                      {intent.community?.name || "Unknown community"} · {intent.campaign_title || "General giving"}
-                    </p>
-                    {intent.giver_email ? <p className="mt-1 break-words text-[#67564c]">{intent.giver_email}</p> : null}
                   </div>
                 ))
               )}

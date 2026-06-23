@@ -95,9 +95,6 @@ export default async function ProtectedLayout({
               <Link href="/dashboard" className="transition hover:text-[#f0a35c]">
                 Dashboard
               </Link>
-              <Link href="/profile" className="transition hover:text-[#f0a35c]">
-                Profile
-              </Link>
               <Link href="/community" className="transition hover:text-[#f0a35c]">
                 Community
               </Link>
@@ -117,6 +114,9 @@ export default async function ProtectedLayout({
               <Link href="/notifications" className="transition hover:text-[#f0a35c]">
                 Notifications
                 {unreadNotificationCount > 0 ? ` (${unreadNotificationCount})` : ""}
+              </Link>
+              <Link href="/profile" className="transition hover:text-[#f0a35c]">
+                Profile
               </Link>
               {isPlatformEngineer ? (
                 <Link href="/platform" className="transition hover:text-[#f0a35c]">

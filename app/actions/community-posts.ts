@@ -54,6 +54,13 @@ export type CommunityPostComment = {
   can_delete: boolean;
 };
 
+export type CommunityMemberPreview = {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+  created_at: string;
+};
+
 type CommunityRecord = {
   id: string;
   name: string;
@@ -443,6 +450,27 @@ export async function getOpenCommunityFeed() {
     ),
   );
   return { community, posts, isSignedIn: Boolean(auth) };
+}
+
+export async function getRecentCommunityMembers(limit = 5): Promise<CommunityMemberPreview[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id,display_name,avatar_url,created_at")
+    .not("user_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data || []) as unknown as Record<string, unknown>[]).map((profile) => ({
+    id: String(profile.id),
+    display_name: typeof profile.display_name === "string" ? profile.display_name : "Member",
+    avatar_url: typeof profile.avatar_url === "string" ? profile.avatar_url : null,
+    created_at: String(profile.created_at),
+  }));
 }
 
 export async function getOpenCommunityPost(postId: string) {

@@ -13,6 +13,7 @@ import { assertNotBanned, getActiveBanForUser } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePlatformEngineer } from "@/lib/platform/auth";
 import { isSafeHttpUrl } from "@/lib/media/validation";
+import { getDisplayProfiles } from "@/lib/profiles/display";
 
 type PlatformProfileSummary = {
   id: string;
@@ -476,6 +477,11 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     created_at: String(profile.created_at),
     email: emailMap.get(String(profile.user_id)) || null,
   }));
+  const communityAuthorIds = [
+    ...((communityPostsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => String(row.author_id)),
+    ...((communityCommentsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => String(row.author_id)),
+  ];
+  const communityAuthors = await getDisplayProfiles(communityAuthorIds);
 
   return {
     settings: settingsResult.data || {
@@ -521,23 +527,25 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
       };
     }),
     community_posts: ((communityPostsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => {
+      const authorId = String(row.author_id);
       return {
         id: String(row.id),
         title: typeof row.title === "string" ? row.title : null,
         body: typeof row.body === "string" ? row.body : null,
-        author_id: String(row.author_id),
-        author_name: null,
+        author_id: authorId,
+        author_name: communityAuthors.get(authorId)?.display_name || "Member",
         created_at: String(row.created_at),
         deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
       };
     }),
     community_post_comments: ((communityCommentsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => {
+      const authorId = String(row.author_id);
       return {
         id: String(row.id),
         post_id: String(row.post_id),
         body: String(row.body),
-        author_id: String(row.author_id),
-        author_name: null,
+        author_id: authorId,
+        author_name: communityAuthors.get(authorId)?.display_name || "Member",
         created_at: String(row.created_at),
         deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
       };
