@@ -4,6 +4,7 @@ import { getVisibleEvents } from "@/app/actions/events";
 import { getDiscoverStudyGroups } from "@/app/actions/groups";
 import { getVisiblePrayerRequests } from "@/app/actions/prayer";
 import { CommunityPostDisplay } from "@/components/community/community-post-display";
+import { ActionButton, ContentCard, EmptyState, PageContainer, PageHeader, SectionHeader } from "@/components/ui/app-ui";
 
 type CommunityPageProps = {
   searchParams: Promise<{
@@ -22,17 +23,17 @@ function Widget({ title, href, hrefLabel, children }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <section className="rounded-2xl border border-[#ead6c5] bg-white/80 p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        {href && hrefLabel ? (
+    <ContentCard as="section" className="bg-white/80 p-5">
+      <SectionHeader
+        title={title}
+        action={href && hrefLabel ? (
           <Link href={href} className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
             {hrefLabel}
           </Link>
         ) : null}
-      </div>
+      />
       <div className="mt-4 space-y-3">{children}</div>
-    </section>
+    </ContentCard>
   );
 }
 
@@ -49,26 +50,18 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
   const upcomingEvents = events.slice(0, 3);
 
   return (
-    <section className="px-6 py-10 sm:px-10 lg:px-16">
-      <div className="mx-auto max-w-7xl">
-        <div className="flex flex-col justify-between gap-5 border-b border-[#d9b99d] pb-8 lg:flex-row lg:items-end">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">Community</p>
-            <h1 className="mt-3 text-4xl font-semibold">Selah Ember Community</h1>
-            <p className="mt-3 max-w-2xl leading-7 text-[#67564c]">
-              A shared faith feed for encouragement, prayer follow-up, group discovery, events, safe links, images, and video.
-            </p>
-          </div>
-          {data.isSignedIn ? (
-            <Link href="/community/new" className="inline-flex justify-center rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
-              Create post
-            </Link>
-          ) : (
-            <Link href="/signin" className="inline-flex justify-center rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
-              Sign in to post
-            </Link>
-          )}
-        </div>
+    <PageContainer className="py-10">
+      <PageHeader
+        eyebrow="Community"
+        title="Selah Ember Community"
+        description="A shared faith feed for encouragement, prayer follow-up, group discovery, events, safe links, images, and video."
+        bordered
+        action={data.isSignedIn ? (
+          <ActionButton href="/community/new">Create post</ActionButton>
+        ) : (
+          <ActionButton href="/signin">Sign in to post</ActionButton>
+        )}
+      />
 
         {params.message ? (
           <div className="mt-6 rounded-xl border border-[#ead6c5] bg-white/80 p-4 text-sm text-[#67564c]">
@@ -79,28 +72,18 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <main className="space-y-5">
             {!data.community ? (
-              <div className="rounded-2xl border border-[#ead6c5] bg-white/80 p-6 shadow-sm">
+              <ContentCard as="div" className="bg-white/80">
                 <h2 className="text-2xl font-semibold">Community feed is not ready yet</h2>
                 <p className="mt-3 leading-7 text-[#67564c]">The default community migration needs to be applied.</p>
-              </div>
+              </ContentCard>
             ) : null}
 
             {data.posts.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[#d9b99d] bg-white/70 p-8 shadow-sm">
-                <h2 className="text-2xl font-semibold">Start the first conversation</h2>
-                <p className="mt-3 max-w-xl leading-7 text-[#67564c]">
-                  Share an encouragement, testimony, question, prayer follow-up, image, video, or safe link with the community.
-                </p>
-                {data.isSignedIn ? (
-                  <Link href="/community/new" className="mt-5 inline-flex rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
-                    Create post
-                  </Link>
-                ) : (
-                  <Link href="/signin" className="mt-5 inline-flex rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
-                    Sign in to post
-                  </Link>
-                )}
-              </div>
+              <EmptyState
+                title="Start the first conversation"
+                description="Share an encouragement, testimony, question, prayer follow-up, image, video, or safe link with the community."
+                action={data.isSignedIn ? <ActionButton href="/community/new">Create post</ActionButton> : <ActionButton href="/signin">Sign in to post</ActionButton>}
+              />
             ) : (
               data.posts.map((post) => (
                 <div key={post.id} className="space-y-3">
@@ -168,7 +151,6 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
             </Widget>
           </aside>
         </div>
-      </div>
-    </section>
+    </PageContainer>
   );
 }
