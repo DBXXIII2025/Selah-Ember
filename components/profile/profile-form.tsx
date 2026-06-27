@@ -3,14 +3,23 @@ import {
   uploadCurrentUserAvatar,
   type CurrentUserProfile,
 } from "@/app/actions/profile";
+import {
+  DetailHero,
+  FormActions,
+  FormField,
+  FormHint,
+  FormLabel,
+  FormNotice,
+  FormSection,
+  FormShell,
+  formControlClassName,
+} from "@/components/ui/app-ui";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type ProfileFormProps = {
   profile: CurrentUserProfile;
   message?: string;
 };
-
-const fieldClassName =
-  "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
 
 function EmptyValue({ children }: Readonly<{ children: React.ReactNode }>) {
   return <span className="text-[#9a8172]">{children}</span>;
@@ -19,7 +28,8 @@ function EmptyValue({ children }: Readonly<{ children: React.ReactNode }>) {
 export function ProfileForm({ profile, message }: ProfileFormProps) {
   return (
     <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-      <aside className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
+      <aside>
+        <DetailHero>
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
           Your profile
         </p>
@@ -58,9 +68,9 @@ export function ProfileForm({ profile, message }: ProfileFormProps) {
             </dd>
           </div>
           <div>
-            <dt className="font-semibold text-[#3b312b]">Church</dt>
+            <dt className="font-semibold text-[#3b312b]">Faith community</dt>
             <dd className="mt-1 leading-6 text-[#67564c]">
-              {profile.church_name || <EmptyValue>Add your church name.</EmptyValue>}
+              {profile.church_name || <EmptyValue>Add a faith community if you would like.</EmptyValue>}
             </dd>
           </div>
           <div>
@@ -70,96 +80,90 @@ export function ProfileForm({ profile, message }: ProfileFormProps) {
             </dd>
           </div>
         </dl>
+        </DetailHero>
       </aside>
 
-      <section className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
-        <h2 className="text-2xl font-semibold">Edit profile</h2>
-        <p className="mt-3 leading-7 text-[#67564c]">
-          Keep your fellowship presence simple and personal.
-        </p>
+      <FormShell className="max-w-none" title="Edit profile" description="Keep your community presence simple and personal.">
+        {message ? <FormNotice className="mb-6">{message}</FormNotice> : null}
 
-        {message ? (
-          <p className="mt-6 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-            {message}
-          </p>
-        ) : null}
-
-        <form action={uploadCurrentUserAvatar} className="mt-8 rounded-xl border border-[#ead6c5] bg-[#fffaf4] p-4">
-          <label className="block">
-            <span className="text-sm font-medium text-[#3b312b]">Profile photo</span>
+        <form action={uploadCurrentUserAvatar} className="rounded-xl border border-[#ead6c5] bg-[#fffaf4] p-4 sm:p-5">
+          <FormField>
+            <FormLabel htmlFor="profile-avatar">Profile photo</FormLabel>
             <input
+              id="profile-avatar"
               name="avatar"
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              className={`${fieldClassName} file:mr-4 file:rounded-full file:border-0 file:bg-[#cf5f2b] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white`}
+              className={`${formControlClassName} file:mr-4 file:rounded-full file:border-0 file:bg-[#cf5f2b] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white`}
             />
-          </label>
-          <p className="mt-2 text-sm text-[#67564c]">JPG, PNG, or WebP. Maximum 5MB.</p>
-          <button
-            type="submit"
-            className="mt-4 rounded-full border border-[#2f2722]/20 bg-white px-5 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]"
-          >
-            Upload photo
-          </button>
+            <FormHint>JPG, PNG, or WebP. Maximum 5MB.</FormHint>
+          </FormField>
+          <SubmitButton variant="secondary" pendingLabel="Uploading…" className="mt-4">Upload photo</SubmitButton>
         </form>
 
-        <form action={updateCurrentUserProfile} className="mt-8 space-y-5">
-          <label className="block">
-            <span className="text-sm font-medium text-[#3b312b]">Display name</span>
+        <form action={updateCurrentUserProfile} className="mt-8">
+          <FormSection title="Public information">
+          <FormField>
+            <FormLabel htmlFor="profile-display-name" required>Display name</FormLabel>
             <input
+              id="profile-display-name"
               required
               name="display_name"
               type="text"
               defaultValue={profile.display_name}
-              className={fieldClassName}
+              className={formControlClassName}
             />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-[#3b312b]">Username</span>
+          </FormField>
+          <FormField>
+            <FormLabel htmlFor="profile-username">Username</FormLabel>
             <input
+              id="profile-username"
               name="username"
               type="text"
               defaultValue={profile.username || ""}
-              className={fieldClassName}
+              className={formControlClassName}
             />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-[#3b312b]">Bio</span>
+            <FormHint>Shown with an @ prefix when present.</FormHint>
+          </FormField>
+          <FormField>
+            <FormLabel htmlFor="profile-bio">Bio</FormLabel>
             <textarea
+              id="profile-bio"
               name="bio"
               rows={4}
               defaultValue={profile.bio || ""}
-              className={fieldClassName}
+              className={formControlClassName}
             />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-[#3b312b]">Favorite verse</span>
+          </FormField>
+          <FormField>
+            <FormLabel htmlFor="profile-favorite-verse">Favorite verse</FormLabel>
             <input
+              id="profile-favorite-verse"
               name="favorite_verse"
               type="text"
               defaultValue={profile.favorite_verse || ""}
-              className={fieldClassName}
+              className={formControlClassName}
             />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-[#3b312b]">Church name</span>
+          </FormField>
+          <FormField>
+            <FormLabel htmlFor="profile-faith-community">Faith community</FormLabel>
             <input
+              id="profile-faith-community"
               name="church_name"
               type="text"
               defaultValue={profile.church_name || ""}
-              className={fieldClassName}
+              className={formControlClassName}
             />
-          </label>
+            <FormHint>Optional. This remains a personal profile detail and does not affect platform access.</FormHint>
+          </FormField>
+          </FormSection>
           <input type="hidden" name="avatar_url" value={profile.avatar_url || ""} />
 
-          <button
-            type="submit"
-            className="rounded-full bg-[#cf5f2b] px-6 py-3 font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
-          >
-            Save profile
-          </button>
+          <FormActions className="mt-7">
+            <SubmitButton pendingLabel="Saving profile…">Save profile</SubmitButton>
+          </FormActions>
         </form>
-      </section>
+      </FormShell>
     </div>
   );
 }

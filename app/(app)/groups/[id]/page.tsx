@@ -1,8 +1,8 @@
 import { CalendarDays, MapPin, MessageSquareText, UsersRound } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getMembershipStatus, getStudyGroupById } from "@/app/actions/groups";
 import { GroupMembershipForm } from "@/components/groups/group-membership-form";
+import { ActionButton, Badge, DetailHeader, DetailHero, FormNotice, PageContainer } from "@/components/ui/app-ui";
 
 type GroupDetailPageProps = {
   params: Promise<{
@@ -29,34 +29,23 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
   const status = await getMembershipStatus(group.id);
 
   return (
-    <section className="px-6 py-12 sm:px-10 lg:px-16">
+    <PageContainer>
       <div className="mx-auto max-w-5xl">
-        <Link
-          href={status.isSignedIn ? "/groups" : "/discover/groups"}
-          className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]"
+        <DetailHeader
+          backHref={status.isSignedIn ? "/groups" : "/discover/groups"}
+          backLabel="Back to groups"
+          eyebrow="Study group"
+          title={group.title}
+          description={<p className="whitespace-pre-line">{group.description || "A quiet group foundation ready for Scripture and fellowship."}</p>}
         >
-          Back to groups
-        </Link>
+          <div className="flex flex-wrap gap-3">
+            {status.isOwner ? <Badge>Group owner</Badge> : null}
+          </div>
+          {message ? <FormNotice className="mt-4 max-w-xl">{message}</FormNotice> : null}
+        </DetailHeader>
 
-        <article className="mt-8 rounded-2xl border border-[#ead6c5] bg-white/75 p-8 shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
-            Study group
-          </p>
-          <h1 className="mt-3 text-4xl font-semibold">{group.title}</h1>
-          {status.isOwner ? (
-            <p className="mt-4 inline-flex rounded-full bg-[#fff4e8] px-4 py-2 text-sm font-semibold text-[#8a3f1e]">
-              Group owner
-            </p>
-          ) : null}
-          <p className="mt-4 max-w-3xl whitespace-pre-line leading-7 text-[#67564c]">
-            {group.description || "A quiet group foundation ready for Scripture and fellowship."}
-          </p>
-          {message ? (
-            <p className="mt-6 max-w-xl rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-              {message}
-            </p>
-          ) : null}
-          <div className="mt-8">
+        <DetailHero className="mt-8">
+          <div>
             <GroupMembershipForm group={group} status={status} />
           </div>
 
@@ -69,12 +58,7 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
               Group-only threads for study notes, questions, and fellowship.
             </p>
             {status.isMember ? (
-              <Link
-                href={`/groups/${group.id}/discussions`}
-                className="mt-4 inline-flex rounded-full bg-[#cf5f2b] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
-              >
-                Open discussions
-              </Link>
+              <ActionButton href={`/groups/${group.id}/discussions`} size="sm" className="mt-4">Open discussions</ActionButton>
             ) : (
               <p className="mt-4 text-sm font-semibold text-[#8a3f1e]">
                 {status.isSignedIn ? "Join this group to view discussions." : "Sign in and join to view discussions."}
@@ -133,8 +117,8 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
               </div>
             ) : null}
           </div>
-        </article>
+        </DetailHero>
       </div>
-    </section>
+    </PageContainer>
   );
 }

@@ -1,61 +1,66 @@
 import { createPrayerRequest, type PrayerCommunityOption } from "@/app/actions/prayer";
+import {
+  ActionButton,
+  FormActions,
+  FormError,
+  FormField,
+  FormHint,
+  FormLabel,
+  FormSection,
+  FormShell,
+  formControlClassName,
+} from "@/components/ui/app-ui";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type PrayerRequestFormProps = {
   communities: PrayerCommunityOption[];
   message?: string;
 };
 
-const fieldClassName =
-  "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
-
 export function PrayerRequestForm({ communities, message }: PrayerRequestFormProps) {
   return (
-    <section className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
-      <h2 className="text-2xl font-semibold">Share a prayer request</h2>
-      <p className="mt-3 leading-7 text-[#67564c]">
-        Keep requests simple for now. Comments, counters, and notifications can come later.
-      </p>
+    <FormShell
+      title="Share a prayer request"
+      description="Give enough context for thoughtful prayer while sharing only what feels appropriate."
+    >
+      {message ? <FormError className="mb-6">{message}</FormError> : null}
 
-      {message ? (
-        <p className="mt-6 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-          {message}
-        </p>
-      ) : null}
-
-      <form action={createPrayerRequest} className="mt-8 space-y-5">
-        <label className="block">
-          <span className="text-sm font-medium text-[#3b312b]">Title</span>
-          <input required name="title" type="text" className={fieldClassName} />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-[#3b312b]">Content</span>
-          <textarea required name="content" rows={5} className={fieldClassName} />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-[#3b312b]">Community</span>
-          <select name="community_id" className={fieldClassName} defaultValue="">
+      <form action={createPrayerRequest}>
+        <FormSection>
+          <FormField>
+            <FormLabel htmlFor="prayer-title" required>Title</FormLabel>
+            <input id="prayer-title" required name="title" type="text" autoComplete="off" className={formControlClassName} />
+            <FormHint>Use a short, clear summary of the request.</FormHint>
+          </FormField>
+          <FormField>
+            <FormLabel htmlFor="prayer-content" required>Prayer request</FormLabel>
+            <textarea id="prayer-content" required name="content" rows={5} className={formControlClassName} />
+          </FormField>
+          <FormField>
+            <FormLabel htmlFor="prayer-community">Community</FormLabel>
+            <select id="prayer-community" name="community_id" className={formControlClassName} defaultValue="">
             <option value="">No community</option>
             {communities.map((community) => (
               <option key={community.id} value={community.id}>
                 {community.name}
               </option>
             ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-3 rounded-xl border border-[#ead6c5] bg-white px-4 py-3">
-          <input name="is_private" type="checkbox" className="h-4 w-4 accent-[#cf5f2b]" />
+            </select>
+            <FormHint>Optional. Leave blank to keep the request independent of a legacy community space.</FormHint>
+          </FormField>
+          <label className="flex items-start gap-3 rounded-xl border border-[#d9c1ad] bg-[#fffaf4] px-4 py-4">
+            <input name="is_private" type="checkbox" className="mt-0.5 h-4 w-4 accent-[#cf5f2b]" />
           <span>
-            <span className="block text-sm font-medium text-[#3b312b]">Private request</span>
+              <span className="block text-sm font-semibold text-[#3b312b]">Private request</span>
             <span className="block text-sm text-[#67564c]">Only you will see this request.</span>
           </span>
-        </label>
-        <button
-          type="submit"
-          className="rounded-full bg-[#cf5f2b] px-6 py-3 font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
-        >
-          Create request
-        </button>
+          </label>
+        </FormSection>
+        <FormActions className="mt-7">
+          <ActionButton href="/prayer" variant="secondary">Cancel</ActionButton>
+          <SubmitButton pendingLabel="Creating request…">Create request</SubmitButton>
+        </FormActions>
       </form>
-    </section>
+    </FormShell>
   );
 }

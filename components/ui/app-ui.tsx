@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { AlertCircle, ArrowLeft, Search, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 const actionStyles = {
@@ -13,6 +13,9 @@ const actionStyles = {
   danger:
     "border border-[#b42318]/30 bg-white text-[#b42318] hover:bg-[#fff1f0] focus-visible:ring-[#b42318]/20",
 };
+
+export const formControlClassName =
+  "mt-2 w-full rounded-xl border border-[#d9c1ad] bg-white px-4 py-3 text-[#211814] outline-none transition placeholder:text-[#9a8172] focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10 disabled:cursor-not-allowed disabled:bg-[#f3ece4] disabled:text-[#8a7467]";
 
 type ActionButtonProps = {
   children: ReactNode;
@@ -276,5 +279,208 @@ export function LoadingState({ rows = 3, className }: Readonly<{ rows?: number; 
       ))}
       <span className="sr-only">Loading…</span>
     </div>
+  );
+}
+
+export function FormShell({
+  title,
+  description,
+  children,
+  className,
+}: Readonly<{
+  title: ReactNode;
+  description?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}>) {
+  return (
+    <ContentCard as="section" className={cn("mx-auto w-full max-w-3xl p-5 sm:p-8", className)}>
+      <h2 className="text-xl font-semibold tracking-[-0.01em] sm:text-2xl">{title}</h2>
+      {description ? <div className="mt-3 max-w-2xl leading-7 text-[#67564c]">{description}</div> : null}
+      <div className="mt-7">{children}</div>
+    </ContentCard>
+  );
+}
+
+export function FormSection({
+  title,
+  description,
+  children,
+  className,
+}: Readonly<{
+  title?: ReactNode;
+  description?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}>) {
+  return (
+    <fieldset className={cn("space-y-5", className)}>
+      {title ? <legend className="text-lg font-semibold text-[#2f2722]">{title}</legend> : null}
+      {description ? <p className="-mt-3 text-sm leading-6 text-[#67564c]">{description}</p> : null}
+      {children}
+    </fieldset>
+  );
+}
+
+export function FormField({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
+  return <div className={cn("block", className)}>{children}</div>;
+}
+
+export function FormLabel({
+  children,
+  htmlFor,
+  required = false,
+  className,
+}: Readonly<{
+  children: ReactNode;
+  htmlFor?: string;
+  required?: boolean;
+  className?: string;
+}>) {
+  return (
+    <label htmlFor={htmlFor} className={cn("text-sm font-semibold text-[#3b312b]", className)}>
+      {children}
+      {required ? <span className="ml-1 text-[#b94f22]" aria-hidden="true">*</span> : null}
+      {required ? <span className="sr-only"> (required)</span> : null}
+    </label>
+  );
+}
+
+export function FormHint({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
+  return <p className={cn("mt-2 text-sm leading-6 text-[#67564c]", className)}>{children}</p>;
+}
+
+export function FormError({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
+  return (
+    <div
+      role="alert"
+      className={cn("flex items-start gap-3 rounded-xl border border-[#dc8d78] bg-[#fff1ed] px-4 py-3 text-sm leading-6 text-[#8f2f20]", className)}
+    >
+      <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+      <div>{children}</div>
+    </div>
+  );
+}
+
+export function FormNotice({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
+  return (
+    <div
+      role="status"
+      className={cn("rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm leading-6 text-[#8a3f1e]", className)}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function FormActions({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
+  return <div className={cn("flex flex-col-reverse gap-3 border-t border-[#ead6c5] pt-6 [&>*]:w-full sm:flex-row sm:items-center sm:justify-end sm:[&>*]:w-auto", className)}>{children}</div>;
+}
+
+export function DetailHeader({
+  backHref,
+  backLabel,
+  eyebrow,
+  title,
+  description,
+  action,
+  children,
+  className,
+}: Readonly<{
+  backHref: string;
+  backLabel: string;
+  eyebrow?: string;
+  title: ReactNode;
+  description?: ReactNode;
+  action?: ReactNode;
+  children?: ReactNode;
+  className?: string;
+}>) {
+  return (
+    <div className={className}>
+      <ActionButton href={backHref} variant="quiet" size="sm" className="-ml-4">
+        <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+        {backLabel}
+      </ActionButton>
+      <PageHeader eyebrow={eyebrow} title={title} description={description} action={action} className="mt-6" />
+      {children ? <div className="mt-5">{children}</div> : null}
+    </div>
+  );
+}
+
+export function DetailHero({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
+  return (
+    <ContentCard as="article" className={cn("p-5 sm:p-8", className)}>
+      {children}
+    </ContentCard>
+  );
+}
+
+export function DestructiveActionPanel({
+  title,
+  description,
+  children,
+  className,
+}: Readonly<{
+  title: ReactNode;
+  description: ReactNode;
+  children: ReactNode;
+  className?: string;
+}>) {
+  return (
+    <section className={cn("rounded-2xl border border-[#e5b2a7] bg-[#fff8f6] p-5", className)}>
+      <div className="flex items-start gap-3">
+        <TriangleAlert aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-[#b42318]" />
+        <div>
+          <h2 className="font-semibold text-[#7a271a]">{title}</h2>
+          <div className="mt-1 text-sm leading-6 text-[#67564c]">{description}</div>
+        </div>
+      </div>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+export function ConfirmActionPanel({
+  action,
+  hiddenFields,
+  title,
+  description,
+  actionLabel,
+  confirmationName = "confirmation",
+  confirmationValue = "DELETE",
+  className,
+}: Readonly<{
+  action: (formData: FormData) => void | Promise<void>;
+  hiddenFields?: Record<string, string>;
+  title: ReactNode;
+  description: ReactNode;
+  actionLabel: string;
+  confirmationName?: string;
+  confirmationValue?: string;
+  className?: string;
+}>) {
+  return (
+    <DestructiveActionPanel title={title} description={description} className={className}>
+      <form action={action} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        {Object.entries(hiddenFields || {}).map(([name, value]) => (
+          <input key={name} type="hidden" name={name} value={value} />
+        ))}
+        <FormField className="flex-1">
+          <FormLabel htmlFor={`${confirmationName}-confirm`}>Type {confirmationValue} to confirm</FormLabel>
+          <input
+            id={`${confirmationName}-confirm`}
+            name={confirmationName}
+            type="text"
+            placeholder={confirmationValue}
+            autoComplete="off"
+            className={formControlClassName}
+          />
+        </FormField>
+        <ActionButton type="submit" variant="danger" className="sm:mb-0.5">
+          {actionLabel}
+        </ActionButton>
+      </form>
+    </DestructiveActionPanel>
   );
 }

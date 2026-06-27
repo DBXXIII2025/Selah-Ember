@@ -1,62 +1,67 @@
 import { createStudyGroup, type GroupCommunityOption } from "@/app/actions/groups";
+import {
+  ActionButton,
+  FormActions,
+  FormError,
+  FormField,
+  FormHint,
+  FormLabel,
+  FormSection,
+  FormShell,
+  formControlClassName,
+} from "@/components/ui/app-ui";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type StudyGroupFormProps = {
   communities: GroupCommunityOption[];
   message?: string;
 };
 
-const fieldClassName =
-  "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
-
 export function StudyGroupForm({ communities, message }: StudyGroupFormProps) {
   return (
-    <section className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
-      <h2 className="text-2xl font-semibold">Create study group</h2>
-      <p className="mt-3 leading-7 text-[#67564c]">
-        Start with a simple gathering place. Chat, posts, and recurring calendar tools can come later.
-      </p>
+    <FormShell
+      title="Group details"
+      description="Create a clear, welcoming starting point for Scripture-centered conversation and fellowship."
+    >
+      {message ? <FormError className="mb-6">{message}</FormError> : null}
 
-      {message ? (
-        <p className="mt-6 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-          {message}
-        </p>
-      ) : null}
-
-      <form action={createStudyGroup} className="mt-8 space-y-5">
-        <label className="block">
-          <span className="text-sm font-medium text-[#3b312b]">Title</span>
-          <input required name="title" type="text" className={fieldClassName} />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-[#3b312b]">Description</span>
-          <textarea name="description" rows={4} className={fieldClassName} />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-[#3b312b]">Meeting time</span>
-          <input name="meeting_time" type="text" className={fieldClassName} />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-[#3b312b]">Location</span>
-          <input name="location" type="text" className={fieldClassName} />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-[#3b312b]">Community</span>
-          <select name="community_id" className={fieldClassName} defaultValue="">
-            <option value="">No community</option>
-            {communities.map((community) => (
-              <option key={community.id} value={community.id}>
-                {community.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="submit"
-          className="rounded-full bg-[#cf5f2b] px-6 py-3 font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
-        >
-          Create group
-        </button>
+      <form action={createStudyGroup}>
+        <FormSection>
+          <FormField>
+            <FormLabel htmlFor="group-title" required>Title</FormLabel>
+            <input id="group-title" required name="title" type="text" className={formControlClassName} />
+          </FormField>
+          <FormField>
+            <FormLabel htmlFor="group-description">Description</FormLabel>
+            <textarea id="group-description" name="description" rows={4} className={formControlClassName} />
+            <FormHint>Describe the study focus, intended rhythm, or who the group may serve.</FormHint>
+          </FormField>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <FormField>
+              <FormLabel htmlFor="group-meeting-time">Meeting time</FormLabel>
+              <input id="group-meeting-time" name="meeting_time" type="text" placeholder="Thursdays at 7:00 PM" className={formControlClassName} />
+            </FormField>
+            <FormField>
+              <FormLabel htmlFor="group-location">Location</FormLabel>
+              <input id="group-location" name="location" type="text" placeholder="Online or meeting place" className={formControlClassName} />
+            </FormField>
+          </div>
+          <FormField>
+            <FormLabel htmlFor="group-community">Community</FormLabel>
+            <select id="group-community" name="community_id" className={formControlClassName} defaultValue="">
+              <option value="">No community</option>
+              {communities.map((community) => (
+                <option key={community.id} value={community.id}>{community.name}</option>
+              ))}
+            </select>
+            <FormHint>Optional. Most groups can remain part of the open Selah Ember community.</FormHint>
+          </FormField>
+        </FormSection>
+        <FormActions className="mt-7">
+          <ActionButton href="/groups" variant="secondary">Cancel</ActionButton>
+          <SubmitButton pendingLabel="Creating group…">Create group</SubmitButton>
+        </FormActions>
       </form>
-    </section>
+    </FormShell>
   );
 }

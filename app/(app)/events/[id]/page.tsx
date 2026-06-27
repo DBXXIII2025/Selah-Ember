@@ -1,8 +1,8 @@
 import { CalendarDays, MapPin, UsersRound } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { deleteOwnedEvent, getEventById, getEventRsvpStatus } from "@/app/actions/events";
 import { EventRsvpControls } from "@/components/events/event-rsvp-controls";
+import { ConfirmActionPanel, DetailHeader, DetailHero, FormNotice, PageContainer } from "@/components/ui/app-ui";
 
 type EventDetailPageProps = {
   params: Promise<{
@@ -36,49 +36,22 @@ export default async function EventDetailPage({ params, searchParams }: EventDet
   const rsvpStatus = await getEventRsvpStatus(event.id);
 
   return (
-    <section className="px-6 py-12 sm:px-10 lg:px-16">
+    <PageContainer>
       <div className="mx-auto max-w-5xl">
-        <Link href="/events" className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
-          Back to events
-        </Link>
+        <DetailHeader
+          backHref="/events"
+          backLabel="Back to events"
+          eyebrow="Event"
+          title={event.title}
+          description={<p className="whitespace-pre-line">{event.description || "A simple gathering ready for fellowship."}</p>}
+        >
+          {message ? <FormNotice className="max-w-xl">{message}</FormNotice> : null}
+        </DetailHeader>
 
-        <article className="mt-8 rounded-2xl border border-[#ead6c5] bg-white/75 p-8 shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
-            Event
-          </p>
-          <h1 className="mt-3 text-4xl font-semibold">{event.title}</h1>
-          <p className="mt-4 max-w-3xl whitespace-pre-line leading-7 text-[#67564c]">
-            {event.description || "A simple gathering ready for fellowship."}
-          </p>
-          {message ? (
-            <p className="mt-6 max-w-xl rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-              {message}
-            </p>
-          ) : null}
-          <div className="mt-8">
+        <DetailHero className="mt-8">
+          <div>
             <EventRsvpControls event={event} status={rsvpStatus} />
           </div>
-
-          {event.is_owner ? (
-            <form action={deleteOwnedEvent} className="mt-6 border-t border-[#ead6c5] pt-6">
-              <input type="hidden" name="event_id" value={event.id} />
-              <p className="text-sm text-[#67564c]">Type DELETE to remove this event.</p>
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                <input
-                  name="confirmation"
-                  type="text"
-                  placeholder="DELETE"
-                  className="rounded-xl border border-[#ead6c5] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
-                />
-                <button
-                  type="submit"
-                  className="rounded-full border border-[#b42318]/30 bg-white px-5 py-3 text-sm font-semibold text-[#b42318] transition hover:bg-[#fff1f0]"
-                >
-                  Delete event
-                </button>
-              </div>
-            </form>
-          ) : null}
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl bg-[#fff4e8] p-5">
@@ -129,8 +102,18 @@ export default async function EventDetailPage({ params, searchParams }: EventDet
               </div>
             ) : null}
           </div>
-        </article>
+          {event.is_owner ? (
+            <ConfirmActionPanel
+              action={deleteOwnedEvent}
+              hiddenFields={{ event_id: event.id }}
+              title="Delete this event"
+              description="This removes the event and returns you to the events list. This action cannot be undone."
+              actionLabel="Delete event"
+              className="mt-8"
+            />
+          ) : null}
+        </DetailHero>
       </div>
-    </section>
+    </PageContainer>
   );
 }
