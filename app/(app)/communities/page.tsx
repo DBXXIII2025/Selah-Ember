@@ -1,6 +1,6 @@
 import { MapPin, UsersRound } from "lucide-react";
 import { deleteOwnedCommunity, getCurrentUserCommunities } from "@/app/actions/communities";
-import { ActionButton, ContentCard, EmptyState, PageContainer, PageHeader } from "@/components/ui/app-ui";
+import { ActionButton, ConfirmActionPanel, ContentCard, EmptyState, PageContainer, PageHeader } from "@/components/ui/app-ui";
 
 function formatMemberCount(count: number) {
   return `${count} ${count === 1 ? "member" : "members"}`;
@@ -58,19 +58,15 @@ export default async function CommunitiesPage() {
                   </p>
                   <ActionButton href={`/c/${community.slug}`} variant="secondary" size="sm" className="mt-6">View public page</ActionButton>
                   {role === "owner" ? (
-                    <form action={deleteOwnedCommunity} className="mt-4 border-t border-[#ead6c5] pt-4">
-                      <input type="hidden" name="community_id" value={community.id} />
-                      <p className="text-xs text-[#67564c]">Type DELETE to remove this community.</p>
-                      <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                        <input
-                          name="confirmation"
-                          type="text"
-                          placeholder="DELETE"
-                          className="rounded-xl border border-[#ead6c5] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
-                        />
-                        <ActionButton type="submit" variant="danger">Delete community</ActionButton>
-                      </div>
-                    </form>
+                    <ConfirmActionPanel
+                      action={deleteOwnedCommunity}
+                      hiddenFields={{ community_id: community.id }}
+                      title="Delete this legacy community"
+                      description="This permanently removes the community record and its attached management data."
+                      actionLabel="Delete community"
+                      confirmationId={`delete-community-${community.id}`}
+                      className="mt-5"
+                    />
                   ) : null}
                 </div>
               </ContentCard>

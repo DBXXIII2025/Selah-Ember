@@ -3,6 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCommunityManagementSummary } from "@/app/actions/leader";
 import { CommunityEditForm } from "@/components/leader/community-edit-form";
+import {
+  ActionButton,
+  Badge,
+  ContentCard,
+  DetailHeader,
+  FormNotice,
+  PageContainer,
+  SectionHeader,
+} from "@/components/ui/app-ui";
 
 type LeaderCommunityPageProps = {
   params: Promise<{
@@ -45,27 +54,16 @@ export default async function LeaderCommunityPage({
   const { community } = summary;
 
   return (
-    <section className="px-6 py-12 sm:px-10 lg:px-16">
-      <div className="mx-auto max-w-7xl">
-        <Link href="/leader" className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
-          Back
-        </Link>
-
-        <div className="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
-              Legacy community
-            </p>
-            <h1 className="mt-3 text-4xl font-semibold">{community.name}</h1>
-            {!community.is_published ? (
-              <p className="mt-4 inline-flex rounded-full bg-[#fff4e8] px-4 py-2 text-sm font-semibold text-[#8a3f1e]">
-                Draft community
-              </p>
-            ) : null}
-            <p className="mt-4 max-w-2xl leading-7 text-[#67564c]">
-              {community.description || "Keep this community's public details current."}
-            </p>
-            <div className="mt-5 space-y-2 text-sm text-[#67564c]">
+    <PageContainer>
+        <DetailHeader
+          backHref="/leader"
+          backLabel="Back"
+          eyebrow="Legacy community management"
+          title={community.name}
+          description={community.description || "Keep this existing community's public details current."}
+        >
+          {!community.is_published ? <Badge>Draft community</Badge> : null}
+          <div className="mt-4 space-y-2 text-sm text-[#67564c]">
               <p className="flex items-center gap-2">
                 <UsersRound aria-hidden="true" className="h-4 w-4 text-[#b94f22]" />
                 {formatMemberCount(community.member_count)}
@@ -76,49 +74,28 @@ export default async function LeaderCommunityPage({
                   {community.location}
                 </p>
               ) : null}
-            </div>
-            <Link
-              href={`/c/${community.slug}`}
-              className="mt-6 inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]"
-            >
-              View public page
-            </Link>
-            <Link
-              href={`/leader/communities/${community.id}/media`}
-              className="mt-3 inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]"
-            >
-              Manage media
-            </Link>
-            <Link
-              href={`/leader/communities/${community.id}/updates`}
-              className="mt-3 inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]"
-            >
-              Manage updates
-            </Link>
-            <Link
-              href={`/leader/communities/${community.id}/giving`}
-              className="mt-3 inline-flex items-center justify-center rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]"
-            >
-              Manage giving
-            </Link>
           </div>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <ActionButton href={`/c/${community.slug}`} variant="secondary" size="sm">View public page</ActionButton>
+            <ActionButton href={`/leader/communities/${community.id}/media`} variant="secondary" size="sm">Manage media</ActionButton>
+            <ActionButton href={`/leader/communities/${community.id}/updates`} variant="secondary" size="sm">Manage updates</ActionButton>
+            <ActionButton href={`/leader/communities/${community.id}/giving`} variant="secondary" size="sm">Manage giving</ActionButton>
+          </div>
+        </DetailHeader>
 
-          <section className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
-            <h2 className="text-2xl font-semibold">Public details</h2>
+          <ContentCard as="section" className="mt-8">
+            <SectionHeader title="Public details" description="Update the existing public community page information." />
             {message ? (
-              <p className="mt-5 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-                {message}
-              </p>
+              <FormNotice className="mt-5">{message}</FormNotice>
             ) : null}
             <div className="mt-6">
               <CommunityEditForm community={community} />
             </div>
-          </section>
-        </div>
+          </ContentCard>
 
         <div className="mt-10 grid gap-6 xl:grid-cols-2">
-          <section className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
-            <h2 className="text-2xl font-semibold">Membership</h2>
+          <ContentCard as="section">
+            <SectionHeader title="Membership" />
             <div className="mt-5 space-y-3">
               {summary.members.length === 0 ? (
                 <p className="text-[#67564c]">No membership rows found.</p>
@@ -133,10 +110,10 @@ export default async function LeaderCommunityPage({
                 ))
               )}
             </div>
-          </section>
+          </ContentCard>
 
-          <section className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
-            <h2 className="text-2xl font-semibold">Recent prayer</h2>
+          <ContentCard as="section">
+            <SectionHeader title="Recent prayer" />
             <div className="mt-5 space-y-3">
               {summary.prayer_requests.length === 0 ? (
                 <p className="text-[#67564c]">No community prayer requests yet.</p>
@@ -157,10 +134,10 @@ export default async function LeaderCommunityPage({
                 ))
               )}
             </div>
-          </section>
+          </ContentCard>
 
-          <section className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
-            <h2 className="text-2xl font-semibold">Study groups</h2>
+          <ContentCard as="section">
+            <SectionHeader title="Study groups" />
             <div className="mt-5 space-y-3">
               {summary.study_groups.length === 0 ? (
                 <p className="text-[#67564c]">No study groups attached yet.</p>
@@ -179,10 +156,10 @@ export default async function LeaderCommunityPage({
                 ))
               )}
             </div>
-          </section>
+          </ContentCard>
 
-          <section className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
-            <h2 className="text-2xl font-semibold">Events</h2>
+          <ContentCard as="section">
+            <SectionHeader title="Events" />
             <div className="mt-5 space-y-3">
               {summary.events.length === 0 ? (
                 <p className="text-[#67564c]">No events attached yet.</p>
@@ -204,9 +181,8 @@ export default async function LeaderCommunityPage({
                 ))
               )}
             </div>
-          </section>
+          </ContentCard>
         </div>
-      </div>
-    </section>
+    </PageContainer>
   );
 }

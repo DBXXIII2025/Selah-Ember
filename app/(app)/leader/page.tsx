@@ -1,23 +1,21 @@
-import Link from "next/link";
+import { ActionButton, ContentCard, PageContainer, PageHeader } from "@/components/ui/app-ui";
 
 export default function LeaderPage() {
   return (
-    <section className="px-6 py-12 sm:px-10 lg:px-16">
-      <div className="mx-auto max-w-3xl rounded-2xl border border-[#ead6c5] bg-white/75 p-8 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">Open community</p>
-        <h1 className="mt-4 text-3xl font-semibold">Leader verification has been retired.</h1>
-        <p className="mt-4 leading-7 text-[#67564c]">
-          Selah Ember now centers one open community feed plus user-created groups. Platform engineers still manage moderation and official content.
-        </p>
+    <PageContainer size="medium">
+      <PageHeader
+        eyebrow="Open community"
+        title="Community participation is open"
+        description="Selah Ember centers one open community feed plus user-created groups. Platform engineers manage moderation and official platform content."
+      />
+      <ContentCard as="section" className="mt-8 p-6 sm:p-8">
+        <h2 className="text-xl font-semibold">Choose where to contribute</h2>
+        <p className="mt-3 leading-7 text-[#67564c]">Share with the whole community or create a focused Bible study group.</p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <Link href="/community" className="inline-flex justify-center rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
-            Open community
-          </Link>
-          <Link href="/groups/new" className="inline-flex justify-center rounded-full border border-[#2f2722]/20 px-5 py-3 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]">
-            Create group
-          </Link>
+          <ActionButton href="/community">Open community</ActionButton>
+          <ActionButton href="/groups/new" variant="secondary">Create group</ActionButton>
         </div>
-      </div>
-    </section>
+      </ContentCard>
+    </PageContainer>
   );
 }

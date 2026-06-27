@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCommunityPostForLeader, updateCommunityPost } from "@/app/actions/community-posts";
 import { CommunityPostForm } from "@/components/community/community-post-form";
+import { DetailHeader, FormShell, PageContainer } from "@/components/ui/app-ui";
 
 type EditCommunityUpdatePageProps = {
   params: Promise<{ id: string; postId: string }>;
@@ -16,16 +16,9 @@ export default async function EditCommunityUpdatePage({ params }: EditCommunityU
   }
 
   return (
-    <section className="px-6 py-12 sm:px-10 lg:px-16">
-      <div className="mx-auto max-w-4xl">
-        <Link href={`/leader/communities/${id}/updates`} className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
-          Back to updates
-        </Link>
-        <h1 className="mt-3 text-4xl font-semibold">Edit community update</h1>
-        <p className="mt-3 max-w-2xl leading-7 text-[#67564c]">
-          Update this official community post.
-        </p>
-        <div className="mt-8 rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
+    <PageContainer size="medium">
+      <DetailHeader backHref={`/leader/communities/${id}/updates`} backLabel="Back to updates" eyebrow="Official content" title="Edit community update" description="Update this existing public post." />
+      <FormShell className="mt-8" title="Update details" description="Review the content and save only the intended changes.">
           <CommunityPostForm
             action={updateCommunityPost}
             communityId={id}
@@ -33,8 +26,7 @@ export default async function EditCommunityUpdatePage({ params }: EditCommunityU
             submitLabel="Save update"
             post={data.post}
           />
-        </div>
-      </div>
-    </section>
+      </FormShell>
+    </PageContainer>
   );
 }

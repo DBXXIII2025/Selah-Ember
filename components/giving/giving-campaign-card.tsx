@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { GivingCampaign } from "@/app/actions/giving";
 import { formatCents } from "@/lib/giving/format";
+import { ActionButton, Badge, ContentCard, FormNotice } from "@/components/ui/app-ui";
 
 type GivingCampaignCardProps = {
   campaign: GivingCampaign;
@@ -15,12 +16,12 @@ export function GivingCampaignCard({ campaign, href, editHref }: Readonly<Giving
       : null;
 
   return (
-    <article className="rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm">
+    <ContentCard>
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
+          <Badge tone={campaign.is_active && !campaign.deleted_at ? "success" : "neutral"}>
             {campaign.is_active && !campaign.deleted_at ? "Active" : "Inactive"}
-          </p>
+          </Badge>
           {href ? (
             <Link href={href} className="mt-3 block text-2xl font-semibold hover:text-[#b94f22]">
               {campaign.title}
@@ -30,9 +31,7 @@ export function GivingCampaignCard({ campaign, href, editHref }: Readonly<Giving
           )}
         </div>
         {editHref ? (
-          <Link href={editHref} className="rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]">
-            Edit
-          </Link>
+          <ActionButton href={editHref} variant="secondary" size="sm">Edit</ActionButton>
         ) : null}
       </div>
 
@@ -49,9 +48,7 @@ export function GivingCampaignCard({ campaign, href, editHref }: Readonly<Giving
         ) : null}
       </div>
 
-      <p className="mt-4 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-        Payments are not live yet.
-      </p>
-    </article>
+      <FormNotice className="mt-4">Payments are not live yet.</FormNotice>
+    </ContentCard>
   );
 }

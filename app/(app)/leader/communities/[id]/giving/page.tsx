@@ -1,8 +1,9 @@
-import Link from "next/link";
+import { HandCoins } from "lucide-react";
 import { notFound } from "next/navigation";
 import { deactivateGivingCampaign, getGivingForLeader } from "@/app/actions/giving";
 import { GivingCampaignCard } from "@/components/giving/giving-campaign-card";
 import { formatCents } from "@/lib/giving/format";
+import { ActionButton, ConfirmActionPanel, ContentCard, DetailHeader, EmptyState, FormNotice, PageContainer, SectionHeader } from "@/components/ui/app-ui";
 
 type LeaderGivingPageProps = {
   params: Promise<{ id: string }>;
@@ -18,53 +19,43 @@ export default async function LeaderGivingPage({ params, searchParams }: LeaderG
   }
 
   return (
-    <section className="px-6 py-12 sm:px-10 lg:px-16">
-      <div className="mx-auto max-w-7xl">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <Link href={`/leader/communities/${id}`} className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
-              Back to community management
-            </Link>
-            <h1 className="mt-3 text-4xl font-semibold">Giving</h1>
-            <p className="mt-3 max-w-2xl leading-7 text-[#67564c]">
-              Manage giving campaigns and review non-payment giving intents for {data.community.name}.
-            </p>
-          </div>
-          <Link href={`/leader/communities/${id}/giving/new`} className="inline-flex rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
-            New campaign
-          </Link>
-        </div>
+    <PageContainer>
+      <DetailHeader
+        backHref={`/leader/communities/${id}`}
+        backLabel="Back to management"
+        eyebrow="Planning foundation"
+        title="Giving"
+        description={<>Manage campaign planning records and review non-payment giving intents for {data.community.name}.</>}
+        action={<ActionButton href={`/leader/communities/${id}/giving/new`}>New campaign</ActionButton>}
+      />
 
-        <p className="mt-6 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
+        <FormNotice className="mt-6">
           Payments not live yet. Giving intents are recorded for preparation only.
-        </p>
-        {message ? <p className="mt-4 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">{message}</p> : null}
+        </FormNotice>
+        {message ? <FormNotice className="mt-4">{message}</FormNotice> : null}
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           {data.campaigns.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#d79568] bg-white/65 p-10 text-center lg:col-span-2">
-              <h2 className="text-2xl font-semibold">No giving campaigns yet</h2>
-            </div>
+            <EmptyState className="lg:col-span-2" icon={HandCoins} title="No giving campaigns yet" description="Create a planning record when a future giving initiative needs a clear purpose and goal." />
           ) : (
             data.campaigns.map((campaign) => (
               <div key={campaign.id} className="space-y-3">
                 <GivingCampaignCard campaign={campaign} editHref={`/leader/communities/${id}/giving/${campaign.id}/edit`} />
-                <form action={deactivateGivingCampaign} className="flex flex-col gap-3 sm:flex-row">
-                  <input type="hidden" name="campaign_id" value={campaign.id} />
-                  <input type="hidden" name="community_id" value={id} />
-                  <input type="hidden" name="return_to" value={`/leader/communities/${id}/giving`} />
-                  <input name="confirmation" type="text" placeholder="DELETE" className="rounded-xl border border-[#ead6c5] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10" />
-                  <button type="submit" className="rounded-full border border-[#b42318]/30 bg-white px-4 py-2 text-sm font-semibold text-[#b42318] transition hover:bg-[#fff1f0]">
-                    Deactivate
-                  </button>
-                </form>
+                <ConfirmActionPanel
+                  action={deactivateGivingCampaign}
+                  hiddenFields={{ campaign_id: campaign.id, community_id: id, return_to: `/leader/communities/${id}/giving` }}
+                  title="Deactivate this campaign"
+                  description="The planning record is retained but will no longer be active."
+                  actionLabel="Deactivate campaign"
+                  confirmationId={`deactivate-campaign-${campaign.id}`}
+                />
               </div>
             ))
           )}
         </div>
 
-        <section className="mt-10 rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold">Recent giving intents</h2>
+        <ContentCard as="section" className="mt-10">
+          <SectionHeader title="Recent giving intents" description="Planning records only; no payments are processed." />
           <div className="mt-5 space-y-3">
             {data.intents.length === 0 ? (
               <p className="text-[#67564c]">No giving intents yet.</p>
@@ -80,8 +71,7 @@ export default async function LeaderGivingPage({ params, searchParams }: LeaderG
               ))
             )}
           </div>
-        </section>
-      </div>
-    </section>
+        </ContentCard>
+    </PageContainer>
   );
 }

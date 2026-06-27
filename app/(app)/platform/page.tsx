@@ -15,7 +15,15 @@ import {
 import { deleteOwnReply, deleteOwnThread } from "@/app/actions/discussions";
 import { deleteOpenCommunityComment, deleteOpenCommunityPost } from "@/app/actions/community-posts";
 import { deleteMediaItem } from "@/app/actions/media";
-import Link from "next/link";
+import {
+  ActionButton,
+  ConfirmActionPanel,
+  ContentCard,
+  FormNotice,
+  PageContainer,
+  PageHeader,
+  formControlClassName,
+} from "@/components/ui/app-ui";
 
 type PlatformPageProps = {
   searchParams: Promise<{
@@ -24,12 +32,7 @@ type PlatformPageProps = {
   }>;
 };
 
-const inputClassName =
-  "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
-const buttonClassName =
-  "rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]";
-const deleteButtonClassName =
-  "rounded-full border border-[#b42318]/30 bg-white px-5 py-3 text-sm font-semibold text-[#b42318] transition hover:bg-[#fff1f0]";
+const inputClassName = formControlClassName;
 
 function Field({
   label,
@@ -60,10 +63,10 @@ function Field({
 
 function Panel({ title, children }: Readonly<{ title: string; children: React.ReactNode }>) {
   return (
-    <section className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
+    <ContentCard as="section">
       <h2 className="text-2xl font-semibold">{title}</h2>
       <div className="mt-6">{children}</div>
-    </section>
+    </ContentCard>
   );
 }
 
@@ -72,20 +75,15 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
   const data = await getPlatformDashboardData(params.search || "");
 
   return (
-    <section className="px-6 py-12 sm:px-10 lg:px-16">
-      <div className="mx-auto max-w-7xl">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
-          Platform Engineer
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold">Platform controls</h1>
-        <p className="mt-4 max-w-3xl leading-7 text-[#67564c]">
-          Manage site settings, plans, announcements, user support foundations, and moderation.
-        </p>
+    <PageContainer>
+      <PageHeader
+        eyebrow="Platform Engineer"
+        title="Platform controls"
+        description="Manage site settings, announcements, user support foundations, and moderation."
+      />
 
         {params.message ? (
-          <p className="mt-6 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-            {params.message}
-          </p>
+          <FormNotice className="mt-6">{params.message}</FormNotice>
         ) : null}
 
         <div className="mt-10 grid gap-6 xl:grid-cols-2">
@@ -104,9 +102,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                 />
               </label>
               <Field label="Support/contact info" name="support_contact" defaultValue={data.settings.support_contact} />
-              <button type="submit" className={buttonClassName}>
-                Save settings
-              </button>
+              <ActionButton type="submit">Save settings</ActionButton>
             </form>
           </Panel>
 
@@ -134,9 +130,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                 <input name="is_active" type="checkbox" defaultChecked className="h-4 w-4" />
                 Active
               </label>
-              <button type="submit" className={buttonClassName}>
-                Create plan
-              </button>
+              <ActionButton type="submit">Create plan</ActionButton>
             </form>
           </Panel>
 
@@ -189,22 +183,17 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                         Active
                       </label>
                     </div>
-                    <button type="submit" className={`${buttonClassName} mt-4`}>
-                      Update plan
-                    </button>
+                    <ActionButton type="submit" className="mt-4">Update plan</ActionButton>
                   </form>
-                  <form action={deletePlatformPlan} className="mt-5 border-t border-[#ead6c5] pt-4">
-                    <input type="hidden" name="plan_id" value={plan.id} />
-                    <p className="text-sm text-[#67564c]">
-                      Type DELETE to deactivate this plan. Existing records are kept.
-                    </p>
-                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                      <input name="confirmation" type="text" className={inputClassName} />
-                      <button type="submit" className={deleteButtonClassName}>
-                        Delete plan
-                      </button>
-                    </div>
-                  </form>
+                  <ConfirmActionPanel
+                    action={deletePlatformPlan}
+                    hiddenFields={{ plan_id: plan.id }}
+                    title="Deactivate this plan"
+                    description="Existing records are retained, but the plan will no longer remain active."
+                    actionLabel="Deactivate plan"
+                    confirmationId={`delete-plan-${plan.id}`}
+                    className="mt-5"
+                  />
                   </div>
                 ))
               )}
@@ -226,25 +215,22 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                 <input name="is_active" type="checkbox" defaultChecked className="h-4 w-4" />
                 Active
               </label>
-              <button type="submit" className={buttonClassName}>
-                Create promo
-              </button>
+              <ActionButton type="submit">Create promo</ActionButton>
             </form>
             <div className="mt-6 space-y-3">
               {data.promos.map((promo) => (
                 <div key={promo.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
                   <p className="font-semibold">{promo.code} - {promo.discount_label}</p>
                   <p className="mt-1 text-[#67564c]">{promo.description || "No description"} · {promo.is_active ? "Active" : "Inactive"}</p>
-                  <form action={deletePromoCode} className="mt-4 border-t border-[#ead6c5] pt-4">
-                    <input type="hidden" name="promo_id" value={promo.id} />
-                    <p className="text-[#67564c]">Type DELETE to deactivate this promo code.</p>
-                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                      <input name="confirmation" type="text" className={inputClassName} />
-                      <button type="submit" className={deleteButtonClassName}>
-                        Delete promo
-                      </button>
-                    </div>
-                  </form>
+                  <ConfirmActionPanel
+                    action={deletePromoCode}
+                    hiddenFields={{ promo_id: promo.id }}
+                    title="Deactivate this promo code"
+                    description="The code will no longer be available for future use."
+                    actionLabel="Deactivate promo"
+                    confirmationId={`delete-promo-${promo.id}`}
+                    className="mt-4"
+                  />
                 </div>
               ))}
             </div>
@@ -258,25 +244,22 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                 <textarea name="body" rows={4} required className={inputClassName} />
               </label>
               <Field label="Href" name="href" />
-              <button type="submit" className={buttonClassName}>
-                Send to all users
-              </button>
+              <ActionButton type="submit">Send to all users</ActionButton>
             </form>
             <div className="mt-6 space-y-3">
               {data.announcements.map((announcement) => (
                 <div key={announcement.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
                   <p className="font-semibold">{announcement.title}</p>
                   <p className="mt-1 text-[#67564c]">{announcement.body}</p>
-                  <form action={deletePlatformAnnouncement} className="mt-4 border-t border-[#ead6c5] pt-4">
-                    <input type="hidden" name="announcement_id" value={announcement.id} />
-                    <p className="text-[#67564c]">Type DELETE to remove this announcement row.</p>
-                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                      <input name="confirmation" type="text" className={inputClassName} />
-                      <button type="submit" className={deleteButtonClassName}>
-                        Delete announcement
-                      </button>
-                    </div>
-                  </form>
+                  <ConfirmActionPanel
+                    action={deletePlatformAnnouncement}
+                    hiddenFields={{ announcement_id: announcement.id }}
+                    title="Delete this announcement"
+                    description="This removes the platform announcement record."
+                    actionLabel="Delete announcement"
+                    confirmationId={`delete-announcement-${announcement.id}`}
+                    className="mt-4"
+                  />
                 </div>
               ))}
             </div>
@@ -286,26 +269,20 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
             <p className="mb-5 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
               Open the platform inbox to search users, start support conversations, and reply with text, links, images, or video.
             </p>
-            <Link href="/platform/messages" className={buttonClassName}>
-              Open platform messages
-            </Link>
+            <ActionButton href="/platform/messages">Open platform messages</ActionButton>
           </Panel>
 
           <Panel title="Open community model">
             <p className="mb-5 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-              Pastor verification has been retired. Normal users can post, pray, create groups, message, and join group discussions.
+              Open participation is active. Users can post, pray, create groups, message, and join group discussions.
             </p>
-            <Link href="/community" className={buttonClassName}>
-              Open community feed
-            </Link>
+            <ActionButton href="/community">Open community feed</ActionButton>
           </Panel>
 
           <Panel title="Moderation">
             <form className="mb-6">
               <Field label="Search users" name="search" defaultValue={params.search} />
-              <button type="submit" className={`${buttonClassName} mt-4`}>
-                Search
-              </button>
+              <ActionButton type="submit" className="mt-4">Search</ActionButton>
             </form>
             <div className="max-h-80 space-y-3 overflow-auto pr-2">
               {data.users.map((user) => (
@@ -333,9 +310,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                       <option value="user">User</option>
                       <option value="platform_engineer">Platform engineer</option>
                     </select>
-                    <button type="submit" disabled={user.role === "platform_engineer"} className={buttonClassName}>
-                      Update role
-                    </button>
+                    <ActionButton type="submit" disabled={user.role === "platform_engineer"}>Update role</ActionButton>
                   </div>
                 </form>
               ))}
@@ -366,9 +341,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                 </select>
               </label>
               <Field label="Custom until" name="custom_until" type="datetime-local" />
-              <button type="submit" className={buttonClassName}>
-                Create ban
-              </button>
+              <ActionButton type="submit">Create ban</ActionButton>
             </form>
             <div className="mt-6 space-y-3">
               {data.bans.map((ban) => (
@@ -424,9 +397,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                           <form action={deleteOpenCommunityPost} className="mt-3 border-t border-[#ead6c5] pt-3">
                             <input type="hidden" name="post_id" value={post.id} />
                             <input type="hidden" name="return_to" value="/platform" />
-                            <button type="submit" className={deleteButtonClassName}>
-                              Delete post
-                            </button>
+                            <ActionButton type="submit" variant="danger" size="sm">Delete post</ActionButton>
                           </form>
                         ) : null}
                       </div>
@@ -453,9 +424,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                           <form action={deleteOpenCommunityComment} className="mt-3 border-t border-[#ead6c5] pt-3">
                             <input type="hidden" name="comment_id" value={comment.id} />
                             <input type="hidden" name="return_to" value="/platform" />
-                            <button type="submit" className={deleteButtonClassName}>
-                              Delete comment
-                            </button>
+                            <ActionButton type="submit" variant="danger" size="sm">Delete comment</ActionButton>
                           </form>
                         ) : null}
                       </div>
@@ -489,18 +458,14 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                       <form action={deleteOwnThread} className="mt-4 border-t border-[#ead6c5] pt-4">
                         <input type="hidden" name="thread_id" value={report.thread_id} />
                         <input type="hidden" name="return_path" value="/platform" />
-                        <button type="submit" className={deleteButtonClassName}>
-                          Delete thread
-                        </button>
+                        <ActionButton type="submit" variant="danger" size="sm">Delete thread</ActionButton>
                       </form>
                     ) : null}
                     {report.reply_id ? (
                       <form action={deleteOwnReply} className="mt-4 border-t border-[#ead6c5] pt-4">
                         <input type="hidden" name="reply_id" value={report.reply_id} />
                         <input type="hidden" name="return_path" value="/platform" />
-                        <button type="submit" className={deleteButtonClassName}>
-                          Delete reply
-                        </button>
+                        <ActionButton type="submit" variant="danger" size="sm">Delete reply</ActionButton>
                       </form>
                     ) : null}
                   </div>
@@ -524,21 +489,15 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                       {item.is_published ? "Published" : "Unpublished"}
                       {item.deleted_at ? " · Deleted" : ""}
                     </p>
-                    <form action={deleteMediaItem} className="mt-4 border-t border-[#ead6c5] pt-4">
-                      <input type="hidden" name="media_id" value={item.id} />
-                      <input type="hidden" name="return_to" value="/platform" />
-                      <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                        <input
-                          name="confirmation"
-                          type="text"
-                          placeholder="DELETE"
-                          className="rounded-xl border border-[#ead6c5] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
-                        />
-                        <button type="submit" className={deleteButtonClassName}>
-                          Delete media
-                        </button>
-                      </div>
-                    </form>
+                    <ConfirmActionPanel
+                      action={deleteMediaItem}
+                      hiddenFields={{ media_id: item.id, return_to: "/platform" }}
+                      title="Delete this media item"
+                      description="This removes the media item from its library."
+                      actionLabel="Delete media"
+                      confirmationId={`platform-delete-media-${item.id}`}
+                      className="mt-4"
+                    />
                   </div>
                 ))
               )}
@@ -552,21 +511,15 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
               {data.communities.map((community) => (
                 <div key={community.id} className="rounded-xl border border-[#ead6c5] p-3">
                   <p className="font-semibold">{community.name}</p>
-                  <form action={deletePlatformCommunity} className="mt-3 border-t border-[#ead6c5] pt-3">
-                    <input type="hidden" name="community_id" value={community.id} />
-                    <p className="text-xs text-[#67564c]">Type DELETE to remove this community.</p>
-                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                      <input
-                        name="confirmation"
-                        type="text"
-                        placeholder="DELETE"
-                        className="rounded-xl border border-[#ead6c5] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
-                      />
-                      <button type="submit" className={deleteButtonClassName}>
-                        Delete
-                      </button>
-                    </div>
-                  </form>
+                  <ConfirmActionPanel
+                    action={deletePlatformCommunity}
+                    hiddenFields={{ community_id: community.id }}
+                    title="Delete legacy community"
+                    description="This permanently removes the community record."
+                    actionLabel="Delete community"
+                    confirmationId={`platform-delete-community-${community.id}`}
+                    className="mt-3"
+                  />
                 </div>
               ))}
             </div>
@@ -576,21 +529,15 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
               {data.groups.map((group) => (
                 <div key={group.id} className="rounded-xl border border-[#ead6c5] p-3">
                   <p className="font-semibold">{group.title}</p>
-                  <form action={deletePlatformGroup} className="mt-3 border-t border-[#ead6c5] pt-3">
-                    <input type="hidden" name="group_id" value={group.id} />
-                    <p className="text-xs text-[#67564c]">Type DELETE to remove this group.</p>
-                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                      <input
-                        name="confirmation"
-                        type="text"
-                        placeholder="DELETE"
-                        className="rounded-xl border border-[#ead6c5] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
-                      />
-                      <button type="submit" className={deleteButtonClassName}>
-                        Delete
-                      </button>
-                    </div>
-                  </form>
+                  <ConfirmActionPanel
+                    action={deletePlatformGroup}
+                    hiddenFields={{ group_id: group.id }}
+                    title="Delete group"
+                    description="This permanently removes the group record."
+                    actionLabel="Delete group"
+                    confirmationId={`platform-delete-group-${group.id}`}
+                    className="mt-3"
+                  />
                 </div>
               ))}
             </div>
@@ -605,7 +552,6 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
             </div>
           </Panel>
         </div>
-      </div>
-    </section>
+    </PageContainer>
   );
 }

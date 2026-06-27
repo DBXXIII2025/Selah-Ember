@@ -1,6 +1,18 @@
-import { MessageCircle, Search } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { getPlatformMessagesData, startPlatformSupportConversation } from "@/app/actions/platform";
+import {
+  ActionButton,
+  Badge,
+  ContentCard,
+  DetailHeader,
+  EmptyState,
+  FormNotice,
+  PageContainer,
+  SearchInput,
+  SectionHeader,
+} from "@/components/ui/app-ui";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type PlatformMessagesPageProps = {
   searchParams: Promise<{
@@ -8,9 +20,6 @@ type PlatformMessagesPageProps = {
     message?: string;
   }>;
 };
-
-const inputClassName =
-  "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -38,58 +47,38 @@ export default async function PlatformMessagesPage({ searchParams }: PlatformMes
   const data = await getPlatformMessagesData(params.q || "");
 
   return (
-    <section className="px-6 py-12 sm:px-10 lg:px-16">
-      <div className="mx-auto max-w-7xl">
-        <Link href="/platform" className="text-sm font-semibold text-[#8a3f1e] transition hover:text-[#cf5f2b]">
-          Back to platform
-        </Link>
-        <div className="mt-8 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
-              Platform Messages
-            </p>
-            <h1 className="mt-3 text-4xl font-semibold">Support conversations</h1>
-            <p className="mt-4 max-w-3xl leading-7 text-[#67564c]">
-              Message users directly while keeping the normal user inbox and notifications intact.
-            </p>
-          </div>
-        </div>
+    <PageContainer>
+      <DetailHeader
+        backHref="/platform"
+        backLabel="Back to platform"
+        eyebrow="Platform messages"
+        title="Support conversations"
+        description="Message users directly while keeping the normal user inbox and notifications intact."
+      />
 
         {params.message ? (
-          <p className="mt-6 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-            {params.message}
-          </p>
+          <FormNotice className="mt-6">{params.message}</FormNotice>
         ) : null}
 
         <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
-          <section className="rounded-2xl border border-[#ead6c5] bg-white/70 p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <MessageCircle aria-hidden="true" className="h-5 w-5 text-[#b94f22]" />
-              <h2 className="text-2xl font-semibold">Inbox</h2>
-            </div>
+          <ContentCard as="section" className="bg-white/70">
+            <SectionHeader title={<span className="flex items-center gap-3"><MessageCircle aria-hidden="true" className="h-5 w-5 text-[#b94f22]" />Inbox</span>} />
             {data.conversations.length === 0 ? (
-              <div className="mt-6 rounded-2xl border border-dashed border-[#d79568] bg-white/65 p-8 text-center">
-                <h3 className="text-xl font-semibold">No support conversations yet</h3>
-                <p className="mx-auto mt-3 max-w-xl leading-7 text-[#67564c]">
-                  Search for a user and start the first conversation.
-                </p>
-              </div>
+              <EmptyState className="mt-6" icon={MessageCircle} title="No support conversations yet" description="Search for a user and start the first conversation." />
             ) : (
               <div className="mt-6 space-y-4">
                 {data.conversations.map((conversation) => (
                   <Link
                     key={conversation.id}
                     href={`/platform/messages/${conversation.id}`}
-                    className="block rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm transition hover:border-[#d79568] hover:bg-white"
+                    className="block rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm transition hover:border-[#d79568] hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#cf5f2b]/20"
                   >
                     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                       <div>
                         <div className="flex flex-wrap items-center gap-3">
                           <h3 className="text-xl font-semibold">{conversationTitle(conversation)}</h3>
                           {conversation.unread_count > 0 ? (
-                            <span className="rounded-full bg-[#cf5f2b] px-3 py-1 text-xs font-semibold text-white">
-                              {conversation.unread_count} unread
-                            </span>
+                            <Badge tone="solid">{conversation.unread_count} unread</Badge>
                           ) : null}
                         </div>
                         <p className="mt-2 line-clamp-2 text-[#67564c]">
@@ -106,24 +95,13 @@ export default async function PlatformMessagesPage({ searchParams }: PlatformMes
                 ))}
               </div>
             )}
-          </section>
+          </ContentCard>
 
-          <aside className="rounded-2xl border border-[#ead6c5] bg-white/70 p-5 shadow-sm">
-            <h2 className="text-2xl font-semibold">Start conversation</h2>
+          <ContentCard as="section" className="h-fit bg-white/70">
+            <SectionHeader title="Start conversation" description="Find a user before opening a support thread." />
             <form className="mt-5">
-              <label className="block">
-                <span className="text-sm font-medium text-[#3b312b]">Search users</span>
-                <div className="relative">
-                  <input name="q" type="search" defaultValue={params.q || ""} className={`${inputClassName} pr-12`} />
-                  <Search aria-hidden="true" className="absolute right-4 top-5 h-5 w-5 text-[#8a3f1e]" />
-                </div>
-              </label>
-              <button
-                type="submit"
-                className="mt-4 rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
-              >
-                Search
-              </button>
+              <SearchInput name="q" defaultValue={params.q || ""} label="Search users" placeholder="Search users" />
+              <ActionButton type="submit" className="mt-4">Search</ActionButton>
             </form>
 
             <div className="mt-6 space-y-3">
@@ -133,7 +111,7 @@ export default async function PlatformMessagesPage({ searchParams }: PlatformMes
                 </p>
               ) : (
                 data.users.map((user) => (
-                  <article key={user.user_id} className="rounded-xl border border-[#ead6c5] bg-white/80 p-4 text-sm">
+                  <ContentCard key={user.user_id} className="rounded-xl bg-white/80 p-4 text-sm">
                     <p className="font-semibold">{user.display_name}</p>
                     <p className="mt-1 break-words text-[#67564c]">
                       {user.username ? `@${user.username}` : "No username"}
@@ -145,20 +123,14 @@ export default async function PlatformMessagesPage({ searchParams }: PlatformMes
                     </p>
                     <form action={startPlatformSupportConversation} className="mt-3">
                       <input type="hidden" name="target_user_id" value={user.user_id} />
-                      <button
-                        type="submit"
-                        className="rounded-full bg-[#cf5f2b] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#b94f22]"
-                      >
-                        Message
-                      </button>
+                      <SubmitButton pendingLabel="Opening…" className="px-4 py-2">Message</SubmitButton>
                     </form>
-                  </article>
+                  </ContentCard>
                 ))
               )}
             </div>
-          </aside>
+          </ContentCard>
         </div>
-      </div>
-    </section>
+    </PageContainer>
   );
 }

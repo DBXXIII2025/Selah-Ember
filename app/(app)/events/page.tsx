@@ -1,6 +1,6 @@
 import { CalendarDays, MapPin, Plus, UsersRound } from "lucide-react";
 import { deleteOwnedEvent, getVisibleEvents } from "@/app/actions/events";
-import { ActionButton, Badge, ContentCard, EmptyState, PageContainer, PageHeader } from "@/components/ui/app-ui";
+import { ActionButton, Badge, ConfirmActionPanel, ContentCard, EmptyState, PageContainer, PageHeader } from "@/components/ui/app-ui";
 
 function formatEventTime(value: string) {
   return new Intl.DateTimeFormat("en", {
@@ -77,19 +77,15 @@ export default async function EventsPage() {
                 </div>
                 <ActionButton href={`/events/${event.id}`} variant="secondary" size="sm" className="mt-6">Open event</ActionButton>
                 {event.is_owner ? (
-                  <form action={deleteOwnedEvent} className="mt-4 border-t border-[#ead6c5] pt-4">
-                    <input type="hidden" name="event_id" value={event.id} />
-                    <p className="text-xs text-[#67564c]">Type DELETE to remove this event.</p>
-                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-                      <input
-                        name="confirmation"
-                        type="text"
-                        placeholder="DELETE"
-                        className="rounded-xl border border-[#ead6c5] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
-                      />
-                      <ActionButton type="submit" variant="danger">Delete event</ActionButton>
-                    </div>
-                  </form>
+                  <ConfirmActionPanel
+                    action={deleteOwnedEvent}
+                    hiddenFields={{ event_id: event.id }}
+                    title="Delete this event"
+                    description="This removes the event and its RSVP context. This action cannot be undone."
+                    actionLabel="Delete event"
+                    confirmationId={`delete-event-${event.id}`}
+                    className="mt-5"
+                  />
                 ) : null}
               </ContentCard>
             ))}

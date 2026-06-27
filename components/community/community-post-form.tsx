@@ -1,4 +1,14 @@
 import { MEDIA_LIMITS, formatBytes } from "@/lib/media/validation";
+import {
+  ActionButton,
+  FormActions,
+  FormField,
+  FormHint,
+  FormLabel,
+  FormSection,
+  formControlClassName,
+} from "@/components/ui/app-ui";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type CommunityPostFormProps = {
   action: (formData: FormData) => Promise<void>;
@@ -17,9 +27,6 @@ type CommunityPostFormProps = {
   } | null;
 };
 
-const inputClassName =
-  "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
-
 export function CommunityPostForm({
   action,
   communityId,
@@ -29,57 +36,62 @@ export function CommunityPostForm({
   post = null,
 }: Readonly<CommunityPostFormProps>) {
   return (
-    <form action={action} encType="multipart/form-data" className="space-y-5">
+    <form action={action} encType="multipart/form-data">
       <input type="hidden" name="community_id" value={communityId} />
       <input type="hidden" name="return_to" value={returnTo} />
       {post ? <input type="hidden" name="post_id" value={post.id} /> : null}
 
-      <label className="block">
-        <span className="text-sm font-medium text-[#3b312b]">Update type</span>
-        <select name="media_kind" defaultValue={post?.media_kind || "text"} className={inputClassName}>
+      <FormSection title="Update content">
+      <FormField>
+        <FormLabel htmlFor="update-media-kind">Update type</FormLabel>
+        <select id="update-media-kind" name="media_kind" defaultValue={post?.media_kind || "text"} className={formControlClassName}>
           <option value="text">Text</option>
           <option value="link">Link</option>
           <option value="image">Image</option>
           <option value="video">Video</option>
         </select>
-      </label>
+      </FormField>
 
-      <label className="block">
-        <span className="text-sm font-medium text-[#3b312b]">Title</span>
-        <input name="title" maxLength={160} defaultValue={post?.title || ""} className={inputClassName} />
-      </label>
+      <FormField>
+        <FormLabel htmlFor="update-title">Title</FormLabel>
+        <input id="update-title" name="title" maxLength={160} defaultValue={post?.title || ""} className={formControlClassName} />
+      </FormField>
 
-      <label className="block">
-        <span className="text-sm font-medium text-[#3b312b]">Body</span>
-        <textarea name="body" rows={6} maxLength={10000} defaultValue={post?.body || ""} className={inputClassName} />
-      </label>
+      <FormField>
+        <FormLabel htmlFor="update-body">Body</FormLabel>
+        <textarea id="update-body" name="body" rows={6} maxLength={10000} defaultValue={post?.body || ""} className={formControlClassName} />
+      </FormField>
 
-      <label className="block">
-        <span className="text-sm font-medium text-[#3b312b]">Link URL</span>
-        <input name="media_url" type="url" defaultValue={post?.media_url || ""} className={inputClassName} />
-      </label>
+      <FormField>
+        <FormLabel htmlFor="update-media-url">Link URL</FormLabel>
+        <input id="update-media-url" name="media_url" type="url" defaultValue={post?.media_url || ""} className={formControlClassName} />
+      </FormField>
+      </FormSection>
 
-      <label className="block">
-        <span className="text-sm font-medium text-[#3b312b]">Image or video upload</span>
-        <input name="media_file" type="file" className={`${inputClassName} pt-2`} />
-      </label>
-      <p className="text-sm leading-6 text-[#67564c]">
-        Images: JPG, PNG, WebP, GIF up to {formatBytes(MEDIA_LIMITS.postImageBytes)}. Videos: MP4, WebM, MOV up to{" "}
-        {formatBytes(MEDIA_LIMITS.betaVideoBytes)}.
-      </p>
+      <FormSection title="Media and publishing" className="mt-8 border-t border-[#ead6c5] pt-7">
+      <FormField>
+        <FormLabel htmlFor="update-media-file">Image or video upload</FormLabel>
+        <input id="update-media-file" name="media_file" type="file" className={`${formControlClassName} pt-2`} />
+        <FormHint>
+          Images: JPG, PNG, WebP, GIF up to {formatBytes(MEDIA_LIMITS.postImageBytes)}. Videos: MP4, WebM, MOV up to{" "}
+          {formatBytes(MEDIA_LIMITS.betaVideoBytes)}.
+        </FormHint>
+      </FormField>
 
       {showPublishToggle ? (
-        <label className="flex items-center gap-3 text-sm font-medium text-[#3b312b]">
-          <input name="is_published" type="checkbox" defaultChecked={post?.is_published ?? true} className="h-4 w-4" />
+        <label className="flex items-center gap-3 rounded-xl border border-[#d9c1ad] bg-[#fffaf4] px-4 py-3 text-sm font-semibold text-[#3b312b]">
+          <input name="is_published" type="checkbox" defaultChecked={post?.is_published ?? true} className="h-4 w-4 accent-[#cf5f2b]" />
           Publish
         </label>
       ) : null}
 
-      {post?.file_name ? <p className="text-sm text-[#67564c]">Current file: {post.file_name}</p> : null}
+      {post?.file_name ? <FormHint>Current file: {post.file_name}</FormHint> : null}
+      </FormSection>
 
-      <button type="submit" className="rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
-        {submitLabel}
-      </button>
+      <FormActions className="mt-7">
+        <ActionButton href={returnTo} variant="secondary">Cancel</ActionButton>
+        <SubmitButton pendingLabel={post ? "Saving update…" : "Publishing update…"}>{submitLabel}</SubmitButton>
+      </FormActions>
     </form>
   );
 }

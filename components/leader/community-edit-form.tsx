@@ -1,48 +1,56 @@
 import { updateOwnedCommunity, type LeaderCommunity } from "@/app/actions/leader";
+import {
+  FormActions,
+  FormField,
+  FormHint,
+  FormLabel,
+  FormSection,
+  formControlClassName,
+} from "@/components/ui/app-ui";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type CommunityEditFormProps = {
   community: LeaderCommunity;
 };
 
-const fieldClassName =
-  "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
-
 export function CommunityEditForm({ community }: CommunityEditFormProps) {
   return (
-    <form action={updateOwnedCommunity} className="space-y-5">
+    <form action={updateOwnedCommunity}>
       <input type="hidden" name="community_id" value={community.id} />
-      <label className="block">
-        <span className="text-sm font-medium text-[#3b312b]">Community name</span>
-        <input required name="name" type="text" defaultValue={community.name} className={fieldClassName} />
-      </label>
-      <label className="block">
-        <span className="text-sm font-medium text-[#3b312b]">Description</span>
+      <FormSection>
+      <FormField>
+        <FormLabel htmlFor="managed-community-name" required>Community name</FormLabel>
+        <input id="managed-community-name" required name="name" type="text" defaultValue={community.name} className={formControlClassName} />
+      </FormField>
+      <FormField>
+        <FormLabel htmlFor="managed-community-description">Description</FormLabel>
         <input
+          id="managed-community-description"
           name="description"
           type="text"
           defaultValue={community.description || ""}
-          className={fieldClassName}
+          className={formControlClassName}
         />
-      </label>
-      <label className="block">
-        <span className="text-sm font-medium text-[#3b312b]">Location</span>
-        <input name="location" type="text" defaultValue={community.location || ""} className={fieldClassName} />
-      </label>
-      <label className="block">
-        <span className="text-sm font-medium text-[#3b312b]">Banner URL</span>
+      </FormField>
+      <FormField>
+        <FormLabel htmlFor="managed-community-location">Location</FormLabel>
+        <input id="managed-community-location" name="location" type="text" defaultValue={community.location || ""} className={formControlClassName} />
+      </FormField>
+      <FormField>
+        <FormLabel htmlFor="managed-community-banner">Banner URL</FormLabel>
         <input
+          id="managed-community-banner"
           name="banner_url"
           type="url"
           defaultValue={community.banner_url || ""}
-          className={fieldClassName}
+          className={formControlClassName}
         />
-      </label>
-      <button
-        type="submit"
-        className="rounded-full bg-[#cf5f2b] px-6 py-3 font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
-      >
-        Save community
-      </button>
+        <FormHint>Optional. Use a secure image URL for the existing public page banner.</FormHint>
+      </FormField>
+      </FormSection>
+      <FormActions className="mt-7">
+        <SubmitButton pendingLabel="Saving details…">Save details</SubmitButton>
+      </FormActions>
     </form>
   );
 }

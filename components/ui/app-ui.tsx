@@ -449,6 +449,7 @@ export function ConfirmActionPanel({
   actionLabel,
   confirmationName = "confirmation",
   confirmationValue = "DELETE",
+  confirmationId,
   className,
 }: Readonly<{
   action: (formData: FormData) => void | Promise<void>;
@@ -458,8 +459,11 @@ export function ConfirmActionPanel({
   actionLabel: string;
   confirmationName?: string;
   confirmationValue?: string;
+  confirmationId?: string;
   className?: string;
 }>) {
+  const inputId = confirmationId || `${confirmationName}-confirm`;
+
   return (
     <DestructiveActionPanel title={title} description={description} className={className}>
       <form action={action} className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -467,9 +471,9 @@ export function ConfirmActionPanel({
           <input key={name} type="hidden" name={name} value={value} />
         ))}
         <FormField className="flex-1">
-          <FormLabel htmlFor={`${confirmationName}-confirm`}>Type {confirmationValue} to confirm</FormLabel>
+          <FormLabel htmlFor={inputId}>Type {confirmationValue} to confirm</FormLabel>
           <input
-            id={`${confirmationName}-confirm`}
+            id={inputId}
             name={confirmationName}
             type="text"
             placeholder={confirmationValue}
