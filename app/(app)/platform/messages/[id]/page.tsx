@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { getPlatformConversationData } from "@/app/actions/platform";
-import { SafeLink } from "@/components/media/safe-link";
 import { MessageComposer } from "@/components/messages/message-composer";
+import { MessageDisplay } from "@/components/messages/message-display";
 import { MessageReactions } from "@/components/messages/message-reactions";
 import { PlatformConversationToolsMenu } from "@/components/messages/platform-conversation-tools-menu";
+import { Badge, ContentCard, DetailHeader, EmptyState, FormNotice, PageContainer, SectionHeader } from "@/components/ui/app-ui";
 
 type PlatformConversationPageProps = {
   params: Promise<{
@@ -27,104 +27,12 @@ function formatDate(value: string) {
   }).format(date);
 }
 
-function MessageBody({ body }: Readonly<{ body: string }>) {
-  const urlPattern = /(https?:\/\/[^\s<>"']+)/g;
-  const parts = body.split(urlPattern);
-
-  return (
-    <p className="mt-3 whitespace-pre-wrap break-words leading-7 text-[#3b312b]">
-      {parts.map((part, index) => {
-        if (urlPattern.test(part)) {
-          urlPattern.lastIndex = 0;
-          return (
-            <SafeLink key={`${part}-${index}`} href={part} className="font-semibold text-[#8a3f1e] underline">
-              {part}
-            </SafeLink>
-          );
-        }
-
-        urlPattern.lastIndex = 0;
-        return <span key={`${part}-${index}`}>{part}</span>;
-      })}
-    </p>
-  );
-}
-
-function MessageAttachments({
-  attachments,
-}: Readonly<{
-  attachments: NonNullable<Awaited<ReturnType<typeof getPlatformConversationData>>["conversation"]>["messages"][number]["attachments"];
-}>) {
-  if (attachments.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="mt-4 space-y-3">
-      {attachments.map((attachment) => {
-        if (attachment.kind === "image") {
-          return attachment.signed_url ? (
-            <img
-              key={attachment.id}
-              src={attachment.signed_url}
-              alt={attachment.filename || "Message image"}
-              className="max-h-[28rem] max-w-full rounded-xl border border-[#ead6c5] object-contain"
-            />
-          ) : (
-            <p key={attachment.id} className="text-sm text-[#67564c]">
-              Image unavailable.
-            </p>
-          );
-        }
-
-        if (attachment.kind === "video") {
-          return attachment.signed_url ? (
-            <video
-              key={attachment.id}
-              src={attachment.signed_url}
-              controls
-              preload="metadata"
-              className="max-h-[28rem] max-w-full rounded-xl border border-[#ead6c5]"
-            />
-          ) : (
-            <p key={attachment.id} className="text-sm text-[#67564c]">
-              Video unavailable.
-            </p>
-          );
-        }
-
-        return (
-          <SafeLink
-            key={attachment.id}
-            href={attachment.url}
-            className="inline-flex break-all rounded-full border border-[#2f2722]/20 px-4 py-2 text-sm font-semibold text-[#2f2722] transition hover:bg-white"
-          >
-            {attachment.filename || attachment.url}
-          </SafeLink>
-        );
-      })}
-    </div>
-  );
-}
-
 function ConversationUnavailable() {
   return (
-    <section className="px-6 py-12 sm:px-10 lg:px-16">
-      <div className="mx-auto max-w-4xl">
-        <Link href="/platform/messages" className="text-sm font-semibold text-[#8a3f1e] transition hover:text-[#cf5f2b]">
-          Back to platform messages
-        </Link>
-        <div className="mt-8 rounded-2xl border border-dashed border-[#d79568] bg-white/65 p-10 text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
-            Platform Messages
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold">Conversation unavailable</h1>
-          <p className="mx-auto mt-4 max-w-xl leading-7 text-[#67564c]">
-            This support conversation may have been removed, or this platform account may not be a participant.
-          </p>
-        </div>
-      </div>
-    </section>
+    <PageContainer size="medium">
+      <DetailHeader backHref="/platform/messages" backLabel="Back to platform messages" eyebrow="Platform messages" title="Conversation unavailable" />
+      <EmptyState className="mt-8" title="This support conversation cannot be opened" description="It may have been removed, or this platform account may not be a participant." />
+    </PageContainer>
   );
 }
 
@@ -139,59 +47,43 @@ export default async function PlatformConversationPage({ params, searchParams }:
   const targetName = targetUser?.display_name || "Selah Ember Member";
 
   return (
-    <section className="px-6 py-12 sm:px-10 lg:px-16">
+    <PageContainer>
       <div className="mx-auto max-w-6xl">
-        <Link href="/platform/messages" className="text-sm font-semibold text-[#8a3f1e] transition hover:text-[#cf5f2b]">
-          Back to platform messages
-        </Link>
+        <DetailHeader
+          backHref="/platform/messages"
+          backLabel="Back to platform messages"
+          eyebrow="Support conversation"
+          title={targetName}
+          description={<span className="break-words text-sm">Conversation ID: {conversation.id}</span>}
+          action={<PlatformConversationToolsMenu />}
+        />
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div>
-            <div className="rounded-2xl border border-[#ead6c5] bg-white/70 p-6 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
-                    Support Conversation
-                  </p>
-                  <h1 className="mt-3 text-3xl font-semibold">{targetName}</h1>
-                  <p className="mt-3 break-words text-sm text-[#67564c]">
-                    Conversation ID: {conversation.id}
-                  </p>
-                </div>
-                <PlatformConversationToolsMenu />
-              </div>
-            </div>
-
             {query.message ? (
-              <p className="mt-6 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-                {query.message}
-              </p>
+              <FormNotice>{query.message}</FormNotice>
             ) : null}
 
-            <div className="mt-8 rounded-2xl border border-[#ead6c5] bg-white/70 p-5 shadow-sm">
+            <ContentCard as="section" className={`${query.message ? "mt-6" : ""} bg-white/60 p-4 sm:p-5`}>
               {conversation.messages.length === 0 ? (
-                <div className="py-10 text-center">
-                  <h2 className="text-2xl font-semibold">No messages yet</h2>
-                  <p className="mx-auto mt-3 max-w-xl leading-7 text-[#67564c]">
-                    Send the first support message to this user.
-                  </p>
-                </div>
+                <EmptyState title="No messages yet" description="Send the first support message to this user." />
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {conversation.messages.map((message) => {
                     const sender = conversation.participants.find(
                       (participant) => participant.user_id === message.sender_id,
                     );
 
                     return (
-                      <article key={message.id} className="group rounded-xl border border-[#ead6c5] bg-white p-4">
-                        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
-                          <p className="font-semibold">{sender?.display_name || "Selah Ember Member"}</p>
-                          <p className="text-sm text-[#8a3f1e]">{formatDate(message.created_at)}</p>
-                        </div>
-                        <MessageBody body={message.deleted_at ? "Message deleted" : message.body} />
-                        {!message.deleted_at ? <MessageAttachments attachments={message.attachments} /> : null}
-                        {!message.deleted_at ? (
+                      <MessageDisplay
+                        key={message.id}
+                        senderName={sender?.display_name || "Selah Ember Member"}
+                        timestamp={formatDate(message.created_at)}
+                        body={message.body}
+                        attachments={message.attachments}
+                        isOwn={message.sender_id === conversation.current_user_id}
+                        deleted={Boolean(message.deleted_at)}
+                      >
                           <MessageReactions
                             conversationId={conversation.id}
                             currentUserId={conversation.current_user_id}
@@ -199,19 +91,18 @@ export default async function PlatformConversationPage({ params, searchParams }:
                             reactions={message.reactions}
                             returnTo={`/platform/messages/${conversation.id}`}
                           />
-                        ) : null}
-                      </article>
+                      </MessageDisplay>
                     );
                   })}
                 </div>
               )}
-            </div>
+            </ContentCard>
 
             <MessageComposer conversationId={conversation.id} returnTo={`/platform/messages/${conversation.id}`} />
           </div>
 
-          <aside className="rounded-2xl border border-[#ead6c5] bg-white/70 p-5 shadow-sm lg:sticky lg:top-6 lg:self-start">
-            <h2 className="text-2xl font-semibold">User context</h2>
+          <ContentCard as="section" className="bg-white/70 lg:sticky lg:top-6 lg:self-start">
+            <SectionHeader title="User context" />
             {targetUser ? (
               <dl className="mt-5 space-y-4 text-sm">
                 <div>
@@ -235,19 +126,15 @@ export default async function PlatformConversationPage({ params, searchParams }:
                 </div>
                 <div>
                   <dt className="font-semibold text-[#3b312b]">Ban status</dt>
-                  <dd className="mt-1 text-[#67564c]">
-                    {targetUser.active_ban
-                      ? `Banned until ${formatDate(targetUser.active_ban.expires_at)}`
-                      : "No active ban"}
-                  </dd>
+                  <dd className="mt-2"><Badge tone={targetUser.active_ban ? "ember" : "success"}>{targetUser.active_ban ? `Banned until ${formatDate(targetUser.active_ban.expires_at)}` : "No active ban"}</Badge></dd>
                 </div>
               </dl>
             ) : (
               <p className="mt-4 text-sm text-[#67564c]">Profile context unavailable.</p>
             )}
-          </aside>
+          </ContentCard>
         </div>
       </div>
-    </section>
+    </PageContainer>
   );
 }

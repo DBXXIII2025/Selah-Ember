@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
-import Link from "next/link";
 import { searchMessageUsers, startDirectConversation } from "@/app/actions/messages";
+import { ActionButton, ContentCard, DetailHeader, EmptyState, FormNotice, PageContainer, SearchInput } from "@/components/ui/app-ui";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type NewMessagePageProps = {
   searchParams: Promise<{
@@ -9,65 +10,37 @@ type NewMessagePageProps = {
   }>;
 };
 
-const inputClassName =
-  "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
-
 export default async function NewMessagePage({ searchParams }: NewMessagePageProps) {
   const params = await searchParams;
   const users = await searchMessageUsers(params.q || "");
 
   return (
-    <section className="px-6 py-12 sm:px-10 lg:px-16">
-      <div className="mx-auto max-w-4xl">
-        <Link href="/messages" className="text-sm font-semibold text-[#8a3f1e] transition hover:text-[#cf5f2b]">
-          Back to messages
-        </Link>
-        <p className="mt-8 text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
-          New message
-        </p>
-        <h1 className="mt-3 text-4xl font-semibold">Choose a person</h1>
-        <p className="mt-4 max-w-2xl leading-7 text-[#67564c]">
-          Search visible profiles and start a private one-on-one conversation.
-        </p>
+    <PageContainer size="medium">
+      <DetailHeader
+        backHref="/messages"
+        backLabel="Back to messages"
+        eyebrow="New message"
+        title="Choose a person"
+        description="Search visible profiles and start a private one-on-one conversation."
+      />
 
         {params.message ? (
-          <p className="mt-6 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
-            {params.message}
-          </p>
+          <FormNotice className="mt-6">{params.message}</FormNotice>
         ) : null}
 
-        <form className="mt-10 rounded-2xl border border-[#ead6c5] bg-white/70 p-5 shadow-sm">
-          <label className="block">
-            <span className="text-sm font-medium text-[#3b312b]">Search people</span>
-            <div className="relative">
-              <input
-                name="q"
-                type="search"
-                defaultValue={params.q || ""}
-                className={`${inputClassName} pr-12`}
-              />
-              <Search aria-hidden="true" className="absolute right-4 top-5 h-5 w-5 text-[#8a3f1e]" />
-            </div>
-          </label>
-          <button
-            type="submit"
-            className="mt-4 rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
-          >
-            Search
-          </button>
-        </form>
+        <ContentCard as="section" className="mt-10 bg-white/70">
+          <form>
+            <SearchInput name="q" defaultValue={params.q || ""} label="Search people" placeholder="Search by name or username" />
+            <ActionButton type="submit" className="mt-4">Search</ActionButton>
+          </form>
+        </ContentCard>
 
         <div className="mt-8 space-y-4">
           {users.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#d79568] bg-white/65 p-8 text-center">
-              <h2 className="text-2xl font-semibold">No people found</h2>
-              <p className="mx-auto mt-3 max-w-xl leading-7 text-[#67564c]">
-                Try a display name, username, or church name.
-              </p>
-            </div>
+            <EmptyState icon={Search} title="No people found" description="Try a display name, username, or optional faith-community name." />
           ) : (
             users.map((user) => (
-              <article key={user.user_id} className="rounded-2xl border border-[#ead6c5] bg-white/70 p-5 shadow-sm">
+              <ContentCard key={user.user_id} className="bg-white/70">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <h2 className="text-xl font-semibold">{user.display_name}</h2>
@@ -78,19 +51,13 @@ export default async function NewMessagePage({ searchParams }: NewMessagePagePro
                   </div>
                   <form action={startDirectConversation}>
                     <input type="hidden" name="target_user_id" value={user.user_id} />
-                    <button
-                      type="submit"
-                      className="rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#b94f22]"
-                    >
-                      Message
-                    </button>
+                    <SubmitButton pendingLabel="Opening…">Message</SubmitButton>
                   </form>
                 </div>
-              </article>
+              </ContentCard>
             ))
           )}
         </div>
-      </div>
-    </section>
+    </PageContainer>
   );
 }

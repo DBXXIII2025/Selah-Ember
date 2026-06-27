@@ -1,8 +1,10 @@
 "use client";
 
-import { Image as ImageIcon, Link as LinkIcon, Paperclip, Send, SmilePlus, Video, X } from "lucide-react";
+import { Image as ImageIcon, Link as LinkIcon, LoaderCircle, Paperclip, Send, SmilePlus, Video, X } from "lucide-react";
 import { useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { sendDirectMessage } from "@/app/actions/messages";
+import { FormError, formControlClassName } from "@/components/ui/app-ui";
 import { isSafeHttpUrl, MEDIA_LIMITS, validateImageFile, validateVideoFile } from "@/lib/media/validation";
 
 type MessageComposerProps = {
@@ -33,6 +35,21 @@ function fileKindLabel(file: SelectedFile | null) {
   }
 
   return "File";
+}
+
+function SendMessageButton({ disabled }: Readonly<{ disabled: boolean }>) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending || disabled}
+      className="absolute bottom-3 right-3 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#cf5f2b] px-5 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22] hover:shadow-[#cf5f2b]/30 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {pending ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Send aria-hidden="true" className="h-4 w-4" />}
+      {pending ? "Sending…" : "Send"}
+    </button>
+  );
 }
 
 export function MessageComposer({ conversationId, returnTo }: MessageComposerProps) {
@@ -288,13 +305,7 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
           ) : null}
         </div>
 
-        <button
-          type="submit"
-          className="absolute bottom-3 right-3 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#cf5f2b] px-5 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22] hover:shadow-[#cf5f2b]/30"
-        >
-          <Send aria-hidden="true" className="h-4 w-4" />
-          Send
-        </button>
+        <SendMessageButton disabled={!body.trim() && !selectedFile && !selectedLink} />
       </div>
 
       {linkPanelOpen ? (
@@ -312,7 +323,7 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
                 setLinkError("");
               }}
               placeholder="https://example.com"
-              className="min-w-0 flex-1 rounded-xl border border-[#ead6c5] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
+              className={`${formControlClassName} mt-0 min-w-0 flex-1 text-sm`}
             />
             <div className="flex gap-2">
               <button
@@ -339,7 +350,7 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
         </div>
       ) : null}
 
-      {composerError ? <p className="mt-2 text-sm font-medium text-[#b42318]">{composerError}</p> : null}
+      {composerError ? <FormError className="mt-3">{composerError}</FormError> : null}
 
       <p className="mt-3 text-xs leading-5 text-[#67564c]">
         Images up to 10MB. Videos up to 250MB. Links must use HTTP or HTTPS.
