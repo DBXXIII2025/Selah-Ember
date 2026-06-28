@@ -1,6 +1,6 @@
 import { MapPin, Search, UsersRound } from "lucide-react";
-import Link from "next/link";
 import { getDiscoverCommunities } from "@/app/actions/communities";
+import { PUBLIC_NAVIGATION_ITEMS, ResponsiveNavigation } from "@/components/ui/app-navigation";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { ActionButton, ContentCard, EmptyState, PageContainer, PageHeader } from "@/components/ui/app-ui";
 
@@ -14,21 +14,16 @@ export default async function DiscoverPage() {
   const communities = await getDiscoverCommunities();
 
   return (
-    <main className="min-h-screen bg-[#f7ead7] text-[#211814]">
-      <header className="border-b border-[#c8874d]/30 bg-[#151210]/95 text-[#fff4df]">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-10 lg:px-16">
+    <div className="min-h-screen overflow-x-clip bg-[#f7ead7] text-[#211814]">
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+      <header className="sticky top-0 z-40 border-b border-[#c8874d]/30 bg-[#151210]/95 text-[#fff4df] shadow-lg shadow-black/10 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center gap-4 px-5 py-3 sm:px-8 lg:px-16 lg:py-4">
           <BrandMark variant="light" />
-          <nav className="flex items-center gap-4 text-sm font-semibold text-[#d8bea3]">
-            <Link href="/discover" className="text-[#f0a35c]">
-              Discover
-            </Link>
-            <Link href="/signin" className="transition hover:text-[#f0a35c]">
-              Sign in
-            </Link>
-          </nav>
+          <ResponsiveNavigation items={PUBLIC_NAVIGATION_ITEMS} />
         </div>
       </header>
 
+      <main id="main-content" tabIndex={-1}>
       <PageContainer>
         <PageHeader
           eyebrow="Discover"
@@ -72,6 +67,7 @@ export default async function DiscoverPage() {
             </div>
           )}
       </PageContainer>
-    </main>
+      </main>
+    </div>
   );
 }

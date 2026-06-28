@@ -21,7 +21,7 @@ export function BrandMark({ href = "/", variant = "dark", compact = false }: Bra
         />
       </span>
       {!compact ? (
-        <span className="leading-none">
+        <span className="leading-none max-[360px]:hidden">
           <span
             className={`block font-serif text-xl font-semibold ${
               variant === "light" ? "text-[#fff4df]" : "text-[#231915]"
@@ -42,7 +42,7 @@ export function BrandMark({ href = "/", variant = "dark", compact = false }: Bra
   );
 
   return (
-    <Link href={href} className="inline-flex rounded-full focus:outline-none focus:ring-4 focus:ring-[#d87836]/25">
+    <Link href={href} aria-label={compact ? "Selah Ember" : undefined} className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#d87836]/25">
       {content}
     </Link>
   );

@@ -15,7 +15,7 @@ const actionStyles = {
 };
 
 export const formControlClassName =
-  "mt-2 w-full rounded-xl border border-[#d9c1ad] bg-white px-4 py-3 text-[#211814] outline-none transition placeholder:text-[#9a8172] focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10 disabled:cursor-not-allowed disabled:bg-[#f3ece4] disabled:text-[#8a7467]";
+  "mt-2 w-full rounded-xl border border-[#d9c1ad] bg-white px-4 py-3 text-[#211814] outline-none transition placeholder:text-[#9a8172] focus-visible:border-[#cf5f2b] focus-visible:ring-4 focus-visible:ring-[#cf5f2b]/10 disabled:cursor-not-allowed disabled:bg-[#f3ece4] disabled:text-[#8a7467]";
 
 type ActionButtonProps = {
   children: ReactNode;
@@ -41,7 +41,7 @@ export function ActionButton({
   value,
 }: ActionButtonProps) {
   const classes = cn(
-    "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition focus-visible:outline-none focus-visible:ring-4 disabled:pointer-events-none disabled:opacity-50",
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-full font-semibold transition focus-visible:outline-none focus-visible:ring-4 disabled:pointer-events-none disabled:opacity-50",
     size === "sm" ? "px-4 py-2 text-sm" : "px-5 py-3 text-sm",
     actionStyles[variant],
     className,
@@ -261,7 +261,7 @@ export function SearchInput({
         name={name}
         defaultValue={defaultValue}
         placeholder={placeholder}
-        className="w-full rounded-full border border-[#d9b99d] bg-white/80 py-3 pl-11 pr-4 text-sm outline-none transition placeholder:text-[#8a7467] focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
+        className="w-full rounded-full border border-[#d9b99d] bg-white/80 py-3 pl-11 pr-4 text-sm outline-none transition placeholder:text-[#8a7467] focus-visible:border-[#cf5f2b] focus-visible:ring-4 focus-visible:ring-[#cf5f2b]/10"
       />
     </label>
   );
@@ -269,9 +269,9 @@ export function SearchInput({
 
 export function LoadingState({ rows = 3, className }: Readonly<{ rows?: number; className?: string }>) {
   return (
-    <div className={cn("space-y-4", className)} role="status" aria-label="Loading content">
+    <div className={cn("space-y-4", className)} role="status" aria-live="polite" aria-busy="true" aria-label="Loading content">
       {Array.from({ length: rows }).map((_, index) => (
-        <div key={index} className="animate-pulse rounded-2xl border border-[#ead6c5] bg-white/60 p-6">
+        <div key={index} aria-hidden="true" className="animate-pulse rounded-2xl border border-[#ead6c5] bg-white/60 p-6">
           <div className="h-5 w-2/5 rounded-full bg-[#ead6c5]" />
           <div className="mt-4 h-3 w-full rounded-full bg-[#f0dfcf]" />
           <div className="mt-2 h-3 w-4/5 rounded-full bg-[#f0dfcf]" />
@@ -466,7 +466,7 @@ export function ConfirmActionPanel({
 
   return (
     <DestructiveActionPanel title={title} description={description} className={className}>
-      <form action={action} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <form action={action} aria-label={`${actionLabel} confirmation`} className="flex flex-col gap-3 sm:flex-row sm:items-end">
         {Object.entries(hiddenFields || {}).map(([name, value]) => (
           <input key={name} type="hidden" name={name} value={value} />
         ))}

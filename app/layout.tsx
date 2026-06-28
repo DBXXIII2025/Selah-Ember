@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-const description = "A digital fellowship platform for churches, groups, and believers.";
+const description = "An open faith community for encouragement, prayer, Bible study groups, and fellowship.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
@@ -13,11 +13,11 @@ export const metadata: Metadata = {
   description,
   keywords: [
     "Selah Ember",
-    "church community",
+    "open faith community",
     "digital fellowship",
     "prayer requests",
     "Bible study groups",
-    "church events",
+    "faith events",
   ],
   icons: {
     icon: "/images/selah-ember-logo.png",

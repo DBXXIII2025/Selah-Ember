@@ -1,7 +1,7 @@
 "use client";
 
 import { Image as ImageIcon, Link as LinkIcon, LoaderCircle, Paperclip, Send, SmilePlus, Video, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { sendDirectMessage } from "@/app/actions/messages";
 import { FormError, formControlClassName } from "@/components/ui/app-ui";
@@ -44,7 +44,7 @@ function SendMessageButton({ disabled }: Readonly<{ disabled: boolean }>) {
     <button
       type="submit"
       disabled={pending || disabled}
-      className="absolute bottom-3 right-3 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#cf5f2b] px-5 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22] hover:shadow-[#cf5f2b]/30 disabled:cursor-not-allowed disabled:opacity-50"
+      className="absolute bottom-3 right-3 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#cf5f2b] px-5 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22] hover:shadow-[#cf5f2b]/30 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {pending ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Send aria-hidden="true" className="h-4 w-4" />}
       {pending ? "Sending…" : "Send"}
@@ -65,6 +65,24 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
   const [linkError, setLinkError] = useState("");
   const [composerError, setComposerError] = useState("");
   const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen && !emojiOpen && !linkPanelOpen) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        setEmojiOpen(false);
+        setLinkPanelOpen(false);
+        textareaRef.current?.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [emojiOpen, linkPanelOpen, menuOpen]);
 
   function openFilePicker(accept: string) {
     const input = fileInputRef.current;
@@ -238,9 +256,11 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
                 setEmojiOpen(false);
                 setLinkPanelOpen(false);
               }}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d79568]/50 bg-[#fff8ef] text-[#8a3f1e] shadow-sm transition hover:border-[#cf5f2b] hover:bg-[#fff0df] hover:shadow-[0_0_18px_rgba(207,95,43,0.18)]"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#d79568]/50 bg-[#fff8ef] text-[#8a3f1e] shadow-sm transition hover:border-[#cf5f2b] hover:bg-[#fff0df] hover:shadow-[0_0_18px_rgba(207,95,43,0.18)]"
               aria-label="Add attachment"
               aria-expanded={menuOpen}
+              aria-controls="message-attachment-menu"
+              aria-haspopup="true"
             >
               <Paperclip aria-hidden="true" className="h-4 w-4" />
             </button>
@@ -251,16 +271,18 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
                 setMenuOpen(false);
                 setLinkPanelOpen(false);
               }}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d79568]/50 bg-[#fff8ef] text-[#8a3f1e] shadow-sm transition hover:border-[#cf5f2b] hover:bg-[#fff0df] hover:shadow-[0_0_18px_rgba(207,95,43,0.18)]"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#d79568]/50 bg-[#fff8ef] text-[#8a3f1e] shadow-sm transition hover:border-[#cf5f2b] hover:bg-[#fff0df] hover:shadow-[0_0_18px_rgba(207,95,43,0.18)]"
               aria-label="Add emoji"
               aria-expanded={emojiOpen}
+              aria-controls="message-emoji-picker"
+              aria-haspopup="true"
             >
               <SmilePlus aria-hidden="true" className="h-4 w-4" />
             </button>
           </div>
 
           {menuOpen ? (
-            <div className="absolute bottom-12 left-0 z-10 w-48 overflow-hidden rounded-2xl border border-[#ead6c5] bg-white p-2 shadow-xl shadow-[#2f1608]/15">
+            <div id="message-attachment-menu" className="absolute bottom-12 left-0 z-10 w-[min(12rem,calc(100vw-3rem))] overflow-hidden rounded-2xl border border-[#ead6c5] bg-white p-2 shadow-xl shadow-[#2f1608]/15">
               <button
                 type="button"
                 onClick={() => openFilePicker(imageAccept)}
@@ -289,7 +311,7 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
           ) : null}
 
           {emojiOpen ? (
-            <div className="absolute bottom-12 left-12 z-10 grid w-56 grid-cols-7 gap-1 rounded-2xl border border-[#ead6c5] bg-white p-2 shadow-xl shadow-[#2f1608]/15">
+            <div id="message-emoji-picker" className="absolute bottom-12 left-0 z-10 grid w-[min(14rem,calc(100vw-3rem))] grid-cols-7 gap-1 rounded-2xl border border-[#ead6c5] bg-white p-2 shadow-xl shadow-[#2f1608]/15 sm:left-12">
               {composerEmojiOptions.map((emoji) => (
                 <button
                   key={emoji}

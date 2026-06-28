@@ -70,7 +70,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
         ) : null}
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <main className="space-y-5">
+          <section aria-label="Community posts" className="space-y-5">
             {!data.community ? (
               <ContentCard as="div" className="bg-white/80">
                 <h2 className="text-2xl font-semibold">Community feed is not ready yet</h2>
@@ -100,9 +100,9 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                 </div>
               ))
             )}
-          </main>
+          </section>
 
-          <aside className="space-y-5">
+          <aside aria-label="Community overview" className="space-y-5">
             <Widget title="Recent prayer" href="/prayer" hrefLabel="View">
               {prayers.slice(0, 3).map((prayer) => (
                 <p key={prayer.id} className="line-clamp-2 text-sm leading-6 text-[#67564c]">{prayer.title}</p>

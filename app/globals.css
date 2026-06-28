@@ -16,6 +16,7 @@ html {
 
 body {
   min-height: 100vh;
+  overflow-x: hidden;
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
@@ -26,7 +27,50 @@ a {
   touch-action: manipulation;
 }
 
+:focus-visible {
+  outline: 3px solid rgba(217, 120, 52, 0.85);
+  outline-offset: 3px;
+}
+
+main:focus {
+  outline: none;
+}
+
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  border-radius: 9999px;
+  background: var(--cream);
+  color: var(--charcoal);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  box-shadow: 0 12px 30px rgba(21, 18, 16, 0.24);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 ::selection {
   background: rgba(217, 120, 52, 0.28);
   color: var(--charcoal);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
