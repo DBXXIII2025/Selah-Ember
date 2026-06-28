@@ -19,7 +19,7 @@ export type LeaderApplication = {
 };
 
 export async function submitLeaderApplication() {
-  redirect("/community?message=Pastor verification is no longer required.");
+  redirect("/community?message=Special role verification is no longer required.");
 }
 
 export async function getMyLeaderApplications(): Promise<LeaderApplication[]> {

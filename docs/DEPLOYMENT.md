@@ -35,22 +35,32 @@ NEXT_PUBLIC_APP_URL=https://your-production-domain.example
 
 ## Supabase Production Checks
 
-- Apply migrations `0001` through `0011` in order.
-- Confirm RLS is enabled on profiles, churches, church memberships, study groups, group memberships, prayer requests, events, event RSVPs, and notifications.
-- Confirm public reads are intentional for published communities, public study groups, and events.
+- Back up the production database before applying migrations.
+- Apply every file currently present in `sql/migrations` in numeric order and verify the migration history afterward.
+- Confirm RLS remains enabled on all application tables, including profiles, legacy communities and memberships, groups and memberships, prayer requests, events and RSVPs, notifications, messages, discussions, community posts, media, moderation, and platform tables.
+- Confirm public reads are intentional only for the open community content, published legacy pages/media, public study groups, and public event details.
+- Confirm storage buckets and policies exist for `profile-avatars`, `message-media`, `community-media`, and `community-feed-media`.
 - Confirm Auth email settings and redirect URLs include the Vercel production domain.
+- Confirm `NEXT_PUBLIC_APP_URL` exactly matches the canonical HTTPS production origin so metadata URLs are not generated with the localhost fallback.
 - Confirm no development-only users or records are required for the app to boot.
+- Confirm the service-role key appears only in server-side environment configuration and never in browser bundles or logs.
 
 ## Launch Verification
 
 - Homepage loads on the production domain.
 - Signup, signin, and signout work.
 - Profile creation and editing work.
-- Community creation, discovery, join, and leave work.
+- The open community feed loads publicly; signed-in post, comment, reaction, and deletion permissions work.
+- Legacy public community pages remain readable where records exist, but retired creation/application routes are not linked from active navigation.
 - Prayer request creation and visibility rules work.
-- Study group creation, discovery, join, and leave work.
+- Study group creation, discovery, join/leave, and group discussions work.
 - Event creation and RSVP create, update, and delete work.
 - Notifications create, list, mark read, and mark all read.
-- Leader dashboard owner access and community update work.
+- Direct-message text, link, image, video, reaction, archive, report, and block flows work.
+- Media uploads and signed media playback work for every supported file type and size limit.
+- Platform-engineer pages reject normal users and permit authorized moderation/support workflows.
+- Keyboard navigation, mobile menus, focus visibility, and reduced-motion behavior pass manual review.
+- Loading, unavailable, restricted, deleted, archived, error, and empty states render without exposing internal details.
 - `/not-a-real-page` shows the branded 404.
 - Vercel build logs contain no secret values.
+- Production browser console and network logs show no unexpected errors during the complete QA journey.

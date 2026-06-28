@@ -17,7 +17,6 @@ export const PUBLIC_NAVIGATION_ITEMS: NavigationItem[] = [
   { href: "/discover", label: "Discover" },
   { href: "/discover/groups", label: "Groups" },
   { href: "/community", label: "Community" },
-  { href: "/events", label: "Events" },
   { href: "/signin", label: "Sign in" },
 ];
 

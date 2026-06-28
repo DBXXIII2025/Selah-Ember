@@ -1,20 +1,22 @@
 # Selah Ember
 
-Selah Ember is a digital fellowship platform for churches, groups, and believers. It helps communities create shared spaces, gather prayer requests, organize Bible study groups, publish events, track RSVPs, and notify leaders about meaningful activity.
+Selah Ember is an open faith community for encouragement, prayer, Bible study groups, events, and meaningful connection. Signed-in users share through one community feed, create and join groups, participate in group discussions, exchange direct messages, and maintain personal profiles.
 
-## Features Through Phase 12
+## Features Through Phase 16
 
 - Supabase email/password authentication.
 - Profile creation and editing.
-- Community creation, public discovery, public community pages, membership join/leave, and membership counts.
-- Prayer request creation with public/private visibility and community attachment.
-- Study group creation, public discovery, group detail pages, membership join/leave, and membership counts.
-- Event creation, event detail pages, RSVP Going/Interested/Remove flows, and RSVP counts.
-- Lightweight in-app notifications with unread count and read-state actions.
-- Church leader dashboard for owned communities, member counts, recent attached activity, and owner-only community detail updates.
-- Branded loading, error, and not-found states.
-- Production metadata and favicon wiring.
-- Beta and deployment documentation.
+- One open community feed with text, safe links, images, video, comments, and reactions.
+- Public/private prayer requests.
+- Public Bible study group discovery, membership, and group-only discussions.
+- Event detail pages with Going, Interested, and Remove RSVP flows.
+- Notifications with unread counts and read-state actions.
+- Direct messaging with links, images, video, reactions, archive, report, and block controls.
+- Public and managed media-library foundations.
+- Platform-engineer moderation, announcements, support messaging, and legacy-content management.
+- Shared responsive UI, accessible navigation, reduced-motion support, and branded loading/error states.
+
+Application roles are `user` and `platform_engineer`. Legacy community-management records remain supported where required, but new participation centers the open feed and user-created groups.
 
 ## Local Setup
 
@@ -43,7 +45,7 @@ Open `http://localhost:3000`.
 
 ## Database
 
-Apply migrations in `sql/migrations` in order. Phase 12 did not require an additional SQL migration after the security/RLS review.
+Apply every migration currently present in `sql/migrations` in numeric order. Do not skip legacy migrations; later compatibility migrations depend on the earlier schema.
 
 ## Verification
 
@@ -52,6 +54,7 @@ Run the standard checks before committing or deploying:
 ```bash
 npm run lint
 npm run build
+git diff --check
 ```
 
 Use `docs/BETA_CHECKLIST.md` for the end-to-end user journey pass.

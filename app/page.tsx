@@ -14,8 +14,8 @@ const fellowshipPillars = [
     icon: UsersRound,
   },
   {
-    title: "Church Events",
-    description: "Bring worship nights, service opportunities, and local gatherings into one peaceful calendar.",
+    title: "Faith Events",
+    description: "Bring worship nights, service opportunities, and community gatherings into one peaceful calendar.",
     icon: CalendarDays,
   },
   {
@@ -43,10 +43,10 @@ export default function Home() {
           <div className="max-w-3xl">
             <BrandMark variant="light" />
             <h1 className="mt-10 max-w-4xl font-serif text-5xl font-semibold tracking-normal text-[#fff4df] sm:text-6xl lg:text-7xl">
-              Digital fellowship for churches, groups, and believers
+              An open faith community for prayer, groups, and fellowship
             </h1>
             <p className="mt-7 max-w-2xl text-lg leading-8 text-[#e8ccb0] sm:text-xl">
-              A warm, modern home for prayer, study, events, and community life, built to help Christian fellowship feel close and cared for.
+              A warm, modern home for encouragement, prayer, Bible study, events, and meaningful connection.
             </p>
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
               <a
@@ -73,7 +73,7 @@ export default function Home() {
               <div>
                 <p className="font-serif text-4xl font-semibold">Prayer circle</p>
                 <p className="mt-3 text-[#ead6c5]">
-                  Requests, praises, and pastoral care gathered in a quiet shared space.
+                  Requests, praises, and prayerful care gathered in a quiet shared space.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">

@@ -23,7 +23,7 @@ export default function Error({
         </button>
       }
     >
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-4" role="alert">
         <AlertTriangle aria-hidden="true" className="h-8 w-8 text-[#b94f22]" />
         <p>Please retry the page. If this continues, capture the route and time for launch triage.</p>
       </div>

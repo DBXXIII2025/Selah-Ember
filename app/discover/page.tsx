@@ -1,10 +1,15 @@
 import { MapPin, Search, UsersRound } from "lucide-react";
+import type { Metadata } from "next";
 import { getDiscoverCommunities } from "@/app/actions/communities";
 import { PUBLIC_NAVIGATION_ITEMS, ResponsiveNavigation } from "@/components/ui/app-navigation";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { ActionButton, ContentCard, EmptyState, PageContainer, PageHeader } from "@/components/ui/app-ui";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "Discover Faith Communities",
+  description: "Browse public Selah Ember fellowship spaces for prayer, study, and gathering.",
+};
 
 function formatMemberCount(count: number) {
   return `${count} ${count === 1 ? "member" : "members"}`;

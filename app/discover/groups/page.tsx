@@ -1,10 +1,15 @@
 import { BookOpen, CalendarDays, MapPin, UsersRound } from "lucide-react";
+import type { Metadata } from "next";
 import { getDiscoverStudyGroups } from "@/app/actions/groups";
 import { PUBLIC_NAVIGATION_ITEMS, ResponsiveNavigation } from "@/components/ui/app-navigation";
 import { ActionButton, Badge, ContentCard, EmptyState, PageContainer, PageHeader } from "@/components/ui/app-ui";
 import { BrandMark } from "@/components/ui/brand-mark";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "Discover Bible Study Groups",
+  description: "Find public Bible study groups for Scripture-centered learning, prayer, and fellowship.",
+};
 
 function formatMemberCount(count: number) {
   return `${count} ${count === 1 ? "member" : "members"}`;

@@ -32,7 +32,7 @@ export const metadata: Metadata = {
       {
         url: "/images/selah-ember-logo.png",
         width: 1536,
-        height: 864,
+        height: 1536,
         alt: "Selah Ember logo",
       },
     ],

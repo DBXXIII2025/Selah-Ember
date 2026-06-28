@@ -1,6 +1,8 @@
 # Security and RLS Review
 
-Phase 12 review date: 2026-05-29
+Historical Phase 12 baseline review date: 2026-05-29.
+
+This document records the Phase 12 policy baseline; it is not a Phase 16 production security sign-off. Re-audit all current migrations, storage policies, server actions, moderation paths, and service-role usage against the deployed Supabase project before launch.
 
 ## Server Actions
 

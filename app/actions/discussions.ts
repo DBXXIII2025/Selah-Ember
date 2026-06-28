@@ -771,33 +771,6 @@ export async function getDiscussionThread(threadId: string): Promise<DiscussionT
   };
 }
 
-async function notifyCommunityOwners(communityId: string, actorUserId: string, threadId: string, title: string) {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("church_memberships")
-    .select("profiles:profile_id(user_id)")
-    .eq("church_id", communityId)
-    .eq("role", "owner");
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  await Promise.all(
-    ((data || []) as unknown as Record<string, unknown>[]).map((membership) => {
-      const ownerProfile = membership.profiles as { user_id?: string } | null | undefined;
-      return createNotification({
-        userId: ownerProfile?.user_id,
-        actorUserId,
-        type: "discussion_thread",
-        title: "New community discussion",
-        body: previewText(title),
-        href: `/communities/${communityId}/discussions/${threadId}`,
-      });
-    }),
-  );
-}
-
 async function notifyGroupLeaders(groupId: string, actorUserId: string, threadId: string, title: string) {
   const admin = createAdminClient();
   const { data, error } = await admin
@@ -853,50 +826,8 @@ function validateReplyInput(body: string, redirectPath: string) {
   }
 }
 
-export async function createCommunityThread(formData: FormData) {
-  const profile = await getCurrentProfile();
-  await assertNotBanned(profile.authUserId, "/communities?message=Your account cannot create discussions right now.");
-  const communityId = getFormString(formData, "community_id");
-  const title = getFormString(formData, "title");
-  const body = getFormString(formData, "body");
-  const redirectPath = `/communities/${communityId}/discussions/new`;
-
-  if (!communityId || !isUuid(communityId)) {
-    redirect("/communities?message=Community not found.");
-  }
-
-  validateThreadInput(title, body, redirectPath);
-
-  const access = await getCommunityAccess(communityId);
-
-  if (!access.isMember) {
-    redirect(`/communities/${communityId}/discussions?message=Join this community to start a discussion.`);
-  }
-
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("discussion_threads")
-    .insert({
-      scope_type: "community",
-      community_id: communityId,
-      author_id: profile.authUserId,
-      title,
-      body,
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    redirect(`${redirectPath}?message=${safeMessage(error.message)}`);
-  }
-
-  const threadId = String(data.id);
-  await notifyCommunityOwners(communityId, profile.authUserId, threadId, title);
-
-  revalidatePath(`/communities/${communityId}/discussions`);
-  revalidatePath(`/communities/${communityId}/discussions/${threadId}`);
-  revalidatePath("/notifications");
-  redirect(`/communities/${communityId}/discussions/${threadId}`);
+export async function createCommunityThread() {
+  redirect("/community?message=Community discussions have moved to the open community feed and groups.");
 }
 
 export async function createGroupThread(formData: FormData) {

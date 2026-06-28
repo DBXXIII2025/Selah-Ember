@@ -1,4 +1,4 @@
-# Beta Readiness Checklist
+# Phase 16 Production Browser Checklist
 
 Use this checklist before inviting real beta users.
 
@@ -6,31 +6,29 @@ Use this checklist before inviting real beta users.
 
 - Create a new account with email and password.
 - Sign in with the new account.
-- Complete or update the profile display name, avatar URL, and bio.
+- Complete or update the profile display name, profile photo, and bio.
 - Sign out and sign back in.
 
-## Communities
+## Open Community
 
-- Create a community with name, description, location, and optional banner URL.
-- Confirm the community appears on `/communities`.
-- Confirm the community appears on `/discover`.
-- Open the public community page at `/c/[slug]`.
-- Join a community as a second user.
-- Confirm the joined community appears on `/communities`.
-- Leave a joined community as a non-owner.
-- Confirm an owner cannot leave their own community through the normal leave action.
+- Confirm `/community` loads while signed out.
+- Sign in and create text, link, image, and video posts.
+- Add and remove reactions and comments.
+- Confirm users can delete only content allowed by current ownership/moderation rules.
+- Confirm `/discover` and retained `/c/[slug]` legacy public pages load where records exist.
+- Confirm retired community creation and role-application routes are not linked from active navigation.
 
 ## Prayer Requests
 
 - Create a public prayer request.
 - Create a private prayer request.
-- Attach a prayer request to a community.
+- Optionally attach a prayer request to an existing legacy community record.
 - Confirm public requests display in the prayer list.
 - Confirm private requests remain visible only to the owner.
 
 ## Study Groups
 
-- Create a study group attached to a community.
+- Create a study group, with and without an optional community attachment.
 - Confirm the group appears on `/groups`.
 - Confirm the group appears on `/discover/groups`.
 - Open the public group page at `/groups/[id]`.
@@ -38,6 +36,8 @@ Use this checklist before inviting real beta users.
 - Confirm the joined group appears on `/groups`.
 - Leave a joined group as a non-owner.
 - Confirm a group owner/leader cannot leave through the normal leave action.
+- Create a group discussion, reply, reaction, report, and deletion using disposable content.
+- Confirm non-members cannot open group discussions.
 
 ## Events and RSVP
 
@@ -53,23 +53,32 @@ Use this checklist before inviting real beta users.
 
 - Confirm `/notifications` redirects signed-out users to `/signin`.
 - Confirm the empty state appears when there are no notifications.
-- Join a community and confirm the owner receives a notification.
 - Join a group and confirm the owner/leader receives a notification.
 - RSVP to an event and confirm the event owner receives a notification.
-- Create a public community prayer request and confirm the community owner receives a safe notification.
 - Mark a single notification as read.
 - Mark all notifications as read.
 - Confirm the unread count updates.
 
-## Leader Dashboard
+## Messages and Media
 
-- Confirm signed-out users cannot access `/leader`.
-- Confirm community owners can access `/leader`.
-- Open `/leader/communities/[id]` for an owned community.
-- Confirm a non-owner cannot access another owner's management page.
-- Update community name, description, location, and banner URL.
-- Confirm updated details appear on `/c/[slug]`.
-- Confirm member count, prayer requests, groups, events, and membership list display where available.
+- Start a direct conversation and send text, safe links, images, and video.
+- Confirm reactions, read state, archive/restore, report, block, and owned-message deletion.
+- Confirm message and media signed URLs load and expire safely.
+- Create, edit, publish, and delete disposable managed media.
+
+## Platform Engineer
+
+- Confirm normal users cannot access `/platform` or `/platform/messages`.
+- Confirm platform navigation appears only for `platform_engineer`.
+- Test announcements, support conversations, moderation, temporary bans, and typed destructive confirmations with disposable records.
+- Confirm legacy management pages do not grant access without platform authorization.
+
+## Accessibility and Responsive Behavior
+
+- Complete the primary journeys using keyboard only.
+- Confirm skip links, current navigation state, visible focus, Escape dismissal, and focus restoration.
+- Test 320px, 375px, 768px, 1024px, and desktop widths without horizontal overflow.
+- Enable reduced motion and confirm smooth scrolling/repeating motion is suppressed.
 
 ## Regression Pass
 
@@ -82,5 +91,8 @@ Use this checklist before inviting real beta users.
 - Events load.
 - Discover pages load.
 - Notifications load.
-- Leader dashboard loads.
+- Legacy leader transition pages remain informational and do not expose retired application workflows.
+- Messages and media load.
+- Platform pages load for a platform engineer and reject a normal user.
+- Branded loading, unavailable, restricted, deleted, archived, error, and 404 states render.
 - Signout works.

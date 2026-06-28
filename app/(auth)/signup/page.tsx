@@ -1,5 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { signUp } from "@/app/actions/auth";
+
+export const metadata: Metadata = {
+  title: "Create Account",
+  description: "Create a Selah Ember account and join the open faith community.",
+  robots: { index: false, follow: true },
+};
 
 type SignUpPageProps = {
   searchParams: Promise<{

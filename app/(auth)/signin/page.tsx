@@ -1,5 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { signIn } from "@/app/actions/auth";
+
+export const metadata: Metadata = {
+  title: "Sign In",
+  description: "Sign in to your Selah Ember account.",
+  robots: { index: false, follow: true },
+};
 
 type SignInPageProps = {
   searchParams: Promise<{

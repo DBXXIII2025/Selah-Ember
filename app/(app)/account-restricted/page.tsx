@@ -16,9 +16,8 @@ export default async function AccountRestrictedPage() {
         </p>
         <h1 className="mt-3 text-4xl font-semibold">Some actions are temporarily unavailable</h1>
         <p className="mt-4 leading-7 text-[#67564c]">
-          You can still sign in and read available areas, but creating or joining communities,
-          groups, prayer requests, events, RSVPs, memberships, and future messages/posts is blocked
-          while this restriction is active.
+          You can still sign in and read available areas, but creating posts, prayer requests,
+          groups, events, RSVPs, memberships, or messages is blocked while this restriction is active.
         </p>
         {ban ? (
           <div className="mt-6 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">

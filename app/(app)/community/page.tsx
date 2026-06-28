@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { deleteOpenCommunityPost, getOpenCommunityFeed, getRecentCommunityMembers } from "@/app/actions/community-posts";
 import { getVisibleEvents } from "@/app/actions/events";
 import { getDiscoverStudyGroups } from "@/app/actions/groups";
@@ -10,6 +11,11 @@ type CommunityPageProps = {
   searchParams: Promise<{
     message?: string;
   }>;
+};
+
+export const metadata: Metadata = {
+  title: "Community Feed",
+  description: "Share encouragement, testimony, prayer follow-up, media, and safe links with the open Selah Ember community.",
 };
 
 function formatDate(value: string) {
@@ -73,8 +79,8 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           <section aria-label="Community posts" className="space-y-5">
             {!data.community ? (
               <ContentCard as="div" className="bg-white/80">
-                <h2 className="text-2xl font-semibold">Community feed is not ready yet</h2>
-                <p className="mt-3 leading-7 text-[#67564c]">The default community migration needs to be applied.</p>
+                <h2 className="text-2xl font-semibold">Community feed is temporarily unavailable</h2>
+                <p className="mt-3 leading-7 text-[#67564c]">Please try again later. Platform setup may still be in progress.</p>
               </ContentCard>
             ) : null}
 

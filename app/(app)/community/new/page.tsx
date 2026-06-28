@@ -31,7 +31,7 @@ export default async function NewCommunityPostPage({ searchParams }: NewCommunit
 
         {!community ? (
           <div className="mt-8 rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
-            The default community migration needs to be applied before posting.
+            Posting is temporarily unavailable while the community feed finishes setup.
           </div>
         ) : (
           <div className="mt-8 rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
