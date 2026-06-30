@@ -1,6 +1,6 @@
 import { BookOpen, CalendarDays, MapPin, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
-import { getDiscoverStudyGroups } from "@/app/actions/groups";
+import { getDiscoverStudyGroupsForPublicPage } from "@/app/actions/groups";
 import { PUBLIC_NAVIGATION_ITEMS, ResponsiveNavigation } from "@/components/ui/app-navigation";
 import { ActionButton, Badge, ContentCard, EmptyState, PageContainer, PageHeader } from "@/components/ui/app-ui";
 import { BrandMark } from "@/components/ui/brand-mark";
@@ -16,7 +16,7 @@ function formatMemberCount(count: number) {
 }
 
 export default async function DiscoverGroupsPage() {
-  const groups = await getDiscoverStudyGroups();
+  const { groups, isUnavailable } = await getDiscoverStudyGroupsForPublicPage();
 
   return (
     <div className="min-h-screen overflow-x-clip bg-[#f7ead7] text-[#211814]">
@@ -37,7 +37,16 @@ export default async function DiscoverGroupsPage() {
         />
 
         {groups.length === 0 ? (
-          <EmptyState className="mt-10" icon={BookOpen} title="No public groups yet" description="Public study groups will appear here as members create them." />
+          <EmptyState
+            className="mt-10"
+            icon={BookOpen}
+            title={isUnavailable ? "Group discovery is temporarily unavailable" : "No public groups yet"}
+            description={
+              isUnavailable
+                ? "Please try again later. Public study groups will return when the service is available."
+                : "Public study groups will appear here as members create them."
+            }
+          />
           ) : (
             <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {groups.map((group) => (

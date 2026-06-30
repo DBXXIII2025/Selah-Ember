@@ -54,10 +54,11 @@ Run the standard checks before committing or deploying:
 ```bash
 npm run lint
 npm run build
+npm run test:e2e
 git diff --check
 ```
 
-Use `docs/BETA_CHECKLIST.md` for the end-to-end user journey pass.
+Install the local Chromium test browser with `npx playwright install chromium` before the first smoke-test run. See `docs/TESTING.md` for environment requirements, coverage, and exclusions. Use `docs/BETA_CHECKLIST.md` for the manual end-to-end user journey pass.
 
 ## Deployment
 

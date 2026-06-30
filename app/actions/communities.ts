@@ -36,6 +36,11 @@ export type CommunityMembershipStatus = {
   role: string | null;
 };
 
+export type PublicCommunityDiscovery = {
+  communities: Community[];
+  isUnavailable: boolean;
+};
+
 export type CommunityViewerState = {
   isSignedIn: boolean;
   authUserId: string | null;
@@ -329,6 +334,24 @@ export async function getDiscoverCommunities(): Promise<Community[]> {
   return rows.map((community) =>
     normalizeCommunity(community, counts.get(String(community.id)) || 0),
   );
+}
+
+export async function getDiscoverCommunitiesForPublicPage(): Promise<PublicCommunityDiscovery> {
+  try {
+    return {
+      communities: await getDiscoverCommunities(),
+      isUnavailable: false,
+    };
+  } catch (error) {
+    console.warn("[communities] public_discovery_unavailable", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+
+    return {
+      communities: [],
+      isUnavailable: true,
+    };
+  }
 }
 
 export async function getCommunityMembershipStatus(

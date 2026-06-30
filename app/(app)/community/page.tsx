@@ -1,8 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { deleteOpenCommunityPost, getOpenCommunityFeed, getRecentCommunityMembers } from "@/app/actions/community-posts";
+import {
+  deleteOpenCommunityPost,
+  getOpenCommunityFeedForPublicPage,
+  getRecentCommunityMembersForPublicPage,
+} from "@/app/actions/community-posts";
 import { getVisibleEvents } from "@/app/actions/events";
-import { getDiscoverStudyGroups } from "@/app/actions/groups";
+import { getDiscoverStudyGroupsForPublicPage } from "@/app/actions/groups";
 import { getVisiblePrayerRequests } from "@/app/actions/prayer";
 import { CommunityPostDisplay } from "@/components/community/community-post-display";
 import { ActionButton, ContentCard, EmptyState, PageContainer, PageHeader, SectionHeader } from "@/components/ui/app-ui";
@@ -17,6 +21,8 @@ export const metadata: Metadata = {
   title: "Community Feed",
   description: "Share encouragement, testimony, prayer follow-up, media, and safe links with the open Selah Ember community.",
 };
+
+export const dynamic = "force-dynamic";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
@@ -44,12 +50,14 @@ function Widget({ title, href, hrefLabel, children }: Readonly<{
 }
 
 export default async function CommunityPage({ searchParams }: CommunityPageProps) {
-  const [data, groups, members, params] = await Promise.all([
-    getOpenCommunityFeed(),
-    getDiscoverStudyGroups(),
-    getRecentCommunityMembers(),
+  const [data, groupDiscovery, memberDiscovery, params] = await Promise.all([
+    getOpenCommunityFeedForPublicPage(),
+    getDiscoverStudyGroupsForPublicPage(),
+    getRecentCommunityMembersForPublicPage(),
     searchParams,
   ]);
+  const groups = groupDiscovery.groups;
+  const members = memberDiscovery.members;
   const [prayers, events] = data.isSignedIn
     ? await Promise.all([getVisiblePrayerRequests(), getVisibleEvents()])
     : [[], []];
@@ -79,8 +87,14 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           <section aria-label="Community posts" className="space-y-5">
             {!data.community ? (
               <ContentCard as="div" className="bg-white/80">
-                <h2 className="text-2xl font-semibold">Community feed is temporarily unavailable</h2>
-                <p className="mt-3 leading-7 text-[#67564c]">Please try again later. Platform setup may still be in progress.</p>
+                <h2 className="text-2xl font-semibold">
+                  {data.isUnavailable ? "Community feed is temporarily unavailable" : "Community feed is not ready yet"}
+                </h2>
+                <p className="mt-3 leading-7 text-[#67564c]">
+                  {data.isUnavailable
+                    ? "Please try again later. Posts will return when the service is available."
+                    : "Platform setup may still be in progress."}
+                </p>
               </ContentCard>
             ) : null}
 
@@ -123,7 +137,11 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                   <span className="text-xs text-[#8a7467]">{group.member_count} {group.member_count === 1 ? "member" : "members"}</span>
                 </Link>
               ))}
-              {groups.length === 0 ? <p className="text-sm text-[#67564c]">No public groups yet.</p> : null}
+              {groups.length === 0 ? (
+                <p className="text-sm text-[#67564c]">
+                  {groupDiscovery.isUnavailable ? "Groups are temporarily unavailable." : "No public groups yet."}
+                </p>
+              ) : null}
             </Widget>
 
             <Widget title="Upcoming events" href="/events" hrefLabel="View">
@@ -153,7 +171,11 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                   </div>
                 </div>
               ))}
-              {members.length === 0 ? <p className="text-sm text-[#67564c]">No members yet.</p> : null}
+              {members.length === 0 ? (
+                <p className="text-sm text-[#67564c]">
+                  {memberDiscovery.isUnavailable ? "Members are temporarily unavailable." : "No members yet."}
+                </p>
+              ) : null}
             </Widget>
           </aside>
         </div>

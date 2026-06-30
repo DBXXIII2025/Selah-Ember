@@ -61,7 +61,19 @@ export type CommunityMemberPreview = {
   created_at: string;
 };
 
-type CommunityRecord = {
+export type OpenCommunityFeedResult = {
+  community: CommunityRecord | null;
+  posts: CommunityPost[];
+  isSignedIn: boolean;
+  isUnavailable: boolean;
+};
+
+export type PublicCommunityMembersResult = {
+  members: CommunityMemberPreview[];
+  isUnavailable: boolean;
+};
+
+export type CommunityRecord = {
   id: string;
   name: string;
   slug: string;
@@ -431,11 +443,11 @@ async function addReactionState(posts: CommunityPost[], currentUserId: string | 
   }));
 }
 
-export async function getOpenCommunityFeed() {
+export async function getOpenCommunityFeed(): Promise<OpenCommunityFeedResult> {
   const [community, auth] = await Promise.all([getDefaultCommunity(), getOptionalAuthAndProfile()]);
 
   if (!community) {
-    return { community: null, posts: [] as CommunityPost[], isSignedIn: Boolean(auth) };
+    return { community: null, posts: [] as CommunityPost[], isSignedIn: Boolean(auth), isUnavailable: false };
   }
 
   const currentUserId = auth?.user.id || null;
@@ -449,7 +461,24 @@ export async function getOpenCommunityFeed() {
       currentUserId,
     ),
   );
-  return { community, posts, isSignedIn: Boolean(auth) };
+  return { community, posts, isSignedIn: Boolean(auth), isUnavailable: false };
+}
+
+export async function getOpenCommunityFeedForPublicPage(): Promise<OpenCommunityFeedResult> {
+  try {
+    return await getOpenCommunityFeed();
+  } catch (error) {
+    console.warn("[community_posts] public_feed_unavailable", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+
+    return {
+      community: null,
+      posts: [],
+      isSignedIn: false,
+      isUnavailable: true,
+    };
+  }
 }
 
 export async function getRecentCommunityMembers(limit = 5): Promise<CommunityMemberPreview[]> {
@@ -471,6 +500,24 @@ export async function getRecentCommunityMembers(limit = 5): Promise<CommunityMem
     avatar_url: typeof profile.avatar_url === "string" ? profile.avatar_url : null,
     created_at: String(profile.created_at),
   }));
+}
+
+export async function getRecentCommunityMembersForPublicPage(limit = 5): Promise<PublicCommunityMembersResult> {
+  try {
+    return {
+      members: await getRecentCommunityMembers(limit),
+      isUnavailable: false,
+    };
+  } catch (error) {
+    console.warn("[community_posts] public_members_unavailable", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+
+    return {
+      members: [],
+      isUnavailable: true,
+    };
+  }
 }
 
 export async function getOpenCommunityPost(postId: string) {

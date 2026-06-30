@@ -30,6 +30,11 @@ export type GroupCommunityOption = {
   name: string;
 };
 
+export type PublicStudyGroupDiscovery = {
+  groups: StudyGroup[];
+  isUnavailable: boolean;
+};
+
 type Profile = {
   id: string;
   user_id: string;
@@ -385,6 +390,24 @@ export async function getDiscoverStudyGroups(): Promise<StudyGroup[]> {
   const counts = await getGroupMembershipCounts(groupIds);
 
   return rows.map((group) => normalizeGroup(group, null, counts.get(String(group.id)) || 0));
+}
+
+export async function getDiscoverStudyGroupsForPublicPage(): Promise<PublicStudyGroupDiscovery> {
+  try {
+    return {
+      groups: await getDiscoverStudyGroups(),
+      isUnavailable: false,
+    };
+  } catch (error) {
+    console.warn("[groups] public_discovery_unavailable", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+
+    return {
+      groups: [],
+      isUnavailable: true,
+    };
+  }
 }
 
 export async function getMembershipStatus(groupId: string): Promise<GroupMembershipStatus> {

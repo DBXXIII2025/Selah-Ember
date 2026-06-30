@@ -1,6 +1,6 @@
 import { MapPin, Search, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
-import { getDiscoverCommunities } from "@/app/actions/communities";
+import { getDiscoverCommunitiesForPublicPage } from "@/app/actions/communities";
 import { PUBLIC_NAVIGATION_ITEMS, ResponsiveNavigation } from "@/components/ui/app-navigation";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { ActionButton, ContentCard, EmptyState, PageContainer, PageHeader } from "@/components/ui/app-ui";
@@ -16,7 +16,7 @@ function formatMemberCount(count: number) {
 }
 
 export default async function DiscoverPage() {
-  const communities = await getDiscoverCommunities();
+  const { communities, isUnavailable } = await getDiscoverCommunitiesForPublicPage();
 
   return (
     <div className="min-h-screen overflow-x-clip bg-[#f7ead7] text-[#211814]">
@@ -37,7 +37,16 @@ export default async function DiscoverPage() {
         />
 
         {communities.length === 0 ? (
-          <EmptyState className="mt-10" icon={Search} title="No public communities yet" description="New fellowship spaces will appear here as communities are created." />
+          <EmptyState
+            className="mt-10"
+            icon={Search}
+            title={isUnavailable ? "Community discovery is temporarily unavailable" : "No public communities yet"}
+            description={
+              isUnavailable
+                ? "Please try again later. Public fellowship spaces will return when the service is available."
+                : "New fellowship spaces will appear here as communities are created."
+            }
+          />
           ) : (
             <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {communities.map((community) => (
