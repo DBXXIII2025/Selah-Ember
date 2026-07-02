@@ -1,3 +1,4 @@
+import type { User } from "@supabase/supabase-js";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signOut } from "@/app/actions/auth";
@@ -19,9 +20,16 @@ export default async function ProtectedLayout({
   const isPublicEventDetail = /^\/events\/[^/]+$/.test(pathname);
   const isPublicCommunityFeed = pathname === "/community" || /^\/community\/posts\/[^/]+$/.test(pathname);
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: User | null = null;
+
+  try {
+    const result = await supabase.auth.getUser();
+    user = result.data.user;
+  } catch (error) {
+    console.warn("[protected_layout] auth_unavailable", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
 
   if (!user && !isPublicGroupDetail && !isPublicEventDetail && !isPublicCommunityFeed) {
     redirect("/signin");
