@@ -21,6 +21,12 @@ Run the smoke suite with its automatically managed local Next.js server:
 npm run test:e2e
 ```
 
+Run the automated accessibility suite separately:
+
+```bash
+npm run test:a11y
+```
+
 The server defaults to `http://127.0.0.1:3100`. Override its port with `PLAYWRIGHT_PORT`. To test an already running non-production deployment instead, set `PLAYWRIGHT_BASE_URL`; Playwright will not start another server.
 
 The managed server allows up to five minutes to start because this repository may run from a slower Windows workspace drive.
@@ -39,6 +45,8 @@ npm run test:e2e:ui
 - Absence of platform navigation for signed-out visitors.
 - `robots.txt`, `sitemap.xml`, and branded 404 responses.
 
+The axe accessibility suite covers `/`, `/community`, `/discover`, `/discover/groups`, `/signin`, `/signup`, and the signed-out `/dashboard` guard after it redirects to sign in. It checks detectable WCAG 2.0 and 2.1 Level A and AA violations in Chromium. The `color-contrast` rule is explicitly excluded because current image-backed pages produce unreliable automated results and existing controls have known contrast debt; contrast remains a required manual check until a dedicated design remediation pass is complete.
+
 All current tests are read-only. They do not submit forms, create accounts, authenticate test users, upload media, or mutate application data.
 
 ## Intentionally Deferred
@@ -47,7 +55,7 @@ All current tests are read-only. They do not submit forms, create accounts, auth
 - Group discussions, messages, prayer requests, events, RSVPs, notifications, and media mutations.
 - Database and RLS policy tests.
 - Cross-browser projects beyond Chromium.
-- Automated accessibility scans and visual regression tests.
+- Visual regression tests.
 
 Add those only after isolated test accounts, deterministic fixtures, and a disposable test database are available.
 
@@ -67,6 +75,14 @@ npx playwright install --with-deps chromium
 npm run test:e2e
 ```
 
+The current workflow runs only the smoke suite. When accessibility checks are promoted into CI, add the following step after Chromium is installed and after the smoke suite:
+
+```bash
+npm run test:a11y
+```
+
+The accessibility suite uses the same local server, placeholder environment values, reports, and artifact directories as the smoke suite. It does not require GitHub secrets or production credentials.
+
 The smoke tests start the local Next.js server through Playwright unless `PLAYWRIGHT_BASE_URL` is set. CI should leave `PLAYWRIGHT_BASE_URL` unset so the run validates the checked-out application in isolation.
 
 ## GitHub Secrets
@@ -81,7 +97,7 @@ Playwright writes its HTML report to `playwright-report/` and per-test artifacts
 
 CI uploads both directories as artifacts after every Playwright run, including failed runs. Failure screenshots are saved under `test-results/`, and traces are captured on the first retry. Download the `playwright-report` artifact from the GitHub Actions run summary to inspect the HTML report locally.
 
-For local report review after running `npm run test:e2e`:
+For local report review after running either Playwright suite:
 
 ```bash
 npx playwright show-report
@@ -89,4 +105,6 @@ npx playwright show-report
 
 ## Manual QA
 
-The smoke suite verifies only public rendering, signed-out route protection, and public metadata endpoints. Manual QA is still required before release for authenticated workflows, role-specific platform tools, media uploads, messaging, notifications, events, prayer requests, group interactions, database behavior, RLS policy behavior, accessibility, and cross-browser coverage.
+The smoke and axe suites verify public rendering, signed-out route protection, public metadata endpoints, and programmatically detectable WCAG issues on selected signed-out pages. Manual QA is still required before release for authenticated workflows, role-specific platform tools, media uploads, messaging, notifications, events, prayer requests, group interactions, database behavior, and RLS policy behavior.
+
+Accessibility still requires manual color-contrast validation, keyboard-only navigation, visible focus review, screen-reader testing, zoom and text reflow checks, reduced-motion behavior, touch target review, and validation of content meaning and reading order. Cross-browser and mobile assistive-technology coverage also remains manual.
