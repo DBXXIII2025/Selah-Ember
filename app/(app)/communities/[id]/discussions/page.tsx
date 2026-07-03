@@ -18,7 +18,7 @@ export default async function CommunityDiscussionsPage({ params }: CommunityDisc
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
           <Link
             href="/community"
-            className="inline-flex justify-center rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+            className="inline-flex justify-center rounded-full bg-[#a94720] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]"
           >
             Open community
           </Link>

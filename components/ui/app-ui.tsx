@@ -5,17 +5,17 @@ import { cn } from "@/lib/utils/cn";
 
 const actionStyles = {
   primary:
-    "bg-[#cf5f2b] text-white shadow-lg shadow-[#cf5f2b]/20 hover:bg-[#b94f22] focus-visible:ring-[#cf5f2b]/30",
+    "bg-[#a94720] text-white shadow-lg shadow-[#a94720]/20 hover:bg-[#b94f22] focus-visible:ring-[#a94720]/30",
   secondary:
     "border border-[#2f2722]/20 bg-white/70 text-[#2f2722] hover:bg-white focus-visible:ring-[#2f2722]/15",
   quiet:
-    "text-[#8a3f1e] hover:bg-[#fff4e8] hover:text-[#b94f22] focus-visible:ring-[#cf5f2b]/20",
+    "text-[#8a3f1e] hover:bg-[#fff4e8] hover:text-[#b94f22] focus-visible:ring-[#a94720]/20",
   danger:
     "border border-[#b42318]/30 bg-white text-[#b42318] hover:bg-[#fff1f0] focus-visible:ring-[#b42318]/20",
 };
 
 export const formControlClassName =
-  "mt-2 w-full rounded-xl border border-[#d9c1ad] bg-white px-4 py-3 text-[#211814] outline-none transition placeholder:text-[#9a8172] focus-visible:border-[#cf5f2b] focus-visible:ring-4 focus-visible:ring-[#cf5f2b]/10 disabled:cursor-not-allowed disabled:bg-[#f3ece4] disabled:text-[#8a7467]";
+  "mt-2 w-full rounded-xl border border-[#d9c1ad] bg-white px-4 py-3 text-[#211814] outline-none transition placeholder:text-[#9a8172] focus-visible:border-[#a94720] focus-visible:ring-4 focus-visible:ring-[#a94720]/10 disabled:cursor-not-allowed disabled:bg-[#f3ece4] disabled:text-[#715e54]";
 
 type ActionButtonProps = {
   children: ReactNode;
@@ -103,7 +103,7 @@ export function PageHeader({
     >
       <div className="max-w-3xl">
         {eyebrow ? (
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#b94f22] sm:text-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#9b4d25] sm:text-sm">
             {eyebrow}
           </p>
         ) : null}
@@ -196,7 +196,7 @@ export function Badge({
         tone === "ember" && "bg-[#fff4e8] text-[#8a3f1e]",
         tone === "success" && "bg-[#eef7ee] text-[#386641]",
         tone === "neutral" && "bg-[#f3ece4] text-[#67564c]",
-        tone === "solid" && "bg-[#cf5f2b] text-white",
+        tone === "solid" && "bg-[#a94720] text-white",
         className,
       )}
     >
@@ -255,13 +255,13 @@ export function SearchInput({
   return (
     <label className={cn("relative block", className)}>
       <span className="sr-only">{label}</span>
-      <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a7467]" />
+      <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#715e54]" />
       <input
         type="search"
         name={name}
         defaultValue={defaultValue}
         placeholder={placeholder}
-        className="w-full rounded-full border border-[#d9b99d] bg-white/80 py-3 pl-11 pr-4 text-sm outline-none transition placeholder:text-[#8a7467] focus-visible:border-[#cf5f2b] focus-visible:ring-4 focus-visible:ring-[#cf5f2b]/10"
+        className="w-full rounded-full border border-[#d9b99d] bg-white/80 py-3 pl-11 pr-4 text-sm outline-none transition placeholder:text-[#715e54] focus-visible:border-[#a94720] focus-visible:ring-4 focus-visible:ring-[#a94720]/10"
       />
     </label>
   );

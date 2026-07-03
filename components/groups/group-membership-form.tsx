@@ -39,7 +39,7 @@ export function GroupMembershipForm({ group, status }: GroupMembershipFormProps)
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href="/signin"
-          className="rounded-full bg-[#cf5f2b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+          className="rounded-full bg-[#a94720] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]"
         >
           Sign in to join
         </Link>
@@ -53,7 +53,7 @@ export function GroupMembershipForm({ group, status }: GroupMembershipFormProps)
       <input type="hidden" name="group_id" value={group.id} />
       <button
         type="submit"
-        className="rounded-full bg-[#cf5f2b] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+        className="rounded-full bg-[#a94720] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]"
       >
         Join group
       </button>

@@ -32,7 +32,7 @@ function Media({ post }: Readonly<{ post: CommunityPost }>) {
   if (post.media_kind === "link" && post.media_url) {
     return (
       <div className="rounded-xl border border-[#ead6c5] bg-[#fffaf4] p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8a7467]">Link</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#715e54]">Link</p>
         <SafeLink
           href={post.media_url}
           className="mt-2 block break-all text-sm font-semibold text-[#8a3f1e] transition hover:text-[#b94f22]"
@@ -79,7 +79,7 @@ export function CommunityPostDisplay({ post, href, editHref, compact = false }: 
           </div>
           <div>
             <p className="text-sm font-semibold text-[#3b312b]">{post.author_name || "Member"}</p>
-            <p className="mt-1 text-xs text-[#8a7467]">
+            <p className="mt-1 text-xs text-[#715e54]">
               {formatDate(post.created_at)}
               {wasEdited(post) ? " - edited" : ""}
             </p>
@@ -124,7 +124,7 @@ export function CommunityPostDisplay({ post, href, editHref, compact = false }: 
                 type="submit"
                 className={`inline-flex h-9 items-center gap-1 rounded-full border px-3 text-sm font-semibold transition ${
                   selected
-                    ? "border-[#cf5f2b] bg-[#fff4e8] text-[#8a3f1e]"
+                    ? "border-[#a94720] bg-[#fff4e8] text-[#8a3f1e]"
                     : "border-[#2f2722]/15 bg-white/70 text-[#594a42] hover:bg-[#fff4e8]"
                 }`}
               >

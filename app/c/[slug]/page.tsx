@@ -102,7 +102,7 @@ export default async function PublicCommunityPage({
               </p>
               <Link
                 href={`/c/${community.slug}/media`}
-                className="mt-4 inline-flex rounded-full bg-[#cf5f2b] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+                className="mt-4 inline-flex rounded-full bg-[#a94720] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]"
               >
                 Open media library
               </Link>
@@ -117,7 +117,7 @@ export default async function PublicCommunityPage({
               </p>
               <Link
                 href="/discover/groups"
-                className="mt-4 inline-flex rounded-full bg-[#cf5f2b] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+                className="mt-4 inline-flex rounded-full bg-[#a94720] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]"
               >
                 Find study groups
               </Link>
@@ -129,7 +129,7 @@ export default async function PublicCommunityPage({
               </p>
               <Link
                 href="/community"
-                className="mt-4 inline-flex rounded-full bg-[#cf5f2b] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+                className="mt-4 inline-flex rounded-full bg-[#a94720] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]"
               >
                 Open community feed
               </Link>
@@ -137,7 +137,7 @@ export default async function PublicCommunityPage({
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/45 bg-[#211b17]/90 shadow-2xl shadow-[#3b2117]/30">
-            <div className="flex aspect-[4/3] items-center justify-center bg-[linear-gradient(135deg,#f4dcc0,#cf5f2b,#2a211d)]">
+            <div className="flex aspect-[4/3] items-center justify-center bg-[linear-gradient(135deg,#f4dcc0,#a94720,#2a211d)]">
               {community.banner_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={community.banner_url} alt="" className="h-full w-full object-cover" />

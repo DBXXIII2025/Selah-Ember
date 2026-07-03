@@ -22,7 +22,7 @@ export function CommunityForm({ message, draftMode = false }: CommunityFormProps
       ) : null}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-        <Link href="/community" className="inline-flex justify-center rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
+        <Link href="/community" className="inline-flex justify-center rounded-full bg-[#a94720] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]">
           Open community
         </Link>
         <Link href="/groups/new" className="inline-flex justify-center rounded-full border border-[#2f2722]/20 px-5 py-3 text-sm font-semibold text-[#2f2722] transition hover:bg-[#fff4e8]">

@@ -21,8 +21,11 @@ export function useDismissibleLayer({
       return;
     }
 
+    const layer = layerRef.current;
+    const trigger = triggerRef.current;
+
     if (focusFirst) {
-      layerRef.current?.querySelector<HTMLElement>("a, button, input, select, textarea")?.focus();
+      layer?.querySelector<HTMLElement>("a, button, input, select, textarea")?.focus();
     }
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -35,7 +38,7 @@ export function useDismissibleLayer({
     function handlePointerDown(event: PointerEvent) {
       const target = event.target as Node;
 
-      if (!layerRef.current?.contains(target) && !triggerRef.current?.contains(target)) {
+      if (!layer?.contains(target) && !trigger?.contains(target)) {
         setOpen(false);
       }
     }
@@ -46,6 +49,10 @@ export function useDismissibleLayer({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("pointerdown", handlePointerDown);
+
+      if (layer?.contains(document.activeElement)) {
+        trigger?.focus();
+      }
     };
   }, [focusFirst, layerRef, open, setOpen, triggerRef]);
 }

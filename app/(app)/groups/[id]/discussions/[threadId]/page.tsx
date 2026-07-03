@@ -109,7 +109,7 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">Group thread</p>
               <h1 className="mt-3 text-4xl font-semibold">{thread.deleted_at ? "Thread deleted" : thread.title}</h1>
-              <p className="mt-3 text-sm text-[#8a7467]">
+              <p className="mt-3 text-sm text-[#715e54]">
                 {thread.author.display_name} · {formatDate(thread.created_at)}
               </p>
             </div>
@@ -152,7 +152,7 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
               <article key={reply.id} className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <p className="text-sm font-semibold text-[#8a3f1e]">
-                    {reply.author.display_name} · <span className="font-normal text-[#8a7467]">{formatDate(reply.created_at)}</span>
+                    {reply.author.display_name} · <span className="font-normal text-[#715e54]">{formatDate(reply.created_at)}</span>
                   </p>
                   {!reply.deleted_at ? (
                     <form action={reportDiscussionReply}>
@@ -193,10 +193,10 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
                 required
                 maxLength={10000}
                 rows={5}
-                className="mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
+                className="mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#a94720] focus:ring-4 focus:ring-[#a94720]/10"
               />
             </label>
-            <button type="submit" className="mt-4 rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
+            <button type="submit" className="mt-4 rounded-full bg-[#a94720] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]">
               Reply
             </button>
           </form>

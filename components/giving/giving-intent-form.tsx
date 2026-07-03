@@ -8,7 +8,7 @@ type GivingIntentFormProps = {
 };
 
 const inputClassName =
-  "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10";
+  "mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#a94720] focus:ring-4 focus:ring-[#a94720]/10";
 
 export function GivingIntentForm({ communityId, slug, returnTo, campaign = null }: Readonly<GivingIntentFormProps>) {
   return (
@@ -43,7 +43,7 @@ export function GivingIntentForm({ communityId, slug, returnTo, campaign = null 
         <textarea name="note" rows={4} maxLength={1000} className={inputClassName} />
       </label>
 
-      <button type="submit" className="rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
+      <button type="submit" className="rounded-full bg-[#a94720] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]">
         Record giving intent
       </button>
     </form>

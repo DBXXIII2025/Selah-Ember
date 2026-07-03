@@ -71,7 +71,7 @@ export default async function PlatformMessagesPage({ searchParams }: PlatformMes
                   <Link
                     key={conversation.id}
                     href={`/platform/messages/${conversation.id}`}
-                    className="block rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm transition hover:border-[#d79568] hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#cf5f2b]/20"
+                    className="block rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm transition hover:border-[#d79568] hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#a94720]/20"
                   >
                     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                       <div>

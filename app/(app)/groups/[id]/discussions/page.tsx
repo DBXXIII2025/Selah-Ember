@@ -49,7 +49,7 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
           <MessageSquareText aria-hidden="true" className="mx-auto h-10 w-10 text-[#b94f22]" />
           <h1 className="mt-4 text-3xl font-semibold">Sign in to view discussions</h1>
           <p className="mt-3 text-[#67564c]">Group discussions are private to members.</p>
-          <Link href="/signin" className="mt-6 inline-flex rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white">
+          <Link href="/signin" className="mt-6 inline-flex rounded-full bg-[#a94720] px-5 py-3 text-sm font-semibold text-white">
             Sign in
           </Link>
         </div>
@@ -90,7 +90,7 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
           {data.isMember ? (
             <Link
               href={`/groups/${group!.id}/discussions/new`}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#a94720] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]"
             >
               <Plus aria-hidden="true" className="h-4 w-4" />
               New thread
@@ -109,7 +109,7 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
             <MessageSquareText aria-hidden="true" className="mx-auto h-10 w-10 text-[#b94f22]" />
             <h2 className="mt-4 text-2xl font-semibold">Sign in to view discussions</h2>
             <p className="mt-3 text-[#67564c]">Group discussions are private to members.</p>
-            <Link href="/signin" className="mt-6 inline-flex rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white">
+            <Link href="/signin" className="mt-6 inline-flex rounded-full bg-[#a94720] px-5 py-3 text-sm font-semibold text-white">
               Sign in
             </Link>
           </div>
@@ -137,7 +137,7 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
                     >
                       {thread.deleted_at ? "Thread deleted" : thread.title}
                     </Link>
-                    <p className="mt-2 text-sm text-[#8a7467]">
+                    <p className="mt-2 text-sm text-[#715e54]">
                       {thread.author.display_name} · updated {formatDate(thread.updated_at)}
                     </p>
                   </div>

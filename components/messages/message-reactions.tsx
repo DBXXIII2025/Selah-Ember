@@ -48,7 +48,7 @@ export function MessageReactions({
               key={reaction}
               className={`inline-flex min-h-7 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${
                 hasReacted
-                  ? "border-[#cf5f2b] bg-[#fff4e8] text-[#8a3f1e]"
+                  ? "border-[#a94720] bg-[#fff4e8] text-[#8a3f1e]"
                   : "border-[#2f2722]/10 bg-[#fffaf4] text-[#67564c]"
               }`}
             >
@@ -64,7 +64,7 @@ export function MessageReactions({
           ref={triggerRef}
           type="button"
           onClick={() => setOpen((value) => !value)}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#d79568]/35 bg-white/85 text-[#8a3f1e] opacity-100 shadow-sm transition hover:border-[#cf5f2b] hover:bg-[#fff4e8] focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#d79568]/35 bg-white/85 text-[#8a3f1e] opacity-100 shadow-sm transition hover:border-[#a94720] hover:bg-[#fff4e8] focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
           aria-label="Add reaction"
           aria-expanded={open}
           aria-controls={`message-reactions-${messageId}`}
@@ -77,7 +77,7 @@ export function MessageReactions({
           <div
             ref={pickerRef}
             id={`message-reactions-${messageId}`}
-            className="absolute bottom-12 right-0 z-10 grid w-[min(20rem,calc(100vw-3rem))] grid-cols-7 gap-1 rounded-2xl border border-[#ead6c5] bg-white p-2 shadow-xl shadow-[#2f1608]/15"
+            className="absolute bottom-12 right-0 z-10 grid w-[min(20rem,calc(100vw-3rem))] grid-cols-6 gap-1 rounded-2xl border border-[#ead6c5] bg-white p-2 shadow-xl shadow-[#2f1608]/15"
           >
             {MESSAGE_REACTION_OPTIONS.map((reaction) => {
               const hasReacted = currentUserReactions.has(reaction);
@@ -92,7 +92,7 @@ export function MessageReactions({
                     type="submit"
                     aria-label={`${hasReacted ? "Remove" : "Add"} ${reaction} reaction`}
                     className={`inline-flex h-11 w-full items-center justify-center rounded-full text-lg transition ${
-                      hasReacted ? "bg-[#fff4e8] ring-1 ring-[#cf5f2b]" : "hover:bg-[#fff4e8]"
+                      hasReacted ? "bg-[#fff4e8] ring-1 ring-[#a94720]" : "hover:bg-[#fff4e8]"
                     }`}
                   >
                     <span aria-hidden="true">{reaction}</span>

@@ -30,7 +30,7 @@ export default async function CommunitiesPage() {
           <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {memberships.map(({ community, role }) => (
               <ContentCard key={community.id} className="overflow-hidden p-0">
-                <div className="h-28 bg-[linear-gradient(135deg,#f4dcc0,#cf5f2b,#2a211d)]">
+                <div className="h-28 bg-[linear-gradient(135deg,#f4dcc0,#a94720,#2a211d)]">
                   {community.banner_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={community.banner_url} alt="" className="h-full w-full object-cover" />

@@ -71,7 +71,7 @@ export function MediaItemDisplay({
   showCommunity = false,
   compact = false,
 }: Readonly<MediaItemDisplayProps>) {
-  const className = "overflow-hidden rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm transition hover:border-[#cf5f2b]/30 hover:shadow-md";
+  const className = "overflow-hidden rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm transition hover:border-[#a94720]/30 hover:shadow-md";
 
   return (
     <article className={className}>

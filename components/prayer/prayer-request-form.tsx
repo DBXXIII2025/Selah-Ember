@@ -49,7 +49,7 @@ export function PrayerRequestForm({ communities, message }: PrayerRequestFormPro
             <FormHint>Optional. Leave blank to keep the request independent of a legacy community space.</FormHint>
           </FormField>
           <label className="flex items-start gap-3 rounded-xl border border-[#d9c1ad] bg-[#fffaf4] px-4 py-4">
-            <input name="is_private" type="checkbox" className="mt-0.5 h-4 w-4 accent-[#cf5f2b]" />
+            <input name="is_private" type="checkbox" className="mt-0.5 h-4 w-4 accent-[#a94720]" />
           <span>
               <span className="block text-sm font-semibold text-[#3b312b]">Private request</span>
             <span className="block text-sm text-[#67564c]">Only you will see this request.</span>

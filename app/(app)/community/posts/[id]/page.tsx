@@ -71,7 +71,7 @@ export default async function CommunityPostPage({ params, searchParams }: Commun
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-[#3b312b]">{comment.author_name || "Member"}</p>
-                        <p className="mt-1 text-xs text-[#8a7467]">
+                        <p className="mt-1 text-xs text-[#715e54]">
                           {new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(comment.created_at))}
                           {Math.abs(new Date(comment.updated_at).getTime() - new Date(comment.created_at).getTime()) > 1000 ? " - edited" : ""}
                         </p>
@@ -103,16 +103,16 @@ export default async function CommunityPostPage({ params, searchParams }: Commun
                   name="body"
                   rows={4}
                   maxLength={5000}
-                  className="mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
+                  className="mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#a94720] focus:ring-4 focus:ring-[#a94720]/10"
                   required
                 />
               </label>
-              <button type="submit" className="mt-4 rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
+              <button type="submit" className="mt-4 rounded-full bg-[#a94720] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]">
                 Comment
               </button>
             </form>
           ) : (
-            <Link href="/signin" className="mt-6 inline-flex rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]">
+            <Link href="/signin" className="mt-6 inline-flex rounded-full bg-[#a94720] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]">
               Sign in to comment
             </Link>
           )}

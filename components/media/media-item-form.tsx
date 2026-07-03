@@ -145,7 +145,7 @@ export function MediaItemForm({
         </FormField>
 
         <label className="flex items-center gap-3 rounded-xl border border-[#d9c1ad] bg-[#fffaf4] px-4 py-3 text-sm font-semibold text-[#3b312b]">
-          <input name="is_published" type="checkbox" defaultChecked={item?.is_published ?? true} className="h-4 w-4 accent-[#cf5f2b]" />
+          <input name="is_published" type="checkbox" defaultChecked={item?.is_published ?? true} className="h-4 w-4 accent-[#a94720]" />
           Publish immediately
         </label>
 

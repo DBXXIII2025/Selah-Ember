@@ -134,7 +134,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
               {groups.slice(0, 4).map((group) => (
                 <Link key={group.id} href={`/groups/${group.id}`} className="block text-sm font-medium leading-6 text-[#67564c] hover:text-[#8a3f1e]">
                   <span className="line-clamp-2">{group.title}</span>
-                  <span className="text-xs text-[#8a7467]">{group.member_count} {group.member_count === 1 ? "member" : "members"}</span>
+                  <span className="text-xs text-[#715e54]">{group.member_count} {group.member_count === 1 ? "member" : "members"}</span>
                 </Link>
               ))}
               {groups.length === 0 ? (
@@ -167,7 +167,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-[#3b312b]">{member.display_name}</p>
-                    <p className="text-xs text-[#8a7467]">Joined {formatDate(member.created_at)}</p>
+                    <p className="text-xs text-[#715e54]">Joined {formatDate(member.created_at)}</p>
                   </div>
                 </div>
               ))}

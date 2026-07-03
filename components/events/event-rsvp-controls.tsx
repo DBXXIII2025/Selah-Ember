@@ -12,7 +12,7 @@ type EventRsvpControlsProps = {
 
 function rsvpButtonClassName(active: boolean) {
   return active
-    ? "rounded-full bg-[#cf5f2b] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+    ? "rounded-full bg-[#a94720] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]"
     : "rounded-full border border-[#2f2722]/20 bg-white/70 px-5 py-3 text-sm font-semibold text-[#2f2722] shadow-sm transition hover:bg-white";
 }
 

@@ -10,7 +10,7 @@ export default function Loading() {
         className="flex flex-col items-center gap-4"
         role="status"
       >
-        <Flame aria-hidden="true" className="h-8 w-8 animate-pulse text-[#cf5f2b]" />
+        <Flame aria-hidden="true" className="h-8 w-8 animate-pulse text-[#a94720]" />
         <p>Loading the latest community activity.</p>
       </div>
     </PageState>

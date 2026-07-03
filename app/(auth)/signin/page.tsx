@@ -41,7 +41,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             name="email"
             type="email"
             autoComplete="email"
-            className="mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
+            className="mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#a94720] focus:ring-4 focus:ring-[#a94720]/10"
           />
         </label>
         <label className="block">
@@ -51,12 +51,12 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             name="password"
             type="password"
             autoComplete="current-password"
-            className="mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#cf5f2b] focus:ring-4 focus:ring-[#cf5f2b]/10"
+            className="mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#a94720] focus:ring-4 focus:ring-[#a94720]/10"
           />
         </label>
         <button
           type="submit"
-          className="w-full rounded-full bg-[#cf5f2b] px-6 py-3 font-semibold text-white shadow-lg shadow-[#cf5f2b]/20 transition hover:bg-[#b94f22]"
+          className="w-full rounded-full bg-[#a94720] px-6 py-3 font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]"
         >
           Sign in
         </button>

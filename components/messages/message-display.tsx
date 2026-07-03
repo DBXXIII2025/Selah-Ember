@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils/cn";
 
 function MessageBody({ body, deleted }: Readonly<{ body: string; deleted?: boolean }>) {
   if (deleted) {
-    return <p className="mt-3 text-sm italic text-[#8a7467]">Message deleted</p>;
+    return <p className="mt-3 text-sm italic text-[#715e54]">Message deleted</p>;
   }
 
   const urlPattern = /(https?:\/\/[^\s<>"']+)/g;
@@ -116,7 +116,7 @@ export function MessageDisplay({
           <p className="text-sm font-semibold text-[#3b312b]">{isOwn ? "You" : senderName}</p>
           {deliveryLabel ? <Badge tone="neutral">{deliveryLabel}</Badge> : null}
         </div>
-        <time className="text-xs text-[#8a7467]">{timestamp}</time>
+        <time className="text-xs text-[#715e54]">{timestamp}</time>
       </div>
       <MessageBody body={body} deleted={deleted} />
       {!deleted ? <MessageAttachments attachments={attachments} /> : null}

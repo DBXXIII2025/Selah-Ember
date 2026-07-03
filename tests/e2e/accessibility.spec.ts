@@ -13,7 +13,6 @@ const publicPages = [
 async function expectNoAccessibilityViolations(page: Page, testInfo: TestInfo) {
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-    .disableRules(["color-contrast"])
     .analyze();
 
   await testInfo.attach("axe-violations", {
@@ -44,5 +43,36 @@ test.describe("automated accessibility", () => {
     await expect(page).toHaveURL(/\/signin(?:\?.*)?$/);
     await expect(page.getByRole("heading", { level: 1, name: "Sign in" })).toBeVisible();
     await expectNoAccessibilityViolations(page, testInfo);
+  });
+
+  test("mobile navigation restores focus when dismissed", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/discover");
+
+    const trigger = page.getByRole("button", { name: "Open navigation menu" });
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("navigation", { name: "Mobile primary navigation" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Discover", exact: true })).toBeFocused();
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("navigation", { name: "Mobile primary navigation" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Open navigation menu" })).toBeFocused();
+  });
+
+  test("skip link and auth controls follow a logical keyboard order", async ({ page }) => {
+    await page.goto("/signin");
+
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("main")).toBeFocused();
+
+    const email = page.getByRole("textbox", { name: "Email" });
+    await email.focus();
+    await page.keyboard.press("Tab");
+    await expect(page.getByLabel("Password")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "Sign in" })).toBeFocused();
   });
 });

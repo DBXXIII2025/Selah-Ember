@@ -28,8 +28,7 @@ const fellowshipPillars = [
 export default function Home() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#f7ead7] text-[#211814]">
-      <section className="relative isolate flex min-h-screen items-center px-6 py-8 sm:px-10 lg:px-16">
-        <div className="absolute inset-0 -z-10 bg-[#151210]" />
+      <section className="relative isolate flex min-h-screen items-center bg-[#151210] px-6 py-8 sm:px-10 lg:px-16">
         <Image
           src="/images/selah-ember-logo.png"
           alt=""
@@ -51,7 +50,7 @@ export default function Home() {
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
               <a
                 href="/signup"
-                className="inline-flex items-center justify-center rounded-full bg-[#d97834] px-6 py-3 text-base font-semibold text-[#fff8ed] shadow-lg shadow-[#d97834]/25 transition hover:bg-[#f09a4b]"
+                className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#a94720] px-6 py-3 text-base font-semibold text-white shadow-lg shadow-[#a94720]/25 transition hover:bg-[#8f3518]"
               >
                 Join Community
               </a>
@@ -94,7 +93,7 @@ export default function Home() {
       <section id="groups" className="bg-[#f7ead7] px-6 py-20 sm:px-10 lg:px-16">
         <div className="mx-auto max-w-7xl">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9b4d25]">
               Gather with intention
             </p>
             <h2 className="mt-3 font-serif text-3xl font-semibold text-[#211814] sm:text-4xl">

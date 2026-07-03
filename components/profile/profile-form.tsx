@@ -94,7 +94,7 @@ export function ProfileForm({ profile, message }: ProfileFormProps) {
               name="avatar"
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              className={`${formControlClassName} file:mr-4 file:rounded-full file:border-0 file:bg-[#cf5f2b] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white`}
+              className={`${formControlClassName} file:mr-4 file:rounded-full file:border-0 file:bg-[#a94720] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white`}
             />
             <FormHint>JPG, PNG, or WebP. Maximum 5MB.</FormHint>
           </FormField>

@@ -45,7 +45,7 @@ npm run test:e2e:ui
 - Absence of platform navigation for signed-out visitors.
 - `robots.txt`, `sitemap.xml`, and branded 404 responses.
 
-The axe accessibility suite covers `/`, `/community`, `/discover`, `/discover/groups`, `/signin`, `/signup`, and the signed-out `/dashboard` guard after it redirects to sign in. It checks detectable WCAG 2.0 and 2.1 Level A and AA violations in Chromium. The `color-contrast` rule is explicitly excluded because current image-backed pages produce unreliable automated results and existing controls have known contrast debt; contrast remains a required manual check until a dedicated design remediation pass is complete.
+The axe accessibility suite covers `/`, `/community`, `/discover`, `/discover/groups`, `/signin`, `/signup`, and the signed-out `/dashboard` guard after it redirects to sign in. It checks detectable WCAG 2.0 and 2.1 Level A and AA violations in Chromium, including `color-contrast`. It also verifies mobile navigation dismissal and focus restoration, the skip link, and signed-out authentication form tab order.
 
 All current tests are read-only. They do not submit forms, create accounts, authenticate test users, upload media, or mutate application data.
 
@@ -107,4 +107,4 @@ npx playwright show-report
 
 The smoke and axe suites verify public rendering, signed-out route protection, public metadata endpoints, and programmatically detectable WCAG issues on selected signed-out pages. Manual QA is still required before release for authenticated workflows, role-specific platform tools, media uploads, messaging, notifications, events, prayer requests, group interactions, database behavior, and RLS policy behavior.
 
-Accessibility still requires manual color-contrast validation, keyboard-only navigation, visible focus review, screen-reader testing, zoom and text reflow checks, reduced-motion behavior, touch target review, and validation of content meaning and reading order. Cross-browser and mobile assistive-technology coverage also remains manual.
+Accessibility still requires manual contrast review over real uploaded imagery, complete keyboard-only navigation, visible focus review, screen-reader testing, zoom and text reflow checks, reduced-motion behavior, touch target review, and validation of content meaning and reading order. Cross-browser and mobile assistive-technology coverage also remains manual.

@@ -47,7 +47,7 @@ function NavigationLink({ item, pathname, onNavigate }: Readonly<{
     >
       <span>{item.label}</span>
       {item.count && item.count > 0 ? (
-        <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#cf5f2b] px-2 py-0.5 text-xs text-white" aria-label={`${item.count} unread`}>
+        <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a94720] px-2 py-0.5 text-xs text-white" aria-label={`${item.count} unread`}>
           {item.count}
         </span>
       ) : null}
