@@ -73,11 +73,6 @@ npm run lint
 npm run build
 npx playwright install --with-deps chromium
 npm run test:e2e
-```
-
-The current workflow runs only the smoke suite. When accessibility checks are promoted into CI, add the following step after Chromium is installed and after the smoke suite:
-
-```bash
 npm run test:a11y
 ```
 
@@ -95,13 +90,29 @@ If future authenticated or database-backed tests need secrets, use a disposable 
 
 Playwright writes its HTML report to `playwright-report/` and per-test artifacts to `test-results/`. The repository ignores both directories.
 
-CI uploads both directories as artifacts after every Playwright run, including failed runs. Failure screenshots are saved under `test-results/`, and traces are captured on the first retry. Download the `playwright-report` artifact from the GitHub Actions run summary to inspect the HTML report locally.
+CI namespaces smoke and accessibility output under `playwright-report/smoke/`, `playwright-report/a11y/`, `test-results/smoke/`, and `test-results/a11y/`, then uploads both root directories after every workflow run. Failure screenshots are saved under `test-results/`, and traces are captured on the first retry. Download the `playwright-report` artifact from the GitHub Actions run summary to inspect the HTML reports locally.
 
 For local report review after running either Playwright suite:
 
 ```bash
 npx playwright show-report
 ```
+
+## Future Visual Regression Baseline
+
+Do not add screenshot assertions until each route can render from deterministic fixtures or an explicitly controlled fallback state. The first baseline should cover:
+
+- `/` at the hero and first content section.
+- `/community`, `/discover`, and `/discover/groups` with deterministic empty or unavailable states.
+- `/signin` and `/signup`.
+- The signed-out `/dashboard` redirect state.
+- The branded not-found page.
+
+Capture each route at `1440x900` desktop and `390x844` mobile viewports. Add `768x1024` tablet captures only for layouts with a distinct tablet breakpoint or interaction pattern.
+
+Approve new snapshots only when the visual change is intentional, the pull request explains the expected difference, and a reviewer has inspected the rendered diff at every affected viewport. Generate and approve baselines with the pinned CI Chromium version and the same operating system used by CI; never approve snapshots only to make an unexplained failure pass.
+
+To avoid flaky comparisons, use fixed test data and time, disable animations and transitions, wait for fonts and images to finish loading, keep viewport size and device scale factor fixed, and mask timestamps, remote media, or other unavoidable dynamic regions. Do not capture production data or depend on live external services. Keep thresholds strict and scoped; prefer stabilizing the page over increasing pixel-difference tolerance.
 
 ## Manual QA
 
