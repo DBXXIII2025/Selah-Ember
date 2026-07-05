@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createNotification } from "@/app/actions/notifications";
+import { createOrGetDirectConversationForCurrentUser } from "@/lib/messages/service";
+import { createNotification } from "@/lib/notifications/service";
 import { isAllowedMessageReaction } from "@/lib/messages/reactions";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import {
@@ -335,144 +336,6 @@ async function assertCanStartConversation(starterUserId: string, targetUserId: s
   if ((data || []).length > 0) {
     redirect(`${redirectPath}?message=That profile is not available for direct messages.`);
   }
-}
-
-export async function findDirectConversation(userA: string, userB: string) {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("conversation_participants")
-    .select("conversation_id,user_id")
-    .in("user_id", [userA, userB]);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const matches = new Map<string, Set<string>>();
-
-  for (const row of data || []) {
-    const conversationId = String(row.conversation_id);
-    const userId = String(row.user_id);
-    matches.set(conversationId, (matches.get(conversationId) || new Set()).add(userId));
-  }
-
-  for (const [conversationId, userIds] of matches) {
-    if (userIds.has(userA) && userIds.has(userB)) {
-      const { count, error: countError } = await admin
-        .from("conversation_participants")
-        .select("id", { count: "exact", head: true })
-        .eq("conversation_id", conversationId);
-
-      if (countError) {
-        throw new Error(countError.message);
-      }
-
-      if (count === 2) {
-        return conversationId;
-      }
-    }
-  }
-
-  return null;
-}
-
-export async function createOrGetDirectConversation(
-  starterUserId: string,
-  targetUserId: string,
-  redirectPath = "/messages/new",
-) {
-  if (starterUserId === targetUserId) {
-    redirect(`${redirectPath}?message=Choose someone other than yourself.`);
-  }
-
-  await assertCanStartConversation(starterUserId, targetUserId, redirectPath);
-
-  const existingConversationId = await findDirectConversation(starterUserId, targetUserId);
-
-  if (existingConversationId) {
-    return existingConversationId;
-  }
-
-  const admin = createAdminClient();
-  const { data: conversation, error: conversationError } = await admin
-    .from("conversations")
-    .insert({})
-    .select("id")
-    .single();
-
-  if (conversationError) {
-    throw new Error(conversationError.message);
-  }
-
-  const conversationId = String(conversation.id);
-  const { error: participantsError } = await admin.from("conversation_participants").insert([
-    { conversation_id: conversationId, user_id: starterUserId, last_read_at: new Date().toISOString() },
-    { conversation_id: conversationId, user_id: targetUserId },
-  ]);
-
-  if (participantsError) {
-    throw new Error(participantsError.message);
-  }
-
-  return conversationId;
-}
-
-export async function insertDirectMessage(conversationId: string, senderId: string, body: string) {
-  const trimmedBody = body.trim();
-
-  if (!trimmedBody) {
-    redirect(`/messages/${conversationId}?message=Message cannot be empty.`);
-  }
-
-  if (trimmedBody.length > MESSAGE_MAX_LENGTH) {
-    redirect(`/messages/${conversationId}?message=Message must be 5000 characters or fewer.`);
-  }
-
-  const participantIds = await requireConversationParticipant(conversationId, senderId);
-  await assertCanMessageParticipants(conversationId, senderId, `/messages/${conversationId}`);
-  const admin = createAdminClient();
-  const { data: message, error } = await admin
-    .from("direct_messages")
-    .insert({
-      conversation_id: conversationId,
-      sender_id: senderId,
-      body: trimmedBody,
-    })
-    .select("id,created_at")
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const recipients = participantIds.filter((userId) => userId !== senderId);
-
-  await Promise.all(
-    recipients.map((recipientId) =>
-      createNotification({
-        userId: recipientId,
-        actorUserId: senderId,
-        type: "direct_message",
-        title: "New message",
-        body: previewMessage(trimmedBody),
-        href: `/messages/${conversationId}`,
-      }),
-    ),
-  );
-
-  const now = new Date().toISOString();
-  await admin
-    .from("conversation_participants")
-    .update({ last_read_at: now })
-    .eq("conversation_id", conversationId)
-    .eq("user_id", senderId);
-
-  revalidatePath("/messages");
-  revalidatePath(`/messages/${conversationId}`);
-  revalidatePath("/notifications");
-  revalidatePath("/", "layout");
-
-  return String(message.id);
 }
 
 async function createSignedAttachmentUrl(attachment: MessageAttachment) {
@@ -946,7 +809,7 @@ export async function startDirectConversation(formData: FormData) {
   }
 
   await assertCanStartConversation(user.id, targetUserId, "/messages/new");
-  const conversationId = await createOrGetDirectConversation(user.id, targetUserId);
+  const conversationId = await createOrGetDirectConversationForCurrentUser(targetUserId);
   revalidatePath("/messages");
   redirect(`/messages/${conversationId}`);
 }

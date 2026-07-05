@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
-  createOrGetDirectConversation,
   getConversation,
   getConversations,
-  insertDirectMessage,
   markConversationRead,
 } from "@/app/actions/messages";
+import {
+  createOrGetDirectConversationForCurrentUser,
+  insertDirectMessageForCurrentUser,
+} from "@/lib/messages/service";
 import { assertNotBanned, getActiveBanForUser } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePlatformEngineer } from "@/lib/platform/auth";
@@ -335,7 +337,7 @@ export async function startPlatformSupportConversation(formData: FormData) {
     redirect("/platform/messages?message=That user is not available.");
   }
 
-  const conversationId = await createOrGetDirectConversation(profile.user_id, targetUserId, "/platform/messages");
+  const conversationId = await createOrGetDirectConversationForCurrentUser(targetUserId);
 
   revalidatePath("/platform/messages");
   revalidatePath("/messages");
@@ -966,8 +968,8 @@ export async function createPlatformDirectMessageIntent(formData: FormData) {
     redirect("/platform?message=Choose a user and enter a message subject and body.");
   }
 
-  const conversationId = await createOrGetDirectConversation(profile.user_id, targetUserId, "/platform");
-  await insertDirectMessage(conversationId, profile.user_id, `${subject}\n\n${body}`);
+  const conversationId = await createOrGetDirectConversationForCurrentUser(targetUserId);
+  await insertDirectMessageForCurrentUser(conversationId, `${subject}\n\n${body}`);
 
   revalidatePath("/platform");
   redirect(`/messages/${conversationId}`);

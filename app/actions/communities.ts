@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createNotification } from "@/app/actions/notifications";
+import { createNotification } from "@/lib/notifications/service";
 import {
   getCurrentProfile as getCanonicalCurrentProfile,
   getCurrentProfileForUser as resolveCurrentProfileForUser,

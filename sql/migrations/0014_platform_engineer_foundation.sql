@@ -19,12 +19,8 @@ begin
   end if;
 end $$;
 
-update public.profiles
-set role = 'platform_engineer'
-where (select count(*) from public.profiles) = 1
-  and role <> 'platform_engineer';
-
--- If more than one profile exists, do not guess. Identify profiles, then manually update one:
+-- Never infer platform access from profile count. Bootstrap the first platform
+-- engineer explicitly after verifying the Auth user identity out of band:
 -- select profiles.user_id, profiles.display_name, auth.users.email, profiles.role
 -- from public.profiles
 -- left join auth.users on auth.users.id = profiles.user_id

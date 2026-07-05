@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createNotification } from "@/app/actions/notifications";
+import { createNotification } from "@/lib/notifications/service";
 import { getPublicCommunityBySlug } from "@/app/actions/communities";
 import { getCurrentAuthAndProfile } from "@/lib/auth/current";
 import { canCreateEvent } from "@/lib/auth/ownership";

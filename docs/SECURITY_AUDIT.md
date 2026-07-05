@@ -6,9 +6,68 @@ Phase 17 repository audit date: 2026-07-03.
 
 This audit covers the Supabase clients, authentication/profile resolution, server actions, public reads, mutations, platform-engineer gates, storage access, and SQL migrations currently in this repository. It is a source audit only: the deployed Supabase catalog, grants, policies, bucket configuration, Auth settings, API logs, and migration history were not queried or changed.
 
-**Production security sign-off: blocked.** The repository contains a critical direct-API privilege-escalation path: an authenticated user can update the `role` column on their own `profiles` row under the existing owner update policy. Because server-side authorization trusts that row, the user can promote themselves to `platform_engineer`. The membership insert policies and several exported service-role helpers also require remediation before production.
+**Production security sign-off: blocked pending deployment verification.** The audit found a critical direct-API privilege-escalation path that allowed an authenticated user to update `profiles.role`, plus privileged membership insertion and exported service-role helper risks. Source remediation is now prepared, but it is not effective in an environment until migration `0036` is applied and the manual role/membership review and negative authorization tests pass.
 
 No schema, RLS, policy, bucket, or data changes were made during this audit.
+
+## Phase 17 critical/high remediation
+
+Remediation was prepared after the audit in `0036_critical_authorization_hardening.sql`. The migration is additive and does not rewrite profile roles or membership data.
+
+- **SE-01 remediated in source:** authenticated users lose table-wide `profiles` update permission and receive update permission only for public profile fields. A trigger independently rejects authenticated changes to `id`, `user_id`, `role`, or `created_at`. Service-role platform administration remains able to change roles after `requirePlatformEngineer()` succeeds.
+- **SE-02 remediated for new writes:** direct community/group self-join policies now require `role = 'member'` and the caller's canonical profile ID. Recognized-role constraints are added `NOT VALID`, so they protect new rows without silently accepting, deleting, or changing historical rows.
+- **SE-03 remediated in source:** service-role notification and messaging composition helpers moved out of `"use server"` action exports into modules guarded by `server-only`. Conversation creation and message insertion resolve the actor from the current verified Auth session; callers can no longer provide a sender/starter ID.
+- **SE-04 remediated for new environments:** the historical foundation migration no longer promotes the sole profile. Initial platform access must be assigned explicitly after out-of-band identity verification. Existing platform engineers are not demoted or changed.
+
+Deployment remains blocked until migration `0036` is applied in staging, the direct API negative tests below pass, and existing production roles/memberships are manually reviewed.
+
+### Remediation deployment and manual verification
+
+1. Back up the target Supabase database and confirm the intended platform engineer Auth user IDs before applying SQL.
+2. Apply migrations through `0036_critical_authorization_hardening.sql` in a staging project first. Do not paste only selected statements; policy and grant changes must deploy together.
+3. Confirm legitimate platform engineers remain unchanged:
+
+   ```sql
+   select p.id, p.user_id, p.display_name, p.role, u.email
+   from public.profiles p
+   left join auth.users u on u.id = p.user_id
+   where p.role = 'platform_engineer'
+   order by p.created_at;
+   ```
+
+4. Review all privileged and unknown membership roles. Verify each privileged row against the group/community creator and an external ownership record; do not automatically preserve a row merely because its value is syntactically valid:
+
+   ```sql
+   select 'community' as membership_type, id, church_id as parent_id, profile_id, role, created_at
+   from public.church_memberships
+   where role <> 'member'
+   union all
+   select 'group', id, group_id, profile_id, role, created_at
+   from public.group_memberships
+   where role <> 'member'
+   order by membership_type, created_at;
+
+   select 'community' as membership_type, id, role
+   from public.church_memberships
+   where role not in ('member', 'owner', 'leader')
+   union all
+   select 'group', id, role
+   from public.group_memberships
+   where role not in ('member', 'owner', 'leader');
+   ```
+
+5. Resolve any unauthorized/unknown historical membership rows through an approved incident process. This migration intentionally does not mutate them. After the review returns no invalid values, validate the constraints:
+
+   ```sql
+   alter table public.church_memberships validate constraint church_memberships_role_check;
+   alter table public.group_memberships validate constraint group_memberships_role_check;
+   ```
+
+6. In the Dashboard policy and grants views (or `information_schema`), confirm `authenticated` has column-level update only for `display_name`, `avatar_url`, `bio`, `username`, `favorite_verse`, and `church_name`; it must not retain table-level `UPDATE` on `profiles`.
+7. With a normal staging user and the anon key/session JWT, directly attempt to update `profiles.role`, `profiles.user_id`, and `profiles.id`. Each request must fail and the row must remain unchanged. Confirm ordinary display-name/profile edits still succeed.
+8. Directly attempt community and group membership inserts with `owner`, `leader`, an arbitrary role, and another user's profile ID. Each must fail. A self-insert with `member` must succeed when the user is not banned.
+9. Verify the platform role-management Server Action still changes a test user's role when invoked by an existing legitimate platform engineer, and is rejected for a normal user.
+10. Inspect the built Server Action manifest/client bundles and exercise action endpoints to confirm notification creation, raw conversation lookup/creation, and sender-ID message insertion are no longer exported actions. Test normal user messaging and platform support messaging end to end.
 
 ## Supabase client and trust-boundary inventory
 

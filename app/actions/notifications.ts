@@ -17,15 +17,6 @@ export type NotificationRecord = {
   created_at: string;
 };
 
-type CreateNotificationInput = {
-  userId: string | null | undefined;
-  actorUserId?: string | null;
-  type: string;
-  title: string;
-  body?: string | null;
-  href?: string | null;
-};
-
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -42,35 +33,6 @@ async function getCurrentUser() {
   }
 
   return user;
-}
-
-export async function createNotification({
-  userId,
-  actorUserId = null,
-  type,
-  title,
-  body = null,
-  href = null,
-}: CreateNotificationInput) {
-  if (!userId || userId === actorUserId) {
-    return;
-  }
-
-  const admin = createAdminClient();
-  const { error } = await admin.from("notifications").insert({
-    user_id: userId,
-    actor_user_id: actorUserId,
-    type,
-    title,
-    body,
-    href,
-  });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/notifications");
 }
 
 export async function getNotifications(): Promise<NotificationRecord[]> {
