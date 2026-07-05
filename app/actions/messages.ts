@@ -15,6 +15,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { isCanonicalStoragePath } from "@/lib/storage/paths";
+import { logRequestEvent } from "@/lib/observability/request";
 
 const MESSAGE_MAX_LENGTH = 5000;
 const MESSAGE_MEDIA_BUCKET = "message-media";
@@ -162,11 +163,9 @@ function logMessageIssue(
     message?: string;
   } = {},
 ) {
-  console.warn("[messages]", event, {
-    conversationId: details.conversationId,
-    userId: details.userId,
-    code: details.code,
-    message: details.message,
+  void logRequestEvent("warn", `message.${event}`, {
+    operation: event,
+    errorCode: details.code,
   });
 }
 
@@ -853,6 +852,10 @@ export async function sendDirectMessage(formData: FormData) {
     fileKind = getAttachmentKind(file);
 
     if (!fileKind) {
+      void logRequestEvent("warn", "upload.validation.rejected", {
+        bucket: MESSAGE_MEDIA_BUCKET,
+        reason: "unsupported_media_type",
+      });
       redirect(`${redirectPath}?message=Use a JPG, PNG, WebP, GIF, MP4, WebM, or MOV file.`);
     }
 
@@ -862,6 +865,10 @@ export async function sendDirectMessage(formData: FormData) {
         : validateVideoFile(file);
 
     if (!validation.ok) {
+      void logRequestEvent("warn", "upload.validation.rejected", {
+        bucket: MESSAGE_MEDIA_BUCKET,
+        reason: "file_validation_failed",
+      });
       redirect(`${redirectPath}?message=${encodeURIComponent(validation.message || "Invalid upload.")}`);
     }
   }
@@ -939,6 +946,9 @@ export async function sendDirectMessage(formData: FormData) {
     .single();
 
   if (error) {
+    logMessageIssue("send_failed", {
+      code: error.code,
+    });
     throw new Error(error.message);
   }
 
@@ -965,6 +975,12 @@ export async function sendDirectMessage(formData: FormData) {
     .update({ last_read_at: now, archived_at: null })
     .eq("conversation_id", conversationId)
     .eq("user_id", user.id);
+
+  await logRequestEvent("info", "message.send.succeeded", {
+    operation: "send",
+    outcome: "succeeded",
+    attachmentCount: uploadAttachments.length,
+  });
 
   revalidatePath("/messages");
   revalidatePath(`/messages/${conversationId}`);

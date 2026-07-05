@@ -4,6 +4,7 @@ import {
   getCurrentProfile as getCanonicalCurrentProfile,
   getCurrentProfileForUser as getCanonicalProfileForUser,
 } from "@/lib/auth/current";
+import { logRequestEvent } from "@/lib/observability/request";
 
 export type PlatformProfile = {
   id: string;
@@ -28,6 +29,11 @@ export async function requirePlatformEngineer() {
   const profile = await getCurrentProfile();
 
   if (profile.role !== "platform_engineer") {
+    await logRequestEvent("warn", "authorization.platform.denied", {
+      operation: "require_platform_engineer",
+      role: profile.role,
+      outcome: "denied",
+    });
     redirect("/dashboard?message=Platform engineer access is required.");
   }
 

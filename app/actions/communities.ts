@@ -11,6 +11,8 @@ import {
 import { canCreateCommunity, canManageCommunity, isCommunityMember, isCommunityOwner } from "@/lib/auth/ownership";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getErrorMetadata } from "@/lib/observability/log";
+import { logRequestEvent } from "@/lib/observability/request";
 
 export type Community = {
   id: string;
@@ -343,8 +345,10 @@ export async function getDiscoverCommunitiesForPublicPage(): Promise<PublicCommu
       isUnavailable: false,
     };
   } catch (error) {
-    console.warn("[communities] public_discovery_unavailable", {
-      message: error instanceof Error ? error.message : String(error),
+    await logRequestEvent("warn", "supabase.public_communities.unavailable", {
+      provider: "supabase",
+      operation: "read_public_communities",
+      ...getErrorMetadata(error),
     });
 
     return {

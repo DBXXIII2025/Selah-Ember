@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth/current";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logRequestEvent } from "@/lib/observability/request";
 
 const TITLE_MAX_LENGTH = 160;
 const BODY_MAX_LENGTH = 10000;
@@ -142,17 +143,12 @@ function discussionLog(
     message?: string;
   } = {},
 ) {
-  console.warn("[discussions]", event, {
-    userId: details.userId,
-    profileId: details.profileId,
-    threadId: details.threadId,
-    communityId: details.communityId,
-    groupId: details.groupId,
+  void logRequestEvent("warn", `discussion.${event}`, {
+    operation: event,
     ownerCheckPassed: details.ownerCheckPassed,
     membershipCheckPassed: details.membershipCheckPassed,
     membershipResultCount: details.membershipResultCount,
-    code: details.code,
-    message: details.message,
+    errorCode: details.code,
   });
 }
 

@@ -9,6 +9,8 @@ import { isSafeHttpUrl, validateImageFile, validateVideoFile } from "@/lib/media
 import { getDisplayProfiles } from "@/lib/profiles/display";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isCanonicalStoragePath } from "@/lib/storage/paths";
+import { getErrorMetadata } from "@/lib/observability/log";
+import { logRequestEvent } from "@/lib/observability/request";
 
 const COMMUNITY_FEED_BUCKET = "community-feed-media";
 const MAX_TITLE_LENGTH = 160;
@@ -199,7 +201,11 @@ async function signPost(post: CommunityPost) {
   }
 
   if (!isCanonicalStoragePath(post.storage_path, post.community_id, post.author_id)) {
-    console.warn("[community_posts] invalid_storage_path", { postId: post.id });
+    void logRequestEvent("warn", "storage.sign.rejected", {
+      bucket: COMMUNITY_FEED_BUCKET,
+      operation: "create_signed_url",
+      reason: "invalid_storage_path",
+    });
     return post;
   }
 
@@ -207,6 +213,11 @@ async function signPost(post: CommunityPost) {
   const { data, error } = await admin.storage.from(COMMUNITY_FEED_BUCKET).createSignedUrl(post.storage_path, 60 * 60);
 
   if (error) {
+    void logRequestEvent("warn", "storage.sign.failed", {
+      bucket: COMMUNITY_FEED_BUCKET,
+      operation: "create_signed_url",
+      ...getErrorMetadata(error),
+    });
     return post;
   }
 
@@ -284,6 +295,11 @@ async function getCommunityForManager(communityId: string) {
 
   const community = mapCommunity(data as unknown as Record<string, unknown>);
   if (!(await canCreateEvent(communityId, { profile }))) {
+    await logRequestEvent("warn", "authorization.community_media.denied", {
+      operation: "manage_community_posts",
+      outcome: "denied",
+      resourceType: "community",
+    });
     return { user, profile, community: null };
   }
 
@@ -315,6 +331,11 @@ async function uploadPostMedia({ communityId, userId, file }: { communityId: str
   });
 
   if (error) {
+    void logRequestEvent("error", "storage.upload.failed", {
+      bucket: COMMUNITY_FEED_BUCKET,
+      operation: "upload",
+      ...getErrorMetadata(error),
+    });
     throw new Error(error.message);
   }
 
@@ -332,7 +353,11 @@ async function deleteStoredPostObject(path: string | null, communityId: string, 
   }
 
   if (!isCanonicalStoragePath(path, communityId, ownerUserId)) {
-    console.warn("[community_posts] storage_delete_refused", { communityId, ownerUserId });
+    void logRequestEvent("warn", "storage.delete.rejected", {
+      bucket: COMMUNITY_FEED_BUCKET,
+      operation: "delete",
+      reason: "invalid_storage_path",
+    });
     return;
   }
 
@@ -340,7 +365,11 @@ async function deleteStoredPostObject(path: string | null, communityId: string, 
   const { error } = await admin.storage.from(COMMUNITY_FEED_BUCKET).remove([path]);
 
   if (error) {
-    console.warn("[community_posts] storage_delete_failed", { path, message: error.message });
+    void logRequestEvent("error", "storage.delete.failed", {
+      bucket: COMMUNITY_FEED_BUCKET,
+      operation: "delete",
+      ...getErrorMetadata(error),
+    });
   }
 }
 
@@ -479,8 +508,10 @@ export async function getOpenCommunityFeedForPublicPage(): Promise<OpenCommunity
   try {
     return await getOpenCommunityFeed();
   } catch (error) {
-    console.warn("[community_posts] public_feed_unavailable", {
-      message: error instanceof Error ? error.message : String(error),
+    await logRequestEvent("warn", "supabase.public_feed.unavailable", {
+      provider: "supabase",
+      operation: "read_public_feed",
+      ...getErrorMetadata(error),
     });
 
     return {
@@ -520,8 +551,10 @@ export async function getRecentCommunityMembersForPublicPage(limit = 5): Promise
       isUnavailable: false,
     };
   } catch (error) {
-    console.warn("[community_posts] public_members_unavailable", {
-      message: error instanceof Error ? error.message : String(error),
+    await logRequestEvent("warn", "supabase.public_members.unavailable", {
+      provider: "supabase",
+      operation: "read_public_members",
+      ...getErrorMetadata(error),
     });
 
     return {
@@ -873,6 +906,10 @@ function validatePostInput({
     const validation = kind === "image" ? validateImageFile(file) : kind === "video" ? validateVideoFile(file) : null;
 
     if (!validation?.ok) {
+      void logRequestEvent("warn", "upload.validation.rejected", {
+        bucket: COMMUNITY_FEED_BUCKET,
+        reason: "file_validation_failed",
+      });
       redirect(`${returnTo}?message=${encodeURIComponent(validation?.message || "Invalid upload.")}`);
     }
   }

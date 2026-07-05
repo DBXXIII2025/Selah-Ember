@@ -16,6 +16,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePlatformEngineer } from "@/lib/platform/auth";
 import { isSafeHttpUrl } from "@/lib/media/validation";
 import { getDisplayProfiles } from "@/lib/profiles/display";
+import { getErrorMetadata } from "@/lib/observability/log";
+import { logRequestEvent } from "@/lib/observability/request";
 
 type PlatformProfileSummary = {
   id: string;
@@ -160,6 +162,18 @@ function splitFeatures(value: string) {
     .split(/\r?\n/)
     .map((feature) => feature.trim())
     .filter(Boolean);
+}
+
+async function logPlatformMutation(
+  operation: string,
+  outcome: "succeeded" | "failed",
+  error?: unknown,
+) {
+  await logRequestEvent(outcome === "failed" ? "error" : "info", `platform.${operation}.${outcome}`, {
+    operation,
+    outcome,
+    ...(error ? getErrorMetadata(error) : {}),
+  });
 }
 
 async function getUserEmailMap() {
@@ -583,9 +597,11 @@ export async function updatePlatformSettings(formData: FormData) {
   );
 
   if (error) {
+    await logPlatformMutation("settings_update", "failed", error);
     redirect(`/platform?message=${encodeURIComponent(error.message)}`);
   }
 
+  await logPlatformMutation("settings_update", "succeeded");
   revalidatePath("/platform");
   redirect("/platform?message=Site settings updated.");
 }
@@ -625,9 +641,11 @@ export async function updatePlatformUserRole(formData: FormData) {
   const { error } = await admin.from("profiles").update({ role: nextRole }).eq("id", profileId);
 
   if (error) {
+    await logPlatformMutation("user_role_update", "failed", error);
     redirect(`/platform?message=${encodeURIComponent(error.message)}`);
   }
 
+  await logPlatformMutation("user_role_update", "succeeded");
   revalidatePath("/platform");
   revalidatePath("/platform/leader-applications");
   redirect("/platform?message=User role updated.");
@@ -819,6 +837,11 @@ export async function sendPlatformAnnouncement(formData: FormData) {
     }
   }
 
+  await logRequestEvent("info", "platform.announcement.send.succeeded", {
+    operation: "announcement_send",
+    outcome: "succeeded",
+    notificationCount: notifications.length,
+  });
   revalidatePath("/platform");
   revalidatePath("/notifications");
   redirect("/platform?message=Announcement sent.");
@@ -840,9 +863,11 @@ export async function deletePlatformAnnouncement(formData: FormData) {
     .eq("id", id);
 
   if (error) {
+    await logPlatformMutation("announcement_delete", "failed", error);
     redirect(`/platform?message=${encodeURIComponent(error.message)}`);
   }
 
+  await logPlatformMutation("announcement_delete", "succeeded");
   revalidatePath("/platform");
   redirect("/platform?message=Announcement deleted.");
 }
@@ -874,9 +899,11 @@ export async function deletePlatformCommunity(formData: FormData) {
   const { error } = await admin.from("churches").delete().eq("id", id);
 
   if (error) {
+    await logPlatformMutation("community_delete", "failed", error);
     redirect(`/platform?message=${encodeURIComponent(error.message)}`);
   }
 
+  await logPlatformMutation("community_delete", "succeeded");
   revalidatePath("/platform");
   revalidatePath("/communities");
   revalidatePath("/discover");
@@ -913,9 +940,11 @@ export async function deletePlatformGroup(formData: FormData) {
   const { error } = await admin.from("study_groups").delete().eq("id", id);
 
   if (error) {
+    await logPlatformMutation("group_delete", "failed", error);
     redirect(`/platform?message=${encodeURIComponent(error.message)}`);
   }
 
+  await logPlatformMutation("group_delete", "succeeded");
   revalidatePath("/platform");
   revalidatePath("/groups");
   revalidatePath("/discover/groups");
@@ -949,9 +978,11 @@ export async function deletePlatformEvent(formData: FormData) {
   const { error } = await admin.from("events").delete().eq("id", id);
 
   if (error) {
+    await logPlatformMutation("event_delete", "failed", error);
     redirect(`/platform?message=${encodeURIComponent(error.message)}`);
   }
 
+  await logPlatformMutation("event_delete", "succeeded");
   revalidatePath("/platform");
   revalidatePath("/events");
   redirect("/platform?message=Event deleted.");
@@ -1013,9 +1044,11 @@ export async function createTemporaryBan(formData: FormData) {
   });
 
   if (error) {
+    await logPlatformMutation("temporary_ban_create", "failed", error);
     redirect(`/platform?message=${encodeURIComponent(error.message)}`);
   }
 
+  await logPlatformMutation("temporary_ban_create", "succeeded");
   revalidatePath("/platform");
   redirect("/platform?message=Temporary ban created.");
 }

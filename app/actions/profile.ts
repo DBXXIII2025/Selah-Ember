@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getErrorMetadata } from "@/lib/observability/log";
+import { logRequestEvent } from "@/lib/observability/request";
 import {
   MEDIA_LIMITS,
   PROFILE_AVATAR_BUCKET,
@@ -132,6 +134,10 @@ export async function uploadCurrentUserAvatar(formData: FormData) {
   const validation = validateImageFile(file, { maxBytes: MEDIA_LIMITS.avatarImageBytes });
 
   if (!validation.ok) {
+    await logRequestEvent("warn", "upload.validation.rejected", {
+      bucket: PROFILE_AVATAR_BUCKET,
+      reason: "file_validation_failed",
+    });
     redirect(`/profile?message=${encodeURIComponent(validation.message || "Invalid image.")}`);
   }
 
@@ -147,6 +153,11 @@ export async function uploadCurrentUserAvatar(formData: FormData) {
     });
 
   if (uploadError) {
+    await logRequestEvent("error", "storage.upload.failed", {
+      bucket: PROFILE_AVATAR_BUCKET,
+      operation: "upload",
+      ...getErrorMetadata(uploadError),
+    });
     redirect(`/profile?message=${encodeURIComponent(uploadError.message)}`);
   }
 

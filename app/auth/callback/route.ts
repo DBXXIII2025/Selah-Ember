@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getErrorMetadata, logEvent } from "@/lib/observability/log";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -8,7 +9,21 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    await supabase.auth.exchangeCodeForSession(code);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (error) {
+      logEvent("warn", "auth.callback.exchange_failed", {
+        requestId: request.headers.get("x-selah-request-id"),
+        provider: "supabase",
+        ...getErrorMetadata(error),
+      });
+    }
+  } else {
+    logEvent("warn", "auth.callback.code_missing", {
+      requestId: request.headers.get("x-selah-request-id"),
+      provider: "supabase",
+      reason: "missing_code",
+    });
   }
 
   return NextResponse.redirect(new URL(next, requestUrl.origin));

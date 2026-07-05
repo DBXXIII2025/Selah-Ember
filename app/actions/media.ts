@@ -16,6 +16,8 @@ import {
 } from "@/lib/media/validation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isCanonicalStoragePath } from "@/lib/storage/paths";
+import { getErrorMetadata } from "@/lib/observability/log";
+import { logRequestEvent } from "@/lib/observability/request";
 
 const MEDIA_BUCKET = "community-media";
 const MEDIA_MAX_TITLE_LENGTH = 160;
@@ -193,6 +195,11 @@ async function getCommunityForManager(communityId: string, profile: Profile) {
   };
 
   if (!(await canCreateEvent(communityId, { profile }))) {
+    await logRequestEvent("warn", "authorization.media.denied", {
+      operation: "manage_media",
+      outcome: "denied",
+      resourceType: "community",
+    });
     return null;
   }
 
@@ -210,7 +217,11 @@ async function signMediaItem(item: Omit<MediaItem, "signed_url" | "community"> &
     !creatorUserId ||
     !isCanonicalStoragePath(item.storage_path, item.community_id, creatorUserId)
   ) {
-    console.warn("[media] invalid_storage_path", { mediaId: item.id });
+    void logRequestEvent("warn", "storage.sign.rejected", {
+      bucket: MEDIA_BUCKET,
+      operation: "create_signed_url",
+      reason: "invalid_storage_path",
+    });
     return { ...item, signed_url: null };
   }
 
@@ -218,6 +229,11 @@ async function signMediaItem(item: Omit<MediaItem, "signed_url" | "community"> &
   const { data, error } = await admin.storage.from(MEDIA_BUCKET).createSignedUrl(item.storage_path, 60 * 60);
 
   if (error) {
+    void logRequestEvent("warn", "storage.sign.failed", {
+      bucket: MEDIA_BUCKET,
+      operation: "create_signed_url",
+      ...getErrorMetadata(error),
+    });
     return { ...item, signed_url: null };
   }
 
@@ -321,6 +337,11 @@ async function uploadCommunityMediaFile({
   });
 
   if (error) {
+    void logRequestEvent("error", "storage.upload.failed", {
+      bucket: MEDIA_BUCKET,
+      operation: "upload",
+      ...getErrorMetadata(error),
+    });
     throw new Error(error.message);
   }
 
@@ -338,7 +359,11 @@ async function deleteStoredMediaObject(path: string | null, communityId: string,
   }
 
   if (!isCanonicalStoragePath(path, communityId, ownerUserId)) {
-    console.warn("[media] storage_delete_refused", { communityId, ownerUserId });
+    void logRequestEvent("warn", "storage.delete.rejected", {
+      bucket: MEDIA_BUCKET,
+      operation: "delete",
+      reason: "invalid_storage_path",
+    });
     return;
   }
 
@@ -346,7 +371,11 @@ async function deleteStoredMediaObject(path: string | null, communityId: string,
   const { error } = await admin.storage.from(MEDIA_BUCKET).remove([path]);
 
   if (error) {
-    console.warn("[media] storage_delete_failed", { path, code: error.name, message: error.message });
+    void logRequestEvent("error", "storage.delete.failed", {
+      bucket: MEDIA_BUCKET,
+      operation: "delete",
+      ...getErrorMetadata(error),
+    });
   }
 }
 
@@ -481,6 +510,11 @@ async function requireMediaManager(communityId: string) {
   };
 
   if (!(await canCreateEvent(communityId, { profile }))) {
+    await logRequestEvent("warn", "authorization.media.denied", {
+      operation: "manage_media",
+      outcome: "denied",
+      resourceType: "community",
+    });
     return { user, profile, community: null };
   }
 
@@ -605,6 +639,10 @@ export async function createMediaItem(formData: FormData) {
     const uploadValidation = validateUploadedFile(contentKind, file);
 
     if (!uploadValidation.ok) {
+      void logRequestEvent("warn", "upload.validation.rejected", {
+        bucket: MEDIA_BUCKET,
+        reason: "file_validation_failed",
+      });
       redirect(`${returnTo}?message=${encodeURIComponent(uploadValidation.message || "Invalid file.")}`);
     }
 
@@ -642,12 +680,21 @@ export async function createMediaItem(formData: FormData) {
     .single();
 
   if (error) {
+    await logRequestEvent("error", "media.create.failed", {
+      operation: "create",
+      ...getErrorMetadata(error),
+    });
     if (uploadedFile?.storage_path) {
       await deleteStoredMediaObject(uploadedFile.storage_path, communityId, user.id);
     }
 
     redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
   }
+
+  await logRequestEvent("info", "media.create.succeeded", {
+    operation: "create",
+    outcome: "succeeded",
+  });
 
   const media = await signMediaItem(
     mapMediaRow(created as unknown as Record<string, unknown>, community),
@@ -738,6 +785,10 @@ export async function updateMediaItem(formData: FormData) {
     const uploadValidation = validateUploadedFile(contentKind, file);
 
     if (!uploadValidation.ok) {
+      void logRequestEvent("warn", "upload.validation.rejected", {
+        bucket: MEDIA_BUCKET,
+        reason: "file_validation_failed",
+      });
       redirect(`${returnTo}?message=${encodeURIComponent(uploadValidation.message || "Invalid file.")}`);
     }
 
@@ -828,12 +879,21 @@ export async function updateMediaItem(formData: FormData) {
     .single();
 
   if (error) {
+    await logRequestEvent("error", "media.update.failed", {
+      operation: "update",
+      ...getErrorMetadata(error),
+    });
     if (uploadedFile?.storage_path) {
       await deleteStoredMediaObject(uploadedFile.storage_path, communityId, storageOwnerUserId);
     }
 
     redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
   }
+
+  await logRequestEvent("info", "media.update.succeeded", {
+    operation: "update",
+    outcome: "succeeded",
+  });
 
   if (existing.storage_path && nextStoragePath !== existing.storage_path) {
     await deleteStoredMediaObject(existing.storage_path, communityId, storageOwnerUserId);
@@ -920,8 +980,17 @@ export async function deleteMediaItem(formData: FormData) {
     .eq("id", mediaId);
 
   if (updateError) {
+    await logRequestEvent("error", "media.delete.failed", {
+      operation: "delete",
+      ...getErrorMetadata(updateError),
+    });
     redirect(`${returnTo}?message=${encodeURIComponent(updateError.message)}`);
   }
+
+  await logRequestEvent("info", "media.delete.succeeded", {
+    operation: "delete",
+    outcome: "succeeded",
+  });
 
   await deleteStoredMediaObject(
     typeof existing.storage_path === "string" ? existing.storage_path : null,

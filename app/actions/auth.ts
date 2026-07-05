@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getErrorMetadata } from "@/lib/observability/log";
+import { logRequestEvent } from "@/lib/observability/request";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -42,6 +44,10 @@ export async function signUp(formData: FormData) {
   });
 
   if (error) {
+    await logRequestEvent("warn", "auth.signup.failed", {
+      provider: "supabase",
+      ...getErrorMetadata(error),
+    });
     redirect(`/signup?message=${encodeURIComponent(error.message)}`);
   }
 
@@ -77,6 +83,10 @@ export async function signIn(formData: FormData) {
   });
 
   if (error) {
+    await logRequestEvent("warn", "auth.signin.failed", {
+      provider: "supabase",
+      ...getErrorMetadata(error),
+    });
     redirect(`/signin?message=${encodeURIComponent(getSignInErrorMessage(error.message))}`);
   }
 

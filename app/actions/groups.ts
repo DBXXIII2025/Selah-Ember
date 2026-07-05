@@ -11,6 +11,8 @@ import {
 import { canManageGroup, isGroupMember, isGroupOwner } from "@/lib/auth/ownership";
 import { assertNotBanned } from "@/lib/moderation/bans";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getErrorMetadata } from "@/lib/observability/log";
+import { logRequestEvent } from "@/lib/observability/request";
 
 export type StudyGroup = {
   id: string;
@@ -399,8 +401,10 @@ export async function getDiscoverStudyGroupsForPublicPage(): Promise<PublicStudy
       isUnavailable: false,
     };
   } catch (error) {
-    console.warn("[groups] public_discovery_unavailable", {
-      message: error instanceof Error ? error.message : String(error),
+    await logRequestEvent("warn", "supabase.public_groups.unavailable", {
+      provider: "supabase",
+      operation: "read_public_groups",
+      ...getErrorMetadata(error),
     });
 
     return {

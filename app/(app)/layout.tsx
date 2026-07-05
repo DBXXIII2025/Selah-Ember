@@ -8,6 +8,8 @@ import { BrandMark } from "@/components/ui/brand-mark";
 import { PUBLIC_NAVIGATION_ITEMS, ResponsiveNavigation, type NavigationItem } from "@/components/ui/app-navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getErrorMetadata } from "@/lib/observability/log";
+import { logRequestEvent } from "@/lib/observability/request";
 
 export default async function ProtectedLayout({
   children,
@@ -26,8 +28,9 @@ export default async function ProtectedLayout({
     const result = await supabase.auth.getUser();
     user = result.data.user;
   } catch (error) {
-    console.warn("[protected_layout] auth_unavailable", {
-      message: error instanceof Error ? error.message : String(error),
+    await logRequestEvent("warn", "auth.session.unavailable", {
+      provider: "supabase",
+      ...getErrorMetadata(error),
     });
   }
 

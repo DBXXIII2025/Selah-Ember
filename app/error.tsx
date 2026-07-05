@@ -1,14 +1,21 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
+import { useEffect } from "react";
 import { PageState } from "@/components/ui/page-state";
+import { logClientError } from "@/lib/observability/client";
 
 export default function Error({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    logClientError("ui.route.error", error);
+  }, [error]);
+
   return (
     <PageState
       eyebrow="Something went wrong"
