@@ -8,6 +8,7 @@ import { assertNotBanned } from "@/lib/moderation/bans";
 import { isSafeHttpUrl, validateImageFile, validateVideoFile } from "@/lib/media/validation";
 import { getDisplayProfiles } from "@/lib/profiles/display";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isCanonicalStoragePath } from "@/lib/storage/paths";
 
 const COMMUNITY_FEED_BUCKET = "community-feed-media";
 const MAX_TITLE_LENGTH = 160;
@@ -197,6 +198,11 @@ async function signPost(post: CommunityPost) {
     return post;
   }
 
+  if (!isCanonicalStoragePath(post.storage_path, post.community_id, post.author_id)) {
+    console.warn("[community_posts] invalid_storage_path", { postId: post.id });
+    return post;
+  }
+
   const admin = createAdminClient();
   const { data, error } = await admin.storage.from(COMMUNITY_FEED_BUCKET).createSignedUrl(post.storage_path, 60 * 60);
 
@@ -320,8 +326,13 @@ async function uploadPostMedia({ communityId, userId, file }: { communityId: str
   };
 }
 
-async function deleteStoredPostObject(path: string | null) {
+async function deleteStoredPostObject(path: string | null, communityId: string, ownerUserId: string) {
   if (!path) {
+    return;
+  }
+
+  if (!isCanonicalStoragePath(path, communityId, ownerUserId)) {
+    console.warn("[community_posts] storage_delete_refused", { communityId, ownerUserId });
     return;
   }
 
@@ -630,7 +641,7 @@ export async function createOpenCommunityPost(formData: FormData) {
     .single();
 
   if (error) {
-    await deleteStoredPostObject(uploadedFile?.storage_path || null);
+    await deleteStoredPostObject(uploadedFile?.storage_path || null, community.id, user.id);
     redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
   }
 
@@ -911,7 +922,7 @@ export async function createCommunityPost(formData: FormData) {
   });
 
   if (error) {
-    await deleteStoredPostObject(uploadedFile?.storage_path || null);
+    await deleteStoredPostObject(uploadedFile?.storage_path || null, communityId, user.id);
     redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
   }
 
@@ -935,7 +946,7 @@ export async function updateCommunityPost(formData: FormData) {
     redirect(`${returnTo}?message=Update not found.`);
   }
 
-  const { user, community } = await getCommunityForManager(communityId);
+  const { community } = await getCommunityForManager(communityId);
 
   if (!community) {
     redirect("/leader?message=Only platform engineers can manage official legacy updates.");
@@ -960,7 +971,7 @@ export async function updateCommunityPost(formData: FormData) {
   let uploadedFile: Awaited<ReturnType<typeof uploadPostMedia>> | null = null;
 
   if (file) {
-    uploadedFile = await uploadPostMedia({ communityId, userId: user.id, file });
+    uploadedFile = await uploadPostMedia({ communityId, userId: data.post.author_id, file });
   }
 
   const nextStoragePath = kindInput === "image" || kindInput === "video" ? uploadedFile?.storage_path || data.post.storage_path : null;
@@ -985,12 +996,12 @@ export async function updateCommunityPost(formData: FormData) {
     .eq("id", postId);
 
   if (error) {
-    await deleteStoredPostObject(uploadedFile?.storage_path || null);
+    await deleteStoredPostObject(uploadedFile?.storage_path || null, communityId, data.post.author_id);
     redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
   }
 
   if (uploadedFile?.storage_path && data.post.storage_path && data.post.storage_path !== uploadedFile.storage_path) {
-    await deleteStoredPostObject(data.post.storage_path);
+    await deleteStoredPostObject(data.post.storage_path, communityId, data.post.author_id);
   }
 
   revalidatePath(`/leader/communities/${communityId}/updates`);

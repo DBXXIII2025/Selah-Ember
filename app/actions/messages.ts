@@ -14,6 +14,7 @@ import {
 } from "@/lib/media/validation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { isCanonicalStoragePath } from "@/lib/storage/paths";
 
 const MESSAGE_MAX_LENGTH = 5000;
 const MESSAGE_MEDIA_BUCKET = "message-media";
@@ -340,6 +341,14 @@ async function assertCanStartConversation(starterUserId: string, targetUserId: s
 
 async function createSignedAttachmentUrl(attachment: MessageAttachment) {
   if (attachment.kind !== "image" && attachment.kind !== "video") {
+    return attachment;
+  }
+
+  if (!isCanonicalStoragePath(attachment.url, attachment.conversation_id, attachment.uploader_id)) {
+    logMessageIssue("message_media_invalid_storage_path", {
+      conversationId: attachment.conversation_id,
+      userId: attachment.uploader_id,
+    });
     return attachment;
   }
 
@@ -741,7 +750,9 @@ export async function getConversation(conversationId: string): Promise<Conversat
     }),
     reactions: [],
   }));
-  const messageIds = messages.map((message) => message.id);
+  const messageIds = messages
+    .filter((message) => !message.deleted_at)
+    .map((message) => message.id);
   const [attachmentsByMessage, reactionsByMessage] = await Promise.all([
     getAttachmentsForMessages(messageIds),
     getReactionsForMessages(messageIds),

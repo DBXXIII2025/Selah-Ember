@@ -8,7 +8,34 @@ This audit covers every checked-in Supabase Storage bucket, `storage.objects` po
 
 **No critical finding was identified. Production deployment remains blocked by four high-severity findings:** service-role signed-URL helpers trust database object paths that are not always bound to the row owner/scope; the application accepts multipart Server Action bodies up to 250 MB globally; direct community-feed uploads can bypass the 10 MB application image limit; and deleted message attachments remain stored and can still be authorized/read.
 
-No code, schema, RLS, storage policy, bucket, or data changes were made during this module. The only deliverable is this audit.
+The initial audit made no code, schema, RLS, storage policy, bucket, or data changes. The follow-up remediation below changes code and prepares an unapplied migration; it does not mutate production data.
+
+## High-finding remediation status
+
+Phase 17 follow-up remediation is prepared in application code and isolated migration `0037_storage_upload_hardening.sql`. It is not effective in a Supabase environment until the migration is applied and staging verification passes.
+
+- **STOR-01 resolved in source:** every message, feed, and community-media signer now verifies the canonical `{scope_id}/{owner_user_id}/{filename}` path before using the service role. A new database constraint binds message pointers, and column-specific triggers bind feed/community-media pointers without blocking unrelated moderation or soft-delete updates to historical rows.
+- **STOR-02 reduced to a bounded authenticated upload surface:** `proxy.ts` rejects missing/invalid content lengths, applies a 2 MB default Server Action limit, a 6 MB profile limit, and a 252 MiB allowance only on authenticated message/feed/media upload routes. The larger Next.js setting is now only a final parser ceiling. Supported 250 MiB video uploads retain multipart overhead.
+- **STOR-03 resolved in source:** deleted messages are excluded from attachment loading/signing. The message-media select policy now requires a canonical attachment row joined to a non-deleted direct message, in addition to conversation participation. Objects remain retained pending the medium-severity lifecycle policy, but no new read authorization is granted after message deletion.
+- **STOR-04 resolved in source:** final feed insert/update policies enforce 10 MB image and 250 MiB video limits plus the existing MIME allowlist. Community-media policy limits now also match 100 MB audio and 25 MB document application limits.
+
+Deployment remains blocked until `0037` is applied in staging, existing noncanonical pointers are reviewed, the message-attachment constraint is validated, and the direct Storage/Server Action negative tests pass.
+
+### Remediation migration and manual steps
+
+1. Apply `0037_storage_upload_hardening.sql` in a staging Supabase project with production-equivalent Storage settings.
+2. Before validating the constraint, run report-only queries for noncanonical paths in `message_attachments`, `community_posts`, and `media_items`. Review every mismatch; do not automatically rewrite or delete production objects.
+3. After authorized message-attachment exceptions are resolved, validate the `NOT VALID` constraint:
+
+   ```sql
+   alter table public.message_attachments
+     validate constraint message_attachments_storage_path_check;
+   ```
+
+4. Verify the `enforce_community_post_storage_path` and `enforce_media_item_storage_path` triggers are enabled and their function owners are controlled database roles. Confirm existing platform engineers can still update/delete moderated media through the application.
+5. Confirm the old message select, feed insert/update, and community-media insert/update policy names are absent and only the `0037` replacements are effective.
+6. Test valid browser-generated multipart requests include `Content-Length` in every supported production runtime/proxy. Confirm missing length receives 411, unauthenticated large requests receive 401, endpoint overages receive 413, and ordinary non-upload actions remain functional.
+7. Do not validate the constraint or deploy to production until the staging checklist in this document passes.
 
 ## Buckets found
 

@@ -15,6 +15,7 @@ import {
   validateVideoFile,
 } from "@/lib/media/validation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isCanonicalStoragePath } from "@/lib/storage/paths";
 
 const MEDIA_BUCKET = "community-media";
 const MEDIA_MAX_TITLE_LENGTH = 160;
@@ -150,6 +151,21 @@ async function getCurrentProfile() {
   return { user, profile: profile as Profile };
 }
 
+async function getAuthUserIdForProfile(profileId: string) {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("profiles")
+    .select("user_id")
+    .eq("id", profileId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return typeof data?.user_id === "string" ? data.user_id : null;
+}
+
 async function getCommunityForManager(communityId: string, profile: Profile) {
   const admin = createAdminClient();
   const { data, error } = await admin
@@ -185,6 +201,16 @@ async function getCommunityForManager(communityId: string, profile: Profile) {
 
 async function signMediaItem(item: Omit<MediaItem, "signed_url" | "community"> & { community: MediaCommunity }) {
   if (!item.storage_path) {
+    return { ...item, signed_url: null };
+  }
+
+  const creatorUserId = await getAuthUserIdForProfile(item.created_by);
+
+  if (
+    !creatorUserId ||
+    !isCanonicalStoragePath(item.storage_path, item.community_id, creatorUserId)
+  ) {
+    console.warn("[media] invalid_storage_path", { mediaId: item.id });
     return { ...item, signed_url: null };
   }
 
@@ -306,8 +332,13 @@ async function uploadCommunityMediaFile({
   };
 }
 
-async function deleteStoredMediaObject(path: string | null) {
+async function deleteStoredMediaObject(path: string | null, communityId: string, ownerUserId: string) {
   if (!path) {
+    return;
+  }
+
+  if (!isCanonicalStoragePath(path, communityId, ownerUserId)) {
+    console.warn("[media] storage_delete_refused", { communityId, ownerUserId });
     return;
   }
 
@@ -612,7 +643,7 @@ export async function createMediaItem(formData: FormData) {
 
   if (error) {
     if (uploadedFile?.storage_path) {
-      await deleteStoredMediaObject(uploadedFile.storage_path);
+      await deleteStoredMediaObject(uploadedFile.storage_path, communityId, user.id);
     }
 
     redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
@@ -688,6 +719,11 @@ export async function updateMediaItem(formData: FormData) {
   }
 
   const existing = current.media;
+  const storageOwnerUserId = await getAuthUserIdForProfile(existing.created_by);
+
+  if (!storageOwnerUserId) {
+    redirect(`${returnTo}?message=Media owner profile is unavailable.`);
+  }
 
   let uploadedFile:
     | {
@@ -707,7 +743,7 @@ export async function updateMediaItem(formData: FormData) {
 
     uploadedFile = await uploadCommunityMediaFile({
       communityId,
-      userId: user.id,
+      userId: storageOwnerUserId,
       file,
     });
   }
@@ -793,14 +829,14 @@ export async function updateMediaItem(formData: FormData) {
 
   if (error) {
     if (uploadedFile?.storage_path) {
-      await deleteStoredMediaObject(uploadedFile.storage_path);
+      await deleteStoredMediaObject(uploadedFile.storage_path, communityId, storageOwnerUserId);
     }
 
     redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
   }
 
   if (existing.storage_path && nextStoragePath !== existing.storage_path) {
-    await deleteStoredMediaObject(existing.storage_path);
+    await deleteStoredMediaObject(existing.storage_path, communityId, storageOwnerUserId);
   }
 
   if (!existing.is_published && isPublished && community.created_by === profile.id) {
@@ -872,6 +908,12 @@ export async function deleteMediaItem(formData: FormData) {
     redirect(`${returnTo}?message=You can only delete media you manage.`);
   }
 
+  const storageOwnerUserId = await getAuthUserIdForProfile(String(existing.created_by));
+
+  if (existing.storage_path && !storageOwnerUserId) {
+    redirect(`${returnTo}?message=Media owner profile is unavailable.`);
+  }
+
   const { error: updateError } = await admin
     .from("media_items")
     .update({ deleted_at: new Date().toISOString(), is_published: false })
@@ -881,7 +923,11 @@ export async function deleteMediaItem(formData: FormData) {
     redirect(`${returnTo}?message=${encodeURIComponent(updateError.message)}`);
   }
 
-  await deleteStoredMediaObject(typeof existing.storage_path === "string" ? existing.storage_path : null);
+  await deleteStoredMediaObject(
+    typeof existing.storage_path === "string" ? existing.storage_path : null,
+    String(existing.community_id),
+    storageOwnerUserId || "",
+  );
 
   revalidatePath("/leader");
   revalidatePath(`/leader/communities/${existing.community_id}`);
