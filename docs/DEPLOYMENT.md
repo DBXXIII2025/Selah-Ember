@@ -1,5 +1,7 @@
 # Deployment Guide
 
+`LAUNCH_READINESS.md` is the authoritative Phase 17 go/no-go checklist, deployment sequence, rollback procedure, backup/restore checklist, monitoring requirements, and incident-response runbook. Complete and evidence every required gate there before using this setup guide for production.
+
 ## GitHub Setup
 
 1. Create a private or public GitHub repository for `SelahEmber`.

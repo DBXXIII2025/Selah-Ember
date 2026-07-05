@@ -1,5 +1,7 @@
 # Automated Testing
 
+Production release approval requires both automated suites plus the authenticated, cross-user, Storage, migration, observability, and manual accessibility checks in `LAUNCH_READINESS.md`. This document describes the automated baseline and its limitations.
+
 Phase 17 starts with a read-only Playwright smoke suite. It is designed for local development and must not be pointed at production.
 
 ## Setup
