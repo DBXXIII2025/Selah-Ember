@@ -261,17 +261,51 @@ export async function getDefaultCommunity() {
     .select("id,name,slug,created_by,is_published")
     .eq("is_default", true)
     .eq("is_published", true)
-    .maybeSingle();
+    .order("created_at", { ascending: true })
+    .limit(1);
 
   if (error) {
-    if (error.code === "42703") {
-      return null;
+    if (error.code !== "42703") {
+      throw new Error(error.message);
     }
-
-    throw new Error(error.message);
   }
 
-  return data ? mapCommunity(data as unknown as Record<string, unknown>) : null;
+  const [defaultCommunity] = ((data || []) as unknown as Record<string, unknown>[]);
+  if (defaultCommunity) {
+    return mapCommunity(defaultCommunity);
+  }
+
+  const { data: slugFallbackData, error: slugFallbackError } = await admin
+    .from("churches")
+    .select("id,name,slug,created_by,is_published")
+    .eq("is_published", true)
+    .eq("slug", "selah-ember-community")
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  if (slugFallbackError) {
+    throw new Error(slugFallbackError.message);
+  }
+
+  const [slugFallbackCommunity] = ((slugFallbackData || []) as unknown as Record<string, unknown>[]);
+  if (slugFallbackCommunity) {
+    return mapCommunity(slugFallbackCommunity);
+  }
+
+  const { data: nameFallbackData, error: nameFallbackError } = await admin
+    .from("churches")
+    .select("id,name,slug,created_by,is_published")
+    .eq("is_published", true)
+    .eq("name", "Selah Ember Community")
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  if (nameFallbackError) {
+    throw new Error(nameFallbackError.message);
+  }
+
+  const [fallbackCommunity] = ((nameFallbackData || []) as unknown as Record<string, unknown>[]);
+  return fallbackCommunity ? mapCommunity(fallbackCommunity) : null;
 }
 
 async function getCommunityForManager(communityId: string) {

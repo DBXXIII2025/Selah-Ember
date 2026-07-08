@@ -13,6 +13,14 @@ Two migration-created records are application foundation data and must be preser
 
 The cleanup script also refuses to select any `platform_engineer` profile. Legitimate platform engineers, real accounts, real content, the default community, and platform settings are outside cleanup scope.
 
+## Open community posting diagnostic
+
+If `/community/new` reports that posting is unavailable, run `sql/manual/diagnose_open_community_posting.sql` in the Supabase SQL Editor before changing data. It reports whether a published default community exists, whether multiple defaults exist, whether the canonical `selah-ember-community` row exists, the current `public.default_community_id()` result, the relevant `community_posts` insert policies, and optional signed-in user readiness when you fill in the diagnostic email.
+
+If the diagnostic shows no published default community or multiple defaults, run `sql/manual/ensure_default_open_community.sql`. The repair is idempotent, preserves an existing default when present, creates the canonical open community only when needed, and does not delete data.
+
+For practical Beta 1 removal of obvious smoke users only, prefer `sql/manual/delete_obvious_test_users_before_beta.sql` over the broader selector cleanup. It targets only Auth emails beginning with `phase`, `design-smoke`, or `temp-dm`, explicitly excludes known real accounts, preserves communities/groups with noncandidate members, previews with `execute_cleanup = false`, and leaves Supabase Auth user deletion as a manual post-verification step.
+
 ## Cleanup strategy
 
 The script is manual and fail-closed:
