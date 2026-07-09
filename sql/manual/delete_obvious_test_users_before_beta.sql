@@ -5,6 +5,8 @@
 -- - Explicitly excludes known real accounts.
 -- - Does not delete auth.users. Delete Auth users manually only after verification.
 -- - Does not delete the default/open community.
+-- - Hard-blocks the Beta 1 default/open community:
+--   db8815e6-29dc-434e-bf10-fc67301ac08a.
 -- - Preserves communities, groups, events, and conversations that include
 --   real/noncandidate members, participants, authors, or RSVPs.
 --
@@ -33,6 +35,14 @@ create temp table excluded_real_emails (
 insert into excluded_real_emails (email) values
   ('aclife200024@gmail.com'),
   ('singerofthelord21@gmail.com');
+
+create temp table preserved_community_ids (
+  id uuid primary key,
+  reason text not null
+) on commit drop;
+
+insert into preserved_community_ids (id, reason) values
+  ('db8815e6-29dc-434e-bf10-fc67301ac08a', 'Beta 1 default/open community');
 
 create temp table candidate_auth_users on commit drop as
 select
@@ -78,6 +88,7 @@ select c.id
 from public.churches c
 join candidate_profiles cp on cp.id = c.created_by
 where coalesce(c.is_default, false) = false
+  and c.id not in (select id from preserved_community_ids)
   and not exists (
     select 1
     from public.church_memberships cm
@@ -163,6 +174,10 @@ select 'excluded_real_email_check' as preview, e.email, (c.user_id is not null) 
 from excluded_real_emails e
 left join candidate_auth_users c on c.email = e.email;
 
+select 'preserved_community_check' as preview, p.id, p.reason, (c.id is not null) as exists_in_churches
+from preserved_community_ids p
+left join public.churches c on c.id = p.id;
+
 select 'impact_counts' as preview, *
 from (
   select 'profiles' as table_name, count(*)::bigint as rows from candidate_profiles
@@ -225,6 +240,14 @@ begin
     where c.is_default = true
   ) then
     raise exception 'ABORT: default/open community selected';
+  end if;
+
+  if exists (
+    select 1
+    from cleanup_communities
+    where id in (select id from preserved_community_ids)
+  ) then
+    raise exception 'ABORT: preserved Beta 1 default/open community selected';
   end if;
 
   if exists (
@@ -345,9 +368,55 @@ delete from public.profiles
 where id in (select id from candidate_profiles);
 
 -- Post-cleanup verification. Run after execute_cleanup=true completes.
+select 'remaining_test_auth_users' as verification, count(*) as rows
+from auth.users u
+where u.email is not null
+  and (
+    lower(u.email) like 'phase%'
+    or lower(u.email) like 'design-smoke%'
+    or lower(u.email) like 'temp-dm%'
+  )
+  and lower(u.email) not in (select email from excluded_real_emails);
+
 select 'remaining_candidate_profiles' as verification, count(*) as rows
 from public.profiles
 where user_id in (select user_id from candidate_auth_users);
+
+select 'remaining_test_profiles' as verification, count(*) as rows
+from public.profiles p
+join auth.users u on u.id = p.user_id
+where u.email is not null
+  and (
+    lower(u.email) like 'phase%'
+    or lower(u.email) like 'design-smoke%'
+    or lower(u.email) like 'temp-dm%'
+  )
+  and lower(u.email) not in (select email from excluded_real_emails);
+
+select 'remaining_test_communities' as verification, count(*) as rows
+from public.churches c
+join public.profiles p on p.id = c.created_by
+join auth.users u on u.id = p.user_id
+where u.email is not null
+  and (
+    lower(u.email) like 'phase%'
+    or lower(u.email) like 'design-smoke%'
+    or lower(u.email) like 'temp-dm%'
+  )
+  and lower(u.email) not in (select email from excluded_real_emails)
+  and c.id not in (select id from preserved_community_ids);
+
+select 'remaining_test_groups' as verification, count(*) as rows
+from public.study_groups g
+join public.profiles p on p.id = g.created_by
+join auth.users u on u.id = p.user_id
+where u.email is not null
+  and (
+    lower(u.email) like 'phase%'
+    or lower(u.email) like 'design-smoke%'
+    or lower(u.email) like 'temp-dm%'
+  )
+  and lower(u.email) not in (select email from excluded_real_emails);
 
 select 'remaining_candidate_auth_users_for_manual_deletion' as verification, user_id, email
 from candidate_auth_users
@@ -357,6 +426,10 @@ select 'default_community_still_present' as verification, count(*) as rows
 from public.churches
 where is_default = true
   and is_published = true;
+
+select 'preserved_default_community_check' as verification, p.id, p.reason, c.is_default, c.is_published
+from preserved_community_ids p
+left join public.churches c on c.id = p.id;
 
 select 'real_email_profiles_still_present' as verification, e.email, p.id as profile_id
 from excluded_real_emails e

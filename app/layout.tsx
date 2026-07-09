@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SiteFooter } from "@/components/ui/site-footer";
 import "./globals.css";
 
 const description = "An open faith community for encouragement, prayer, Bible study groups, and fellowship.";
@@ -51,7 +52,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body>{children}</body>
+      <body>
+        <div className="flex min-h-screen flex-col bg-[#f7ead7] text-[#211814]">
+          <div className="flex-1">{children}</div>
+          <SiteFooter />
+        </div>
+      </body>
     </html>
   );
 }
