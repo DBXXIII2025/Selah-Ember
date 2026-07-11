@@ -76,7 +76,7 @@ export default async function EventsPage() {
                   ) : null}
                 </div>
                 <ActionButton href={`/events/${event.id}`} variant="secondary" size="sm" className="mt-6">Open event</ActionButton>
-                {event.is_owner ? (
+                {event.can_delete ? (
                   <ConfirmActionPanel
                     action={deleteOwnedEvent}
                     hiddenFields={{ event_id: event.id }}

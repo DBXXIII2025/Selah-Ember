@@ -66,6 +66,7 @@ export type PlatformDashboardData = {
   users: PlatformProfileSummary[];
   communities: Array<{ id: string; name: string; slug: string | null; created_at: string }>;
   groups: Array<{ id: string; title: string; created_at: string }>;
+  events: Array<{ id: string; title: string; event_time: string; created_at: string }>;
   prayer_requests: Array<{ id: string; title: string; created_at: string; is_private: boolean }>;
   bans: Array<{
     id: string;
@@ -371,6 +372,7 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     profilesResult,
     communitiesResult,
     groupsResult,
+    eventsResult,
     prayerResult,
     bansResult,
     reportsResult,
@@ -412,6 +414,11 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
           .limit(50),
     admin.from("churches").select("id,name,slug,created_at").order("created_at", { ascending: false }).limit(50),
     admin.from("study_groups").select("id,title,name,created_at").order("created_at", { ascending: false }).limit(50),
+    admin
+      .from("events")
+      .select("id,title,event_time,starts_at,created_at")
+      .order("created_at", { ascending: false })
+      .limit(25),
     admin
       .from("prayer_requests")
       .select("id,title,created_at,is_private")
@@ -459,6 +466,7 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     profilesResult,
     communitiesResult,
     groupsResult,
+    eventsResult,
     prayerResult,
     bansResult,
     reportsResult,
@@ -520,6 +528,12 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     groups: ((groupsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => ({
       id: String(row.id),
       title: typeof row.title === "string" ? row.title : String(row.name || ""),
+      created_at: String(row.created_at),
+    })),
+    events: ((eventsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => ({
+      id: String(row.id),
+      title: String(row.title),
+      event_time: String(row.event_time || row.starts_at || row.created_at),
       created_at: String(row.created_at),
     })),
     prayer_requests: ((prayerResult.data || []) as unknown as PlatformDashboardData["prayer_requests"]),
@@ -986,6 +1000,43 @@ export async function deletePlatformEvent(formData: FormData) {
   revalidatePath("/platform");
   revalidatePath("/events");
   redirect("/platform?message=Event deleted.");
+}
+
+export async function deletePlatformPrayerRequest(formData: FormData) {
+  await requirePlatformEngineer();
+  const id = getFormString(formData, "request_id");
+  const confirmation = getFormString(formData, "confirmation");
+
+  if (!id || confirmation !== "DELETE") {
+    redirect("/platform?message=Type DELETE to confirm prayer request deletion.");
+  }
+
+  const admin = createAdminClient();
+  const { data: request, error: lookupError } = await admin
+    .from("prayer_requests")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new Error(lookupError.message);
+  }
+
+  if (!request) {
+    redirect("/platform?message=Prayer request not found.");
+  }
+
+  const { error } = await admin.from("prayer_requests").delete().eq("id", id);
+
+  if (error) {
+    await logPlatformMutation("prayer_request_delete", "failed", error);
+    redirect(`/platform?message=${encodeURIComponent(error.message)}`);
+  }
+
+  await logPlatformMutation("prayer_request_delete", "succeeded");
+  revalidatePath("/platform");
+  revalidatePath("/prayer");
+  redirect("/platform?message=Prayer request deleted.");
 }
 
 export async function createPlatformDirectMessageIntent(formData: FormData) {

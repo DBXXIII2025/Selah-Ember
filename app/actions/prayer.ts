@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/lib/notifications/service";
 import { assertNotBanned } from "@/lib/moderation/bans";
+import { getErrorMetadata } from "@/lib/observability/log";
+import { logRequestEvent } from "@/lib/observability/request";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,6 +19,7 @@ export type PrayerRequest = {
   community_id: string | null;
   community_name: string | null;
   is_owner: boolean;
+  can_delete: boolean;
 };
 
 export type PrayerCommunityOption = {
@@ -218,6 +221,7 @@ export async function getVisiblePrayerRequests(): Promise<PrayerRequest[]> {
       community_id: typeof row.community_id === "string" ? row.community_id : null,
       community_name: community?.name || null,
       is_owner: row.profile_id === profile.id,
+      can_delete: row.profile_id === profile.id || profile.role === "platform_engineer",
     };
   });
 }
@@ -225,13 +229,14 @@ export async function getVisiblePrayerRequests(): Promise<PrayerRequest[]> {
 export async function deleteOwnPrayerRequest(formData: FormData) {
   const requestId = getFormString(formData, "request_id");
   const confirmation = getFormString(formData, "confirmation");
+  const returnTo = getFormString(formData, "return_to") === "/platform" ? "/platform" : "/prayer";
 
   if (!requestId) {
-    redirect("/prayer?message=Prayer request not found.");
+    redirect(`${returnTo}?message=Prayer request not found.`);
   }
 
   if (confirmation !== "DELETE") {
-    redirect(`/prayer?message=Type DELETE to confirm prayer request deletion.`);
+    redirect(`${returnTo}?message=Type DELETE to confirm prayer request deletion.`);
   }
 
   const profile = await getCurrentProfile();
@@ -247,22 +252,42 @@ export async function deleteOwnPrayerRequest(formData: FormData) {
   }
 
   if (!request) {
-    redirect("/prayer?message=Prayer request not found.");
+    redirect(`${returnTo}?message=Prayer request not found.`);
   }
 
   const isOwner = String(request.profile_id) === profile.id;
   const isPlatformEngineer = profile.role === "platform_engineer";
 
   if (!isOwner && !isPlatformEngineer) {
-    redirect("/prayer?message=You can only delete your own prayer requests.");
+    redirect(`${returnTo}?message=You can only delete your own prayer requests.`);
   }
 
+  const isPlatformDelete = isPlatformEngineer && !isOwner;
   const { error: deleteError } = await admin.from("prayer_requests").delete().eq("id", requestId);
 
   if (deleteError) {
-    redirect(`/prayer?message=${encodeURIComponent(deleteError.message)}`);
+    if (isPlatformDelete) {
+      await logRequestEvent("error", "moderation.prayer_request.delete.failed", {
+        operation: "delete_prayer_request",
+        resourceType: "prayer_request",
+        outcome: "failed",
+        scope: "platform",
+        ...getErrorMetadata(deleteError),
+      });
+    }
+    redirect(`${returnTo}?message=${encodeURIComponent(deleteError.message)}`);
+  }
+
+  if (isPlatformDelete) {
+    await logRequestEvent("info", "moderation.prayer_request.delete.succeeded", {
+      operation: "delete_prayer_request",
+      resourceType: "prayer_request",
+      outcome: "succeeded",
+      scope: "platform",
+    });
   }
 
   revalidatePath("/prayer");
-  redirect("/prayer?message=Prayer request deleted.");
+  revalidatePath("/platform");
+  redirect(`${returnTo}?message=Prayer request deleted.`);
 }

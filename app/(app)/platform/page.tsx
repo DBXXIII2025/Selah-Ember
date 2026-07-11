@@ -1,9 +1,11 @@
 import {
   createTemporaryBan,
   deletePlatformCommunity,
+  deletePlatformEvent,
   deletePlatformGroup,
   deletePlatformAnnouncement,
   deletePlatformPlan,
+  deletePlatformPrayerRequest,
   deletePromoCode,
   getPlatformDashboardData,
   savePlatformPlan,
@@ -542,13 +544,52 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
               ))}
             </div>
           </Panel>
+          <Panel title="Events">
+            <div className="space-y-3 text-sm">
+              {data.events.length === 0 ? (
+                <p className="text-sm text-[#67564c]">No events yet.</p>
+              ) : (
+                data.events.map((event) => (
+                  <div key={event.id} className="rounded-xl border border-[#ead6c5] p-3">
+                    <p className="font-semibold">{event.title}</p>
+                    <p className="mt-1 text-[#67564c]">{new Date(event.event_time).toLocaleString()}</p>
+                    <ConfirmActionPanel
+                      action={deletePlatformEvent}
+                      hiddenFields={{ event_id: event.id }}
+                      title="Delete event"
+                      description="This removes the event and related RSVP rows from the active database."
+                      actionLabel="Delete event"
+                      confirmationId={`platform-delete-event-${event.id}`}
+                      className="mt-3"
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          </Panel>
           <Panel title="Public prayer">
             <div className="space-y-3 text-sm">
-              {data.prayer_requests.map((request) => (
-                <p key={request.id} className="rounded-xl border border-[#ead6c5] p-3">
-                  {request.title}
-                </p>
-              ))}
+              {data.prayer_requests.length === 0 ? (
+                <p className="text-sm text-[#67564c]">No public prayer requests yet.</p>
+              ) : (
+                data.prayer_requests.map((request) => (
+                  <div key={request.id} className="rounded-xl border border-[#ead6c5] p-3">
+                    <p className="font-semibold">{request.title}</p>
+                    <p className="mt-1 text-[#67564c]">
+                      Created {new Date(request.created_at).toLocaleString()}
+                    </p>
+                    <ConfirmActionPanel
+                      action={deletePlatformPrayerRequest}
+                      hiddenFields={{ request_id: request.id }}
+                      title="Delete prayer request"
+                      description="This removes the prayer request from the active database."
+                      actionLabel="Delete request"
+                      confirmationId={`platform-delete-prayer-${request.id}`}
+                      className="mt-3"
+                    />
+                  </div>
+                ))
+              )}
             </div>
           </Panel>
         </div>

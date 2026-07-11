@@ -102,7 +102,7 @@ export default async function EventDetailPage({ params, searchParams }: EventDet
               </div>
             ) : null}
           </div>
-          {event.is_owner ? (
+          {event.can_delete ? (
             <ConfirmActionPanel
               action={deleteOwnedEvent}
               hiddenFields={{ event_id: event.id }}

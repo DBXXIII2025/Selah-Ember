@@ -44,7 +44,7 @@ export default async function PrayerPage() {
                   ) : null}
                   {request.is_owner ? <span>Your request</span> : <span>Community request</span>}
                 </div>
-                {request.is_owner ? (
+                {request.can_delete ? (
                   <ConfirmActionPanel
                     action={deleteOwnPrayerRequest}
                     hiddenFields={{ request_id: request.id }}

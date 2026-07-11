@@ -6,6 +6,8 @@ import { createNotification } from "@/lib/notifications/service";
 import { getCurrentProfile, getOptionalAuthAndProfile } from "@/lib/auth/current";
 import { canCreateEvent } from "@/lib/auth/ownership";
 import { assertNotBanned } from "@/lib/moderation/bans";
+import { getErrorMetadata } from "@/lib/observability/log";
+import { logRequestEvent } from "@/lib/observability/request";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type EventRecord = {
@@ -20,6 +22,7 @@ export type EventRecord = {
   group_title: string | null;
   created_by: string | null;
   is_owner: boolean;
+  can_delete: boolean;
   rsvp_counts: EventRsvpCounts;
   user_rsvp_status: EventRsvpStatusValue | null;
 };
@@ -282,12 +285,15 @@ function eventSelect(supportsPhase6Columns: boolean) {
 function normalizeEvent(
   row: Record<string, unknown>,
   profileId: string | null,
+  profileRole: string | null,
   rsvpCounts: EventRsvpCounts = { going: 0, interested: 0, total: 0 },
   userRsvpStatus: EventRsvpStatusValue | null = null,
 ): EventRecord {
   const community = row.churches as { name?: string } | null | undefined;
   const group = row.study_groups as { title?: string; name?: string } | null | undefined;
   const eventTime = row.event_time || row.starts_at;
+  const isOwner = Boolean(profileId) && row.created_by === profileId;
+  const isPlatformEngineer = profileRole === "platform_engineer";
 
   return {
     id: String(row.id),
@@ -305,7 +311,8 @@ function normalizeEvent(
     group_id: typeof row.group_id === "string" ? row.group_id : null,
     group_title: group?.title || group?.name || null,
     created_by: typeof row.created_by === "string" ? row.created_by : null,
-    is_owner: Boolean(profileId) && row.created_by === profileId,
+    is_owner: isOwner,
+    can_delete: isOwner || isPlatformEngineer,
     rsvp_counts: rsvpCounts,
     user_rsvp_status: userRsvpStatus,
   };
@@ -334,6 +341,7 @@ export async function getVisibleEvents(): Promise<EventRecord[]> {
     normalizeEvent(
       row,
       profile.id,
+      profile.role,
       rsvps.counts.get(String(row.id)),
       rsvps.statuses.get(String(row.id)) || null,
     ),
@@ -363,6 +371,7 @@ export async function getEventById(id: string): Promise<EventRecord | null> {
   return normalizeEvent(
     data as unknown as Record<string, unknown>,
     profile?.id || null,
+    profile?.role || null,
     rsvps.counts.get(id),
     rsvps.statuses.get(id) || null,
   );
@@ -531,10 +540,29 @@ export async function deleteOwnedEvent(formData: FormData) {
     redirect(`/events/${eventId}?message=You can only delete events you own.`);
   }
 
+  const isPlatformDelete = profile.role === "platform_engineer" && String(event.created_by) !== profile.id;
   const { error: deleteError } = await admin.from("events").delete().eq("id", eventId);
 
   if (deleteError) {
+    if (isPlatformDelete) {
+      await logRequestEvent("error", "moderation.event.delete.failed", {
+        operation: "delete_event",
+        resourceType: "event",
+        outcome: "failed",
+        scope: "platform",
+        ...getErrorMetadata(deleteError),
+      });
+    }
     redirect(`/events/${eventId}?message=${encodeURIComponent(deleteError.message)}`);
+  }
+
+  if (isPlatformDelete) {
+    await logRequestEvent("info", "moderation.event.delete.succeeded", {
+      operation: "delete_event",
+      resourceType: "event",
+      outcome: "succeeded",
+      scope: "platform",
+    });
   }
 
   revalidatePath("/events");
