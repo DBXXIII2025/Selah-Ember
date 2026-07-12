@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getErrorMetadata } from "@/lib/observability/log";
 import { logRequestEvent } from "@/lib/observability/request";
+import { getSiteUrl } from "@/lib/site-url";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -13,7 +14,7 @@ function getFormString(formData: FormData, key: string) {
 }
 
 function getAppUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  return getSiteUrl();
 }
 
 function getSignInErrorMessage(message: string) {

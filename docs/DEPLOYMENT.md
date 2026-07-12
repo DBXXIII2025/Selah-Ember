@@ -30,7 +30,8 @@ Set these in Vercel project settings:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-NEXT_PUBLIC_APP_URL=https://your-production-domain.example
+NEXT_PUBLIC_SITE_URL=https://selahember.com
+NEXT_PUBLIC_APP_URL=https://selahember.com
 ```
 
 `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are safe for browser usage. `SUPABASE_SERVICE_ROLE_KEY` must remain server-only.
@@ -42,8 +43,8 @@ NEXT_PUBLIC_APP_URL=https://your-production-domain.example
 - Confirm RLS remains enabled on all application tables, including profiles, legacy communities and memberships, groups and memberships, prayer requests, events and RSVPs, notifications, messages, discussions, community posts, media, moderation, and platform tables.
 - Confirm public reads are intentional only for the open community content, published legacy pages/media, public study groups, and public event details.
 - Confirm storage buckets and policies exist for `profile-avatars`, `message-media`, `community-media`, and `community-feed-media`.
-- Confirm Auth email settings and redirect URLs include the Vercel production domain.
-- Confirm `NEXT_PUBLIC_APP_URL` exactly matches the canonical HTTPS production origin so metadata URLs are not generated with the localhost fallback.
+- Confirm Auth email settings and redirect URLs include `https://selahember.com` and do not depend on the Vercel deployment URL.
+- Confirm `NEXT_PUBLIC_SITE_URL` exactly matches `https://selahember.com` so metadata, sitemap, robots, PWA, and auth callback URLs use the canonical production origin. `NEXT_PUBLIC_APP_URL` remains useful for local/staging compatibility but production code hard-falls back to `https://selahember.com` rather than a Vercel deployment URL.
 - Confirm no development-only users or records are required for the app to boot.
 - Confirm the service-role key appears only in server-side environment configuration and never in browser bundles or logs.
 

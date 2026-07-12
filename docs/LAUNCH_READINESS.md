@@ -45,7 +45,7 @@ The current Playwright suites are read-only and cover primarily public/signed-ou
 ### 2. Environment and provider isolation
 
 - [ ] Staging, preview, and production use distinct Supabase projects or an approved isolation model; previews never use production credentials.
-- [ ] `NEXT_PUBLIC_APP_URL` is the canonical HTTPS staging origin during testing and the canonical production origin for release.
+- [ ] `NEXT_PUBLIC_SITE_URL` is `https://selahember.com` for production. `NEXT_PUBLIC_APP_URL` may remain for local/staging compatibility but must not point production metadata or auth callbacks to a Vercel deployment URL.
 - [ ] Supabase Auth site URL, allowed redirects, email confirmation, password controls, rate limits, SMTP, CAPTCHA/bot controls, and test providers match the approved environment configuration.
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` exists only in server-side environment configuration and is absent from client bundles, browser network responses, logs, CI placeholders, and release artifacts.
 - [ ] Required platform engineers are identified out of band and use appropriately protected accounts. No test platform role remains in production.

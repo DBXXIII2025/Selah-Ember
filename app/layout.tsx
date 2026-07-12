@@ -1,11 +1,13 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 import { SiteFooter } from "@/components/ui/site-footer";
+import { getCanonicalUrl, getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 
 const description = "An open faith community for encouragement, prayer, Bible study groups, and fellowship.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  metadataBase: new URL(getSiteUrl()),
   applicationName: "Selah Ember",
   title: {
     default: "Selah Ember",
@@ -20,13 +22,27 @@ export const metadata: Metadata = {
     "Bible study groups",
     "faith events",
   ],
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: "/images/selah-ember-logo.png",
+    apple: "/icons/selah-ember-icon-192.png",
+  },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Selah Ember",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
   },
   openGraph: {
     title: "Selah Ember",
     description,
     siteName: "Selah Ember",
+    url: getCanonicalUrl("/"),
     type: "website",
     locale: "en_US",
     images: [
@@ -45,6 +61,13 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#151210",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -57,6 +80,7 @@ export default function RootLayout({
           <div className="flex-1">{children}</div>
           <SiteFooter />
         </div>
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );

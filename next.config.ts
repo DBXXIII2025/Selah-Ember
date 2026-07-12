@@ -8,6 +8,21 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "270mb",
     },
   },
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [
+          {
+            type: "host",
+            value: "www.selahember.com",
+          },
+        ],
+        destination: "https://selahember.com/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
