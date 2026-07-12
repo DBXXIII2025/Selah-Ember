@@ -16,7 +16,7 @@ Already present:
 
 Added for Android/TWA readiness:
 
-- `app/manifest.ts` with installable PWA metadata.
+- `public/manifest.webmanifest` with installable PWA metadata.
 - 192px and 512px app icons, including maskable variants, under `public/icons/`.
 - `public/sw.js` with conservative static/offline caching.
 - `public/offline.html` as the offline fallback page.
