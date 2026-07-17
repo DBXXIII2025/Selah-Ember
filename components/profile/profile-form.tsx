@@ -3,6 +3,7 @@ import {
   uploadCurrentUserAvatar,
   type CurrentUserProfile,
 } from "@/app/actions/profile";
+import { DeleteAccountDialog } from "@/components/profile/delete-account-dialog";
 import {
   DetailHero,
   FormActions,
@@ -163,6 +164,8 @@ export function ProfileForm({ profile, message }: ProfileFormProps) {
             <SubmitButton pendingLabel="Saving profile…">Save profile</SubmitButton>
           </FormActions>
         </form>
+
+        <DeleteAccountDialog />
       </FormShell>
     </div>
   );

@@ -27,6 +27,15 @@ test.describe("public pages", () => {
     await expectPageLoads(page, "/signin", "Sign in");
     await expectPageLoads(page, "/signup", "Create your account");
   });
+
+  test("account deletion information page loads while signed out", async ({ page }) => {
+    const response = await page.goto("/delete-account");
+
+    expect(response?.status()).toBe(200);
+    await expect(page).toHaveURL(/\/delete-account$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Delete your Selah Ember account" })).toBeVisible();
+    await expect(page.getByText("seraphcore2025@gmail.com")).toBeVisible();
+  });
 });
 
 test("protected pages send signed-out visitors to sign in", async ({ page }) => {

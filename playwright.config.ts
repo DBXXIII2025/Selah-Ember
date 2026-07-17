@@ -31,7 +31,7 @@ export default defineConfig({
   webServer: externalBaseUrl
     ? undefined
     : {
-        command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
+        command: `node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port ${port}`,
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 300_000,

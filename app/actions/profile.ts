@@ -12,6 +12,10 @@ import {
   validateImageFile,
 } from "@/lib/media/validation";
 
+const MESSAGE_MEDIA_BUCKET = "message-media";
+const COMMUNITY_FEED_BUCKET = "community-feed-media";
+const COMMUNITY_MEDIA_BUCKET = "community-media";
+
 export type CurrentUserProfile = {
   id: string;
   user_id: string;
@@ -33,13 +37,120 @@ function nullableFormString(formData: FormData, key: string) {
   return value.length > 0 ? value : null;
 }
 
+function uniqueValues(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value && value.trim()))));
+}
+
+function isStoragePath(value: string) {
+  return !/^https?:\/\//i.test(value) && value.includes("/") && !value.includes("..");
+}
+
+async function removeStorageObjects(
+  admin: ReturnType<typeof createAdminClient>,
+  bucket: string,
+  paths: string[],
+) {
+  const uniquePaths = uniqueValues(paths).filter(isStoragePath);
+
+  for (let index = 0; index < uniquePaths.length; index += 100) {
+    const chunk = uniquePaths.slice(index, index + 100);
+    const { error } = await admin.storage.from(bucket).remove(chunk);
+
+    if (error) {
+      await logRequestEvent("error", "account_deletion.storage_delete.failed", {
+        bucket,
+        operation: "delete",
+        ...getErrorMetadata(error),
+      });
+      throw new Error(`Could not remove ${bucket} files.`);
+    }
+  }
+}
+
+async function getAccountStoragePaths(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  profileId: string | null,
+) {
+  const paths: Record<string, string[]> = {
+    [PROFILE_AVATAR_BUCKET]: [],
+    [MESSAGE_MEDIA_BUCKET]: [],
+    [COMMUNITY_FEED_BUCKET]: [],
+    [COMMUNITY_MEDIA_BUCKET]: [],
+  };
+
+  const { data: avatars, error: avatarsError } = await admin.storage
+    .from(PROFILE_AVATAR_BUCKET)
+    .list(userId, { limit: 1000 });
+
+  if (avatarsError) {
+    await logRequestEvent("error", "account_deletion.storage_list.failed", {
+      bucket: PROFILE_AVATAR_BUCKET,
+      operation: "list",
+      ...getErrorMetadata(avatarsError),
+    });
+    throw new Error("Could not inspect profile avatar files.");
+  }
+
+  paths[PROFILE_AVATAR_BUCKET] = (avatars || [])
+    .filter((item) => item.name && item.name !== ".emptyFolderPlaceholder")
+    .map((item) => `${userId}/${item.name}`);
+
+  const { data: messageAttachments, error: messageAttachmentsError } = await admin
+    .from("message_attachments")
+    .select("url")
+    .eq("uploader_id", userId);
+
+  if (messageAttachmentsError) {
+    throw new Error(messageAttachmentsError.message);
+  }
+
+  paths[MESSAGE_MEDIA_BUCKET] = uniqueValues(
+    (messageAttachments || []).map((row) => (typeof row.url === "string" ? row.url : null)),
+  );
+
+  const { data: communityPosts, error: communityPostsError } = await admin
+    .from("community_posts")
+    .select("storage_path")
+    .eq("author_id", userId)
+    .not("storage_path", "is", null);
+
+  if (communityPostsError) {
+    throw new Error(communityPostsError.message);
+  }
+
+  paths[COMMUNITY_FEED_BUCKET] = uniqueValues(
+    (communityPosts || []).map((row) => (typeof row.storage_path === "string" ? row.storage_path : null)),
+  );
+
+  if (profileId) {
+    const { data: mediaItems, error: mediaItemsError } = await admin
+      .from("media_items")
+      .select("storage_path")
+      .eq("created_by", profileId)
+      .not("storage_path", "is", null);
+
+    if (mediaItemsError) {
+      throw new Error(mediaItemsError.message);
+    }
+
+    paths[COMMUNITY_MEDIA_BUCKET] = uniqueValues(
+      (mediaItems || []).map((row) => (typeof row.storage_path === "string" ? row.storage_path : null)),
+    );
+  }
+
+  return paths;
+}
+
 async function getCurrentUser() {
   const supabase = await createClient();
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (error || !user) {
+    await supabase.auth.signOut();
     redirect("/signin");
   }
 
@@ -177,4 +288,103 @@ export async function uploadCurrentUserAvatar(formData: FormData) {
   revalidatePath("/profile");
   revalidatePath("/dashboard");
   redirect("/profile?message=Profile photo updated.");
+}
+
+export async function deleteCurrentUserAccount(formData: FormData) {
+  const confirmation = getFormString(formData, "confirmation");
+
+  if (confirmation !== "DELETE") {
+    redirect("/profile?message=Type DELETE to confirm account deletion.");
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    await supabase.auth.signOut();
+    redirect("/signin?message=Please sign in again before deleting your account.");
+  }
+
+  const admin = createAdminClient();
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    await logRequestEvent("error", "account_deletion.profile_lookup.failed", {
+      operation: "delete_account",
+      ...getErrorMetadata(profileError),
+    });
+    redirect(`/profile?message=${encodeURIComponent("Could not prepare account deletion.")}`);
+  }
+
+  try {
+    const storagePaths = await getAccountStoragePaths(
+      admin,
+      user.id,
+      typeof profile?.id === "string" ? profile.id : null,
+    );
+
+    const { data: deletionSummary, error: deletionError } = await admin.rpc("delete_user_account_data", {
+      target_user_id: user.id,
+    });
+
+    if (deletionError) {
+      await logRequestEvent("error", "account_deletion.database.failed", {
+        operation: "delete_account",
+        ...getErrorMetadata(deletionError),
+      });
+      throw new Error("Could not delete account data.");
+    }
+
+    await removeStorageObjects(admin, PROFILE_AVATAR_BUCKET, storagePaths[PROFILE_AVATAR_BUCKET]);
+    await removeStorageObjects(admin, MESSAGE_MEDIA_BUCKET, storagePaths[MESSAGE_MEDIA_BUCKET]);
+    await removeStorageObjects(admin, COMMUNITY_FEED_BUCKET, storagePaths[COMMUNITY_FEED_BUCKET]);
+    await removeStorageObjects(admin, COMMUNITY_MEDIA_BUCKET, storagePaths[COMMUNITY_MEDIA_BUCKET]);
+
+    const { error: signOutError } = await supabase.auth.signOut();
+
+    if (signOutError) {
+      await logRequestEvent("error", "account_deletion.sign_out.failed", {
+        provider: "supabase",
+        operation: "delete_account",
+        ...getErrorMetadata(signOutError),
+      });
+      throw new Error("Account data was removed, but the session could not be cleared. Contact support.");
+    }
+
+    const { error: authDeleteError } = await admin.auth.admin.deleteUser(user.id);
+
+    if (authDeleteError) {
+      await logRequestEvent("error", "account_deletion.auth_identity.failed", {
+        provider: "supabase",
+        operation: "delete_account",
+        ...getErrorMetadata(authDeleteError),
+      });
+      throw new Error("Account data was removed, but the sign-in identity could not be deleted. Contact support.");
+    }
+
+    await logRequestEvent("info", "account_deletion.succeeded", {
+      operation: "delete_account",
+      profileCount: typeof deletionSummary === "object" && deletionSummary ? Number((deletionSummary as Record<string, unknown>).profiles || 0) : 0,
+      avatarObjectCount: storagePaths[PROFILE_AVATAR_BUCKET].length,
+      messageMediaObjectCount: storagePaths[MESSAGE_MEDIA_BUCKET].length,
+      communityFeedObjectCount: storagePaths[COMMUNITY_FEED_BUCKET].length,
+      communityMediaObjectCount: storagePaths[COMMUNITY_MEDIA_BUCKET].length,
+    });
+  } catch (error) {
+    await logRequestEvent("error", "account_deletion.failed", {
+      operation: "delete_account",
+      ...getErrorMetadata(error),
+    });
+    redirect(`/profile?message=${encodeURIComponent(error instanceof Error ? error.message : "Could not delete account.")}`);
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/?message=Account%20deleted.");
 }

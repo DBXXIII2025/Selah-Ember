@@ -8,6 +8,7 @@ const publicPages = [
   { path: "/discover/groups", name: "group discovery" },
   { path: "/signin", name: "sign in" },
   { path: "/signup", name: "sign up" },
+  { path: "/delete-account", name: "account deletion" },
 ];
 
 async function expectNoAccessibilityViolations(page: Page, testInfo: TestInfo) {
