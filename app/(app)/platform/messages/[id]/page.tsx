@@ -77,7 +77,7 @@ export default async function PlatformConversationPage({ params, searchParams }:
                     return (
                       <MessageDisplay
                         key={message.id}
-                        senderName={sender?.display_name || "Selah Ember Member"}
+                        senderName={message.sender_id ? sender?.display_name || "Selah Ember Member" : "Deleted user"}
                         timestamp={formatDate(message.created_at)}
                         body={message.body}
                         attachments={message.attachments}

@@ -84,7 +84,7 @@ export default async function ConversationPage({ params, searchParams }: Convers
                 return (
                   <MessageDisplay
                     key={message.id}
-                    senderName={sender?.display_name || "Selah Ember Member"}
+                    senderName={message.sender_id ? sender?.display_name || "Selah Ember Member" : "Deleted user"}
                     timestamp={formatMessageDate(message.created_at)}
                     body={message.body}
                     attachments={message.attachments}

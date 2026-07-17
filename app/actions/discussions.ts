@@ -419,7 +419,7 @@ async function getGroupAccess(groupId: string): Promise<GroupAccess> {
 }
 
 async function getAuthorMap(userIds: string[]) {
-  const uniqueUserIds = Array.from(new Set(userIds.filter(Boolean)));
+  const uniqueUserIds = Array.from(new Set(userIds.filter(isUuid)));
   const fallback = new Map<string, DiscussionAuthor>();
 
   for (const userId of uniqueUserIds) {
@@ -484,11 +484,11 @@ async function getReplyCounts(threadIds: string[]) {
 }
 
 async function normalizeThreads(rows: Record<string, unknown>[]) {
-  const authorMap = await getAuthorMap(rows.map((row) => String(row.author_id)));
+  const authorMap = await getAuthorMap(rows.map((row) => (typeof row.author_id === "string" ? row.author_id : "")));
   const replyCounts = await getReplyCounts(rows.map((row) => String(row.id)));
 
   return rows.map((row) => {
-    const authorId = String(row.author_id);
+    const authorId = typeof row.author_id === "string" ? row.author_id : "";
 
     return {
       id: String(row.id),
@@ -504,7 +504,7 @@ async function normalizeThreads(rows: Record<string, unknown>[]) {
       reply_count: replyCounts.get(String(row.id)) || 0,
       author: authorMap.get(authorId) || {
         user_id: authorId,
-        display_name: "Selah Ember Member",
+        display_name: authorId ? "Selah Ember Member" : "Deleted user",
         username: null,
       },
     } satisfies DiscussionThreadSummary;
@@ -591,9 +591,9 @@ async function getThreadDetail(threadId: string, profile: Profile | null): Promi
 
   const [thread] = await normalizeThreads([threadRow]);
   const replyRows = (data || []) as unknown as Record<string, unknown>[];
-  const authorMap = await getAuthorMap(replyRows.map((reply) => String(reply.author_id)));
+  const authorMap = await getAuthorMap(replyRows.map((reply) => (typeof reply.author_id === "string" ? reply.author_id : "")));
   const replies = replyRows.map((reply) => {
-    const authorId = String(reply.author_id);
+    const authorId = typeof reply.author_id === "string" ? reply.author_id : "";
 
     return {
       id: String(reply.id),
@@ -605,7 +605,7 @@ async function getThreadDetail(threadId: string, profile: Profile | null): Promi
       deleted_at: typeof reply.deleted_at === "string" ? reply.deleted_at : null,
       author: authorMap.get(authorId) || {
         user_id: authorId,
-        display_name: "Selah Ember Member",
+        display_name: authorId ? "Selah Ember Member" : "Deleted user",
         username: null,
       },
     };

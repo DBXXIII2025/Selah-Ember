@@ -2,6 +2,12 @@ import { CalendarDays, Flame, HeartHandshake, UsersRound } from "lucide-react";
 import Image from "next/image";
 import { BrandMark } from "@/components/ui/brand-mark";
 
+type HomeProps = {
+  searchParams?: Promise<{
+    message?: string;
+  }>;
+};
+
 const fellowshipPillars = [
   {
     title: "Prayer",
@@ -25,7 +31,10 @@ const fellowshipPillars = [
   },
 ];
 
-export default function Home() {
+export default async function Home({ searchParams }: HomeProps) {
+  const params = searchParams ? await searchParams : {};
+  const message = params?.message;
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#f7ead7] text-[#211814]">
       <section className="relative isolate flex min-h-screen items-center bg-[#151210] px-6 py-8 sm:px-10 lg:px-16">
@@ -41,6 +50,11 @@ export default function Home() {
         <div className="mx-auto grid w-full max-w-7xl gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div className="max-w-3xl">
             <BrandMark variant="light" />
+            {message ? (
+              <div role="status" className="mt-8 inline-flex rounded-full border border-[#d8965c]/45 bg-[#fff4df]/12 px-4 py-2 text-sm font-semibold text-[#fff4df]">
+                {message}
+              </div>
+            ) : null}
             <h1 className="mt-10 max-w-4xl font-serif text-5xl font-semibold tracking-normal text-[#fff4df] sm:text-6xl lg:text-7xl">
               An open faith community for prayer, groups, and fellowship
             </h1>

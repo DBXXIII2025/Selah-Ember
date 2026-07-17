@@ -5,7 +5,7 @@ This runbook prepares the Selah Ember Trusted Web Activity for Google Play. Do n
 ## Release Inputs Needed
 
 - Final production URL: `https://selahember.com`.
-- Android package name, for example `com.example.selahember` until confirmed.
+- Android package name: `com.seraphcore.selahember`.
 - Play App Signing SHA-256 certificate fingerprint.
 - Upload signing key, stored outside the repository.
 - Privacy policy URL.
@@ -25,7 +25,7 @@ curl https://selahember.com/.well-known/assetlinks.json
 4. Install the Android build and verify app links:
 
 ```powershell
-adb shell pm get-app-links REPLACE_WITH_ANDROID_PACKAGE_NAME
+adb shell pm get-app-links com.seraphcore.selahember
 adb shell am start -a android.intent.action.VIEW -d https://selahember.com/community
 ```
 

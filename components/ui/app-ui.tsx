@@ -27,6 +27,7 @@ type ActionButtonProps = {
   disabled?: boolean;
   name?: string;
   value?: string;
+  onClick?: () => void;
 };
 
 export function ActionButton({
@@ -39,6 +40,7 @@ export function ActionButton({
   disabled,
   name,
   value,
+  onClick,
 }: ActionButtonProps) {
   const classes = cn(
     "inline-flex min-h-11 items-center justify-center gap-2 rounded-full font-semibold transition focus-visible:outline-none focus-visible:ring-4 disabled:pointer-events-none disabled:opacity-50",
@@ -56,7 +58,7 @@ export function ActionButton({
   }
 
   return (
-    <button type={type} disabled={disabled} name={name} value={value} className={classes}>
+    <button type={type} disabled={disabled} name={name} value={value} onClick={onClick} className={classes}>
       {children}
     </button>
   );

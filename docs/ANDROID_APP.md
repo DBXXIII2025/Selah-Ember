@@ -25,7 +25,7 @@ Added for Android/TWA readiness:
 Still required from the release owner:
 
 - Production origin: `https://selahember.com`.
-- Final Android package name.
+- Final Android package name: `com.seraphcore.selahember`.
 - Play App Signing SHA-256 certificate fingerprint.
 - Store listing assets, screenshots, privacy policy URL, content rating, and data safety answers.
 
@@ -54,7 +54,7 @@ Replace the placeholders before release:
 
 ```json
 {
-  "package_name": "REPLACE_WITH_ANDROID_PACKAGE_NAME",
+  "package_name": "com.seraphcore.selahember",
   "sha256_cert_fingerprints": [
     "REPLACE_WITH_PLAY_APP_SIGNING_SHA256_FINGERPRINT"
   ]
@@ -78,7 +78,7 @@ curl https://selahember.com/.well-known/assetlinks.json
 After installing the app on a device:
 
 ```powershell
-adb shell pm get-app-links REPLACE_WITH_ANDROID_PACKAGE_NAME
+adb shell pm get-app-links com.seraphcore.selahember
 adb shell am start -a android.intent.action.VIEW -d https://selahember.com/community
 ```
 

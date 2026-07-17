@@ -631,7 +631,7 @@ async function buildConversationSummaries(conversationIds: string[], currentUser
       ...(messagesByConversation.get(conversationId) || []),
       {
         id: String(row.id),
-        sender_id: String(row.sender_id),
+        sender_id: typeof row.sender_id === "string" ? row.sender_id : "",
         body: String(row.body),
         created_at: String(row.created_at),
         deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
@@ -735,7 +735,7 @@ export async function getConversation(conversationId: string): Promise<Conversat
 
   const messages = (data || []).map((row) => ({
     id: String(row.id),
-    sender_id: String(row.sender_id),
+    sender_id: typeof row.sender_id === "string" ? row.sender_id : "",
     body: String(row.body),
     created_at: String(row.created_at),
     deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,

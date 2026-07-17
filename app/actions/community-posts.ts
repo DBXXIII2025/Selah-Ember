@@ -152,7 +152,7 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
   return {
     id: String(row.id),
     community_id: String(row.community_id),
-    author_id: String(row.author_id),
+    author_id: typeof row.author_id === "string" ? row.author_id : "",
     title: typeof row.title === "string" ? row.title : null,
     body: typeof row.body === "string" ? row.body : null,
     media_url: typeof row.media_url === "string" ? row.media_url : null,
@@ -184,7 +184,7 @@ function mapComment(row: Record<string, unknown>, currentUserId: string | null, 
   return {
     id: String(row.id),
     post_id: String(row.post_id),
-    author_id: String(row.author_id),
+    author_id: typeof row.author_id === "string" ? row.author_id : "",
     body: String(row.body),
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -235,7 +235,7 @@ async function hydratePostAuthors(posts: CommunityPost[]) {
 
     return {
       ...post,
-      author_name: profile?.display_name || "Member",
+      author_name: post.author_id ? profile?.display_name || "Member" : "Deleted user",
       author_avatar_url: profile?.avatar_url || null,
     };
   });
@@ -248,7 +248,7 @@ async function hydrateCommentAuthors(comments: CommunityPostComment[]) {
 
     return {
       ...comment,
-      author_name: profile?.display_name || "Member",
+      author_name: comment.author_id ? profile?.display_name || "Member" : "Deleted user",
       author_avatar_url: profile?.avatar_url || null,
     };
   });
