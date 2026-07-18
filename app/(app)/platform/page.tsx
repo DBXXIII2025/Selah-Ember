@@ -391,7 +391,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                       <div key={post.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
                         <p className="font-semibold">{post.title || "Untitled post"}</p>
                         <p className="mt-1 text-[#67564c]">
-                          {post.author_name || post.author_id} - {new Date(post.created_at).toLocaleString()}
+                          {post.author_name || post.author_id || "Member"} - {new Date(post.created_at).toLocaleString()}
                           {post.deleted_at ? " - deleted" : ""}
                         </p>
                         {post.body ? <p className="mt-2 line-clamp-3 text-[#67564c]">{post.body}</p> : null}
@@ -416,7 +416,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                   ) : (
                     data.community_post_comments.map((comment) => (
                       <div key={comment.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
-                        <p className="font-semibold">{comment.author_name || comment.author_id}</p>
+                        <p className="font-semibold">{comment.author_name || comment.author_id || "Member"}</p>
                         <p className="mt-1 text-[#67564c]">
                           Post {comment.post_id} - {new Date(comment.created_at).toLocaleString()}
                           {comment.deleted_at ? " - deleted" : ""}

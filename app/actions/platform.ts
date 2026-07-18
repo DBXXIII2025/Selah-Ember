@@ -110,7 +110,7 @@ export type PlatformDashboardData = {
     id: string;
     title: string | null;
     body: string | null;
-    author_id: string;
+    author_id: string | null;
     author_name: string | null;
     created_at: string;
     deleted_at: string | null;
@@ -119,7 +119,7 @@ export type PlatformDashboardData = {
     id: string;
     post_id: string;
     body: string;
-    author_id: string;
+    author_id: string | null;
     author_name: string | null;
     created_at: string;
     deleted_at: string | null;
@@ -502,9 +502,9 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     email: emailMap.get(String(profile.user_id)) || null,
   }));
   const communityAuthorIds = [
-    ...((communityPostsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => String(row.author_id)),
-    ...((communityCommentsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => String(row.author_id)),
-  ];
+    ...((communityPostsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => row.author_id),
+    ...((communityCommentsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => row.author_id),
+  ].filter((authorId): authorId is string => typeof authorId === "string" && authorId.length > 0);
   const communityAuthors = await getDisplayProfiles(communityAuthorIds);
 
   return {
@@ -557,25 +557,25 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
       };
     }),
     community_posts: ((communityPostsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => {
-      const authorId = String(row.author_id);
+      const authorId = typeof row.author_id === "string" ? row.author_id : null;
       return {
         id: String(row.id),
         title: typeof row.title === "string" ? row.title : null,
         body: typeof row.body === "string" ? row.body : null,
         author_id: authorId,
-        author_name: communityAuthors.get(authorId)?.display_name || "Member",
+        author_name: authorId ? communityAuthors.get(authorId)?.display_name || "Member" : "Member",
         created_at: String(row.created_at),
         deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
       };
     }),
     community_post_comments: ((communityCommentsResult.data || []) as unknown as Record<string, unknown>[]).map((row) => {
-      const authorId = String(row.author_id);
+      const authorId = typeof row.author_id === "string" ? row.author_id : null;
       return {
         id: String(row.id),
         post_id: String(row.post_id),
         body: String(row.body),
         author_id: authorId,
-        author_name: communityAuthors.get(authorId)?.display_name || "Member",
+        author_name: authorId ? communityAuthors.get(authorId)?.display_name || "Member" : "Member",
         created_at: String(row.created_at),
         deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
       };
