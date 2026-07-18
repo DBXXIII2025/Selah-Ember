@@ -1,6 +1,6 @@
 # Selah Ember
 
-Selah Ember is an open faith community for encouragement, prayer, Bible study groups, events, and meaningful connection. Signed-in users share through one community feed, create and join groups, participate in group discussions, exchange direct messages, and maintain personal profiles.
+Selah Ember is an open faith community for encouragement, prayer, Bible study groups, Study Rooms, events, and meaningful connection. Signed-in users share through one community feed, create and join groups, participate in structured Study Rooms, exchange direct messages, and maintain personal profiles.
 
 ## Features Through Phase 16
 
@@ -9,6 +9,7 @@ Selah Ember is an open faith community for encouragement, prayer, Bible study gr
 - One open community feed with text, safe links, images, video, comments, and reactions.
 - Public/private prayer requests.
 - Public Bible study group discovery, membership, and group-only discussions.
+- Study Rooms with Studies, shared notes, structured discussions, room prayer, external resources, private bookmarks, member invitations, reporting, and Platform moderation.
 - Event detail pages with Going, Interested, and Remove RSVP flows.
 - Notifications with unread counts and read-state actions.
 - Direct messaging with links, images, video, reactions, archive, report, and block controls.
@@ -45,7 +46,7 @@ Open `http://localhost:3000`.
 
 ## Database
 
-Apply every migration currently present in `sql/migrations` in numeric order. Do not skip legacy migrations; later compatibility migrations depend on the earlier schema.
+Apply every migration currently present in `sql/migrations` in numeric order. Do not skip legacy migrations; later compatibility migrations depend on the earlier schema. Study Rooms require migrations `0039`, `0040`, and `0041`; see `docs/STUDY_ROOMS.md`.
 
 ## Verification
 

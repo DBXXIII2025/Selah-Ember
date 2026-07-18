@@ -18,6 +18,12 @@ import { isSafeHttpUrl } from "@/lib/media/validation";
 import { getDisplayProfiles } from "@/lib/profiles/display";
 import { getErrorMetadata } from "@/lib/observability/log";
 import { logRequestEvent } from "@/lib/observability/request";
+import {
+  STUDY_ROOM_REPORT_TARGETS,
+  type StudyRoomReportTarget,
+  isStudyRoomUuid,
+  pickAllowedValue,
+} from "@/lib/study-rooms/validation";
 
 type PlatformProfileSummary = {
   id: string;
@@ -94,6 +100,7 @@ export type PlatformDashboardData = {
     details: string | null;
     created_at: string;
   }>;
+  study_room_reports: StudyRoomPlatformReport[];
   media_items: Array<{
     id: string;
     community_id: string;
@@ -124,6 +131,25 @@ export type PlatformDashboardData = {
     created_at: string;
     deleted_at: string | null;
   }>;
+};
+
+export type StudyRoomPlatformReport = {
+  id: string;
+  room_id: string;
+  room_name: string;
+  room_visibility: string;
+  status: "open" | "reviewed" | "resolved" | "dismissed";
+  reason: string;
+  details: string | null;
+  target_type: StudyRoomReportTarget;
+  target_id: string | null;
+  target_preview: string;
+  target_author_name: string;
+  reporter_label: string;
+  reviewed_by_profile_id: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  href: string;
 };
 
 export type PlatformMessageUser = PlatformProfileSummary & {
@@ -186,6 +212,496 @@ async function getUserEmailMap() {
   }
 
   return new Map(data.users.map((user) => [user.id, user.email || null]));
+}
+
+type StudyRoomReportFilters = {
+  status?: string;
+  target?: string;
+  room?: string;
+};
+
+function getStudyRoomReportTarget(row: Record<string, unknown>): { targetType: StudyRoomReportTarget; targetId: string | null } {
+  if (typeof row.note_id === "string") return { targetType: "note", targetId: row.note_id };
+  if (typeof row.thread_id === "string") return { targetType: "thread", targetId: row.thread_id };
+  if (typeof row.reply_id === "string") return { targetType: "reply", targetId: row.reply_id };
+  if (typeof row.prayer_request_id === "string") return { targetType: "prayer", targetId: row.prayer_request_id };
+  if (typeof row.resource_id === "string") return { targetType: "resource", targetId: row.resource_id };
+  return { targetType: "note", targetId: null };
+}
+
+async function getStudyRoomReportTargetMap(reports: Record<string, unknown>[]) {
+  const admin = createAdminClient();
+  const map = new Map<string, { preview: string; authorUserId: string | null; roomId: string | null; hrefAnchor: string }>();
+  const idsByType: Record<StudyRoomReportTarget, string[]> = {
+    note: [],
+    thread: [],
+    reply: [],
+    prayer: [],
+    resource: [],
+  };
+
+  for (const report of reports) {
+    const { targetType, targetId } = getStudyRoomReportTarget(report);
+    if (targetId && isStudyRoomUuid(targetId)) {
+      idsByType[targetType].push(targetId);
+    }
+  }
+
+  const [notes, threads, replies, prayers, resources] = await Promise.all([
+    idsByType.note.length
+      ? admin.from("study_room_notes").select("id,room_id,title,body,author_user_id,deleted_at").in("id", idsByType.note)
+      : Promise.resolve({ data: [], error: null }),
+    idsByType.thread.length
+      ? admin.from("study_room_discussion_threads").select("id,room_id,title,body,author_user_id,deleted_at").in("id", idsByType.thread)
+      : Promise.resolve({ data: [], error: null }),
+    idsByType.reply.length
+      ? admin
+          .from("study_room_discussion_replies")
+          .select("id,thread_id,body,author_user_id,deleted_at,study_room_discussion_threads:thread_id(room_id)")
+          .in("id", idsByType.reply)
+      : Promise.resolve({ data: [], error: null }),
+    idsByType.prayer.length
+      ? admin.from("study_room_prayer_requests").select("id,room_id,title,body,author_user_id,deleted_at").in("id", idsByType.prayer)
+      : Promise.resolve({ data: [], error: null }),
+    idsByType.resource.length
+      ? admin.from("study_room_resources").select("id,room_id,title,description,created_by_profile_id,deleted_at").in("id", idsByType.resource)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  for (const result of [notes, threads, replies, prayers, resources]) {
+    if (result.error) throw new Error(result.error.message);
+  }
+
+  for (const row of (notes.data || []) as unknown as Record<string, unknown>[]) {
+    map.set(`note:${row.id}`, {
+      preview: `${row.deleted_at ? "[removed] " : ""}${String(row.title || "Untitled note")}`.slice(0, 160),
+      authorUserId: typeof row.author_user_id === "string" ? row.author_user_id : null,
+      roomId: typeof row.room_id === "string" ? row.room_id : null,
+      hrefAnchor: `note-${row.id}`,
+    });
+  }
+  for (const row of (threads.data || []) as unknown as Record<string, unknown>[]) {
+    map.set(`thread:${row.id}`, {
+      preview: `${row.deleted_at ? "[removed] " : ""}${String(row.title || "Untitled discussion")}`.slice(0, 160),
+      authorUserId: typeof row.author_user_id === "string" ? row.author_user_id : null,
+      roomId: typeof row.room_id === "string" ? row.room_id : null,
+      hrefAnchor: `thread-${row.id}`,
+    });
+  }
+  for (const row of (replies.data || []) as unknown as Record<string, unknown>[]) {
+    const thread = row.study_room_discussion_threads as Record<string, unknown> | null | undefined;
+    map.set(`reply:${row.id}`, {
+      preview: `${row.deleted_at ? "[removed] " : ""}${String(row.body || "Reply").slice(0, 120)}`,
+      authorUserId: typeof row.author_user_id === "string" ? row.author_user_id : null,
+      roomId: typeof thread?.room_id === "string" ? thread.room_id : null,
+      hrefAnchor: `reply-${row.id}`,
+    });
+  }
+  for (const row of (prayers.data || []) as unknown as Record<string, unknown>[]) {
+    map.set(`prayer:${row.id}`, {
+      preview: `${row.deleted_at ? "[removed] " : ""}${String(row.title || "Prayer request")}`.slice(0, 160),
+      authorUserId: typeof row.author_user_id === "string" ? row.author_user_id : null,
+      roomId: typeof row.room_id === "string" ? row.room_id : null,
+      hrefAnchor: `prayer-${row.id}`,
+    });
+  }
+  for (const row of (resources.data || []) as unknown as Record<string, unknown>[]) {
+    map.set(`resource:${row.id}`, {
+      preview: `${row.deleted_at ? "[removed] " : ""}${String(row.title || "Resource")}`.slice(0, 160),
+      authorUserId: null,
+      roomId: typeof row.room_id === "string" ? row.room_id : null,
+      hrefAnchor: `resource-${row.id}`,
+    });
+  }
+
+  return map;
+}
+
+async function getStudyRoomPlatformReports(filters: StudyRoomReportFilters = {}): Promise<StudyRoomPlatformReport[]> {
+  const admin = createAdminClient();
+  const status = filters.status && ["open", "reviewed", "resolved", "dismissed", "all"].includes(filters.status) ? filters.status : "open";
+  const target = filters.target && STUDY_ROOM_REPORT_TARGETS.includes(filters.target as StudyRoomReportTarget) ? filters.target : "all";
+  const roomTerm = (filters.room || "").trim();
+
+  let query = admin
+    .from("study_room_reports")
+    .select("id,reporter_user_id,room_id,note_id,thread_id,reply_id,prayer_request_id,resource_id,reason,details,status,reviewed_by_profile_id,reviewed_at,created_at,study_rooms:room_id(name,visibility)")
+    .order("created_at", { ascending: false })
+    .limit(25);
+
+  if (status !== "all") query = query.eq("status", status);
+  if (target !== "all") {
+    const columnByTarget: Record<StudyRoomReportTarget, string> = {
+      note: "note_id",
+      thread: "thread_id",
+      reply: "reply_id",
+      prayer: "prayer_request_id",
+      resource: "resource_id",
+    };
+    query = query.not(columnByTarget[target as StudyRoomReportTarget], "is", null);
+  }
+  if (roomTerm && isStudyRoomUuid(roomTerm)) {
+    query = query.eq("room_id", roomTerm);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  const rows = ((data || []) as unknown as Record<string, unknown>[]).filter((row) => {
+    if (!roomTerm || isStudyRoomUuid(roomTerm)) return true;
+    const room = row.study_rooms as Record<string, unknown> | null | undefined;
+    return String(room?.name || "").toLowerCase().includes(roomTerm.toLowerCase());
+  });
+  const targetMap = await getStudyRoomReportTargetMap(rows);
+  const reporterIds = rows.map((row) => row.reporter_user_id).filter((id): id is string => typeof id === "string");
+  const targetAuthorIds = Array.from(targetMap.values()).map((target) => target.authorUserId).filter((id): id is string => typeof id === "string");
+  const displayProfiles = await getDisplayProfiles([...reporterIds, ...targetAuthorIds]);
+
+  return rows.map((row) => {
+    const room = row.study_rooms as Record<string, unknown> | null | undefined;
+    const { targetType, targetId } = getStudyRoomReportTarget(row);
+    const targetData = targetId ? targetMap.get(`${targetType}:${targetId}`) : null;
+    const roomId = String(row.room_id);
+    return {
+      id: String(row.id),
+      room_id: roomId,
+      room_name: typeof room?.name === "string" ? room.name : "Study Room unavailable",
+      room_visibility: typeof room?.visibility === "string" ? room.visibility : "unknown",
+      status: row.status === "reviewed" || row.status === "resolved" || row.status === "dismissed" ? row.status : "open",
+      reason: String(row.reason),
+      details: typeof row.details === "string" ? row.details : null,
+      target_type: targetType,
+      target_id: targetId,
+      target_preview: targetData?.preview || "Reported target unavailable",
+      target_author_name: targetData?.authorUserId ? displayProfiles.get(targetData.authorUserId)?.display_name || "Deleted user" : "Deleted user",
+      reporter_label: typeof row.reporter_user_id === "string" ? displayProfiles.get(row.reporter_user_id)?.display_name || "Deleted user" : "Deleted user",
+      reviewed_by_profile_id: typeof row.reviewed_by_profile_id === "string" ? row.reviewed_by_profile_id : null,
+      reviewed_at: typeof row.reviewed_at === "string" ? row.reviewed_at : null,
+      created_at: String(row.created_at),
+      href: `/study-rooms/${roomId}?section=${targetType === "note" ? "notes" : targetType === "prayer" ? "prayer" : targetType === "resource" ? "resources" : "discussion"}${targetData?.hrefAnchor ? `#${targetData.hrefAnchor}` : ""}`,
+    };
+  });
+}
+
+type StudyRoomReportRecord = {
+  id: string;
+  reporter_user_id: string;
+  room_id: string;
+  note_id: string | null;
+  thread_id: string | null;
+  reply_id: string | null;
+  prayer_request_id: string | null;
+  resource_id: string | null;
+  reason: string;
+  details: string | null;
+  status: "open" | "reviewed" | "resolved" | "dismissed";
+};
+
+type StudyRoomTargetResolution = {
+  targetType: StudyRoomReportTarget;
+  targetId: string;
+  roomId: string;
+  threadId: string | null;
+};
+
+async function insertStudyRoomModerationAudit(input: {
+  roomId: string | null;
+  reportId: string | null;
+  actorProfileId: string | null;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  note?: string | null;
+}) {
+  const admin = createAdminClient();
+  const { error } = await admin.from("study_room_moderation_audit").insert({
+    room_id: input.roomId,
+    report_id: input.reportId,
+    actor_profile_id: input.actorProfileId,
+    action: input.action.slice(0, 120),
+    target_type: input.targetType,
+    target_id: input.targetId,
+    note: input.note ? input.note.slice(0, 500) : null,
+  });
+
+  if (error?.code === "42P01" || error?.code === "PGRST205") {
+    await logRequestEvent("warn", "platform.study_room_audit.unavailable", {
+      operation: "study_room_audit",
+      resourceType: "study_room_report",
+      outcome: "failed",
+    });
+    return;
+  }
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+async function logStudyRoomPlatformAction(input: {
+  actorProfileId: string | null;
+  action: string;
+  roomId: string | null;
+  reportId: string | null;
+  targetType: string;
+  targetId: string | null;
+  note?: string | null;
+}) {
+  await logRequestEvent("info", `platform.study_room.${input.action}`, {
+    operation: "study_room_platform_moderation",
+    resourceType: "study_room_report",
+    outcome: "succeeded",
+  });
+  await insertStudyRoomModerationAudit(input);
+}
+
+async function getStudyRoomReportForPlatform(reportId: string): Promise<StudyRoomReportRecord | null> {
+  if (!isStudyRoomUuid(reportId)) return null;
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("study_room_reports")
+    .select("id,reporter_user_id,room_id,note_id,thread_id,reply_id,prayer_request_id,resource_id,reason,details,status")
+    .eq("id", reportId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) return null;
+  return data as StudyRoomReportRecord;
+}
+
+async function resolveStudyRoomReportTarget(report: StudyRoomReportRecord): Promise<StudyRoomTargetResolution | null> {
+  const { targetType, targetId } = getStudyRoomReportTarget(report);
+  if (!targetId || !isStudyRoomUuid(targetId)) return null;
+
+  const admin = createAdminClient();
+  if (targetType === "reply") {
+    const { data, error } = await admin
+      .from("study_room_discussion_replies")
+      .select("id,thread_id,study_room_discussion_threads:thread_id(room_id)")
+      .eq("id", targetId)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    const thread = data.study_room_discussion_threads as unknown as Record<string, unknown> | null | undefined;
+    const roomId = typeof thread?.room_id === "string" ? thread.room_id : null;
+    if (!roomId || roomId !== report.room_id || typeof data.thread_id !== "string") return null;
+    return { targetType, targetId, roomId, threadId: data.thread_id };
+  }
+
+  const tableByTarget: Record<Exclude<StudyRoomReportTarget, "reply">, "study_room_notes" | "study_room_discussion_threads" | "study_room_prayer_requests" | "study_room_resources"> = {
+    note: "study_room_notes",
+    thread: "study_room_discussion_threads",
+    prayer: "study_room_prayer_requests",
+    resource: "study_room_resources",
+  };
+  const { data, error } = await admin
+    .from(tableByTarget[targetType])
+    .select("id,room_id")
+    .eq("id", targetId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  const roomId = typeof data?.room_id === "string" ? data.room_id : null;
+  if (!roomId || roomId !== report.room_id) return null;
+  return { targetType, targetId, roomId, threadId: targetType === "thread" ? targetId : null };
+}
+
+function getStudyRoomReportReturnPath(status?: string, target?: string, room?: string) {
+  const params = new URLSearchParams();
+  if (status) params.set("sr_status", status);
+  if (target) params.set("sr_target", target);
+  if (room) params.set("sr_room", room);
+  const suffix = params.toString();
+  return `/platform${suffix ? `?${suffix}` : ""}`;
+}
+
+function withPlatformMessage(path: string, message: string) {
+  return `${path}${path.includes("?") ? "&" : "?"}message=${encodeURIComponent(message)}`;
+}
+
+export async function reviewStudyRoomReport(formData: FormData) {
+  const actor = await requirePlatformEngineer();
+  const reportId = getFormString(formData, "report_id");
+  const nextStatus = pickAllowedValue(getFormString(formData, "status"), ["reviewed", "resolved", "dismissed"] as const, "reviewed");
+  const returnTo = getStudyRoomReportReturnPath(
+    getFormString(formData, "sr_status"),
+    getFormString(formData, "sr_target"),
+    getFormString(formData, "sr_room"),
+  );
+  const report = await getStudyRoomReportForPlatform(reportId);
+  if (!report) redirect(withPlatformMessage(returnTo, "Study Room report not found."));
+  if ((report.status === "resolved" || report.status === "dismissed") && report.status === nextStatus) {
+    redirect(withPlatformMessage(returnTo, `Study Room report is already ${nextStatus}.`));
+  }
+
+  const resolution = await resolveStudyRoomReportTarget(report);
+  if (!resolution) redirect(withPlatformMessage(returnTo, "Reported Study Room target is unavailable."));
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("study_room_reports")
+    .update({
+      status: nextStatus,
+      reviewed_by_profile_id: actor.id,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", report.id)
+    .eq("room_id", resolution.roomId);
+
+  if (error) redirect(withPlatformMessage(returnTo, error.message));
+
+  await logStudyRoomPlatformAction({
+    actorProfileId: actor.id,
+    action: `platform_report_${nextStatus}`,
+    roomId: resolution.roomId,
+    reportId: report.id,
+    targetType: "report",
+    targetId: report.id,
+    note: `target:${resolution.targetType}`,
+  });
+  revalidatePath("/platform");
+  redirect(withPlatformMessage(returnTo, `Study Room report ${nextStatus}.`));
+}
+
+export async function removeReportedStudyRoomContent(formData: FormData) {
+  const actor = await requirePlatformEngineer();
+  const reportId = getFormString(formData, "report_id");
+  const confirmation = getFormString(formData, "confirmation");
+  const returnTo = getStudyRoomReportReturnPath(
+    getFormString(formData, "sr_status"),
+    getFormString(formData, "sr_target"),
+    getFormString(formData, "sr_room"),
+  );
+  if (confirmation !== "REMOVE") redirect(withPlatformMessage(returnTo, "Type REMOVE to remove reported content."));
+  const report = await getStudyRoomReportForPlatform(reportId);
+  if (!report) redirect(withPlatformMessage(returnTo, "Study Room report not found."));
+  const resolution = await resolveStudyRoomReportTarget(report);
+  if (!resolution) redirect(withPlatformMessage(returnTo, "Reported Study Room target is unavailable."));
+
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+  const mutation =
+    resolution.targetType === "note"
+      ? admin.from("study_room_notes").update({ deleted_at: now }).eq("id", resolution.targetId).eq("room_id", resolution.roomId)
+      : resolution.targetType === "thread"
+        ? admin.from("study_room_discussion_threads").update({ deleted_at: now }).eq("id", resolution.targetId).eq("room_id", resolution.roomId)
+        : resolution.targetType === "reply"
+          ? admin.from("study_room_discussion_replies").update({ deleted_at: now }).eq("id", resolution.targetId).eq("thread_id", resolution.threadId)
+          : resolution.targetType === "prayer"
+            ? admin.from("study_room_prayer_requests").update({ status: "removed", deleted_at: now }).eq("id", resolution.targetId).eq("room_id", resolution.roomId)
+            : admin.from("study_room_resources").update({ deleted_at: now }).eq("id", resolution.targetId).eq("room_id", resolution.roomId);
+
+  const { error } = await mutation;
+  if (error) redirect(withPlatformMessage(returnTo, error.message));
+
+  const { error: reportError } = await admin
+    .from("study_room_reports")
+    .update({ status: "resolved", reviewed_by_profile_id: actor.id, reviewed_at: now })
+    .eq("id", report.id)
+    .eq("room_id", resolution.roomId);
+  if (reportError) redirect(withPlatformMessage(returnTo, reportError.message));
+
+  await logStudyRoomPlatformAction({
+    actorProfileId: actor.id,
+    action: "platform_report_content_removed",
+    roomId: resolution.roomId,
+    reportId: report.id,
+    targetType: resolution.targetType,
+    targetId: resolution.targetId,
+    note: "soft-delete",
+  });
+  revalidatePath("/platform");
+  revalidatePath(`/study-rooms/${resolution.roomId}`);
+  redirect(withPlatformMessage(returnTo, "Reported Study Room content removed."));
+}
+
+export async function lockReportedStudyRoomThread(formData: FormData) {
+  const actor = await requirePlatformEngineer();
+  const reportId = getFormString(formData, "report_id");
+  const confirmation = getFormString(formData, "confirmation");
+  const returnTo = getStudyRoomReportReturnPath(
+    getFormString(formData, "sr_status"),
+    getFormString(formData, "sr_target"),
+    getFormString(formData, "sr_room"),
+  );
+  if (confirmation !== "LOCK") redirect(withPlatformMessage(returnTo, "Type LOCK to lock the discussion."));
+  const report = await getStudyRoomReportForPlatform(reportId);
+  if (!report) redirect(withPlatformMessage(returnTo, "Study Room report not found."));
+  const resolution = await resolveStudyRoomReportTarget(report);
+  if (!resolution || !resolution.threadId) redirect(withPlatformMessage(returnTo, "Reported discussion is unavailable."));
+
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+  const { error } = await admin
+    .from("study_room_discussion_threads")
+    .update({ is_locked: true })
+    .eq("id", resolution.threadId)
+    .eq("room_id", resolution.roomId);
+  if (error) redirect(withPlatformMessage(returnTo, error.message));
+
+  await admin
+    .from("study_room_reports")
+    .update({ status: report.status === "open" ? "reviewed" : report.status, reviewed_by_profile_id: actor.id, reviewed_at: now })
+    .eq("id", report.id)
+    .eq("room_id", resolution.roomId);
+
+  await logStudyRoomPlatformAction({
+    actorProfileId: actor.id,
+    action: "platform_report_thread_locked",
+    roomId: resolution.roomId,
+    reportId: report.id,
+    targetType: "thread",
+    targetId: resolution.threadId,
+    note: `source:${resolution.targetType}`,
+  });
+  revalidatePath("/platform");
+  revalidatePath(`/study-rooms/${resolution.roomId}`);
+  redirect(withPlatformMessage(returnTo, "Study Room discussion locked."));
+}
+
+export async function archiveReportedStudyRoom(formData: FormData) {
+  const actor = await requirePlatformEngineer();
+  const reportId = getFormString(formData, "report_id");
+  const confirmation = getFormString(formData, "confirmation");
+  const returnTo = getStudyRoomReportReturnPath(
+    getFormString(formData, "sr_status"),
+    getFormString(formData, "sr_target"),
+    getFormString(formData, "sr_room"),
+  );
+  if (confirmation !== "ARCHIVE") redirect(withPlatformMessage(returnTo, "Type ARCHIVE to archive the Study Room."));
+  const report = await getStudyRoomReportForPlatform(reportId);
+  if (!report) redirect(withPlatformMessage(returnTo, "Study Room report not found."));
+  const resolution = await resolveStudyRoomReportTarget(report);
+  if (!resolution) redirect(withPlatformMessage(returnTo, "Reported Study Room target is unavailable."));
+
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+  const { error } = await admin.from("study_rooms").update({ status: "archived" }).eq("id", resolution.roomId);
+  if (error) redirect(withPlatformMessage(returnTo, error.message));
+  const { error: reportError } = await admin
+    .from("study_room_reports")
+    .update({ status: "resolved", reviewed_by_profile_id: actor.id, reviewed_at: now })
+    .eq("id", report.id)
+    .eq("room_id", resolution.roomId);
+  if (reportError) redirect(withPlatformMessage(returnTo, reportError.message));
+
+  await logStudyRoomPlatformAction({
+    actorProfileId: actor.id,
+    action: "platform_report_room_archived",
+    roomId: resolution.roomId,
+    reportId: report.id,
+    targetType: "room",
+    targetId: resolution.roomId,
+    note: `source:${resolution.targetType}`,
+  });
+  revalidatePath("/platform");
+  revalidatePath("/study-rooms");
+  revalidatePath(`/study-rooms/${resolution.roomId}`);
+  redirect(withPlatformMessage(returnTo, "Study Room archived."));
 }
 
 async function getPlatformMessageUsers(search = "") {
@@ -359,7 +875,10 @@ export async function startPlatformSupportConversation(formData: FormData) {
   redirect(`/platform/messages/${conversationId}`);
 }
 
-export async function getPlatformDashboardData(search = ""): Promise<PlatformDashboardData> {
+export async function getPlatformDashboardData(
+  search = "",
+  studyRoomFilters: StudyRoomReportFilters = {},
+): Promise<PlatformDashboardData> {
   await requirePlatformEngineer();
   const admin = createAdminClient();
   const term = search.trim();
@@ -380,6 +899,7 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     mediaResult,
     communityPostsResult,
     communityCommentsResult,
+    studyRoomReports,
     emailMap,
   ] = await Promise.all([
     admin
@@ -455,6 +975,7 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
       .select("id,post_id,body,author_id,created_at,deleted_at")
       .order("created_at", { ascending: false })
       .limit(10),
+    getStudyRoomPlatformReports(studyRoomFilters),
     getUserEmailMap(),
   ]);
 
@@ -540,6 +1061,7 @@ export async function getPlatformDashboardData(search = ""): Promise<PlatformDas
     bans: ((bansResult.data || []) as unknown as PlatformDashboardData["bans"]),
     message_reports: ((reportsResult.data || []) as unknown as PlatformDashboardData["message_reports"]),
     discussion_reports: ((discussionReportsResult.data || []) as unknown as PlatformDashboardData["discussion_reports"]),
+    study_room_reports: studyRoomReports,
     media_items: ((mediaResult.data || []) as unknown as Record<string, unknown>[]).map((row) => {
       const community = row.churches as { name?: string; slug?: string } | null | undefined;
 

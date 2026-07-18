@@ -25,6 +25,7 @@ type ActionButtonProps = {
   className?: string;
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
+  "aria-disabled"?: boolean;
   name?: string;
   value?: string;
   onClick?: () => void;
@@ -38,6 +39,7 @@ export function ActionButton({
   className,
   type = "button",
   disabled,
+  "aria-disabled": ariaDisabled,
   name,
   value,
   onClick,
@@ -51,14 +53,14 @@ export function ActionButton({
 
   if (href) {
     return (
-      <Link href={href} className={classes}>
+      <Link href={href} aria-disabled={ariaDisabled} className={classes}>
         {children}
       </Link>
     );
   }
 
   return (
-    <button type={type} disabled={disabled} name={name} value={value} onClick={onClick} className={classes}>
+    <button type={type} disabled={disabled} aria-disabled={ariaDisabled} name={name} value={value} onClick={onClick} className={classes}>
       {children}
     </button>
   );

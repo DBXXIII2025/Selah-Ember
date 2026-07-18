@@ -40,6 +40,7 @@ NEXT_PUBLIC_APP_URL=https://selahember.com
 
 - Back up the production database before applying migrations.
 - Apply every file currently present in `sql/migrations` in numeric order and verify the migration history afterward.
+- For Study Rooms, confirm migrations `0039`, `0040`, and `0041` are applied before deploying the web code, then verify `study_room_moderation_audit` exists and Platform report actions create durable audit rows. See `docs/STUDY_ROOMS.md`.
 - Confirm RLS remains enabled on all application tables, including profiles, legacy communities and memberships, groups and memberships, prayer requests, events and RSVPs, notifications, messages, discussions, community posts, media, moderation, and platform tables.
 - Confirm public reads are intentional only for the open community content, published legacy pages/media, public study groups, and public event details.
 - Confirm storage buckets and policies exist for `profile-avatars`, `message-media`, `community-media`, and `community-feed-media`.

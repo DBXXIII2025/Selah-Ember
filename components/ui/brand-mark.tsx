@@ -42,7 +42,7 @@ export function BrandMark({ href = "/", variant = "dark", compact = false }: Bra
   );
 
   return (
-    <Link href={href} aria-label={compact ? "Selah Ember" : undefined} className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#d87836]/25">
+    <Link href={href} aria-label="Selah Ember" className="inline-flex rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#d87836]/25">
       {content}
     </Link>
   );

@@ -85,6 +85,7 @@ export default async function ProtectedLayout({
     { href: "/community", label: "Community" },
     { href: "/prayer", label: "Prayer" },
     { href: "/groups", label: "Groups" },
+    { href: "/study-rooms", label: "Study Rooms" },
     { href: "/events", label: "Events" },
     { href: "/messages", label: "Messages", count: unreadMessageCount },
     { href: "/notifications", label: "Notifications", count: unreadNotificationCount },

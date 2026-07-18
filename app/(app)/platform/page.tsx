@@ -8,6 +8,10 @@ import {
   deletePlatformPrayerRequest,
   deletePromoCode,
   getPlatformDashboardData,
+  archiveReportedStudyRoom,
+  lockReportedStudyRoomThread,
+  removeReportedStudyRoomContent,
+  reviewStudyRoomReport,
   savePlatformPlan,
   savePromoCode,
   sendPlatformAnnouncement,
@@ -31,6 +35,9 @@ type PlatformPageProps = {
   searchParams: Promise<{
     message?: string;
     search?: string;
+    sr_status?: string;
+    sr_target?: string;
+    sr_room?: string;
   }>;
 };
 
@@ -74,7 +81,16 @@ function Panel({ title, children }: Readonly<{ title: string; children: React.Re
 
 export default async function PlatformPage({ searchParams }: PlatformPageProps) {
   const params = await searchParams;
-  const data = await getPlatformDashboardData(params.search || "");
+  const data = await getPlatformDashboardData(params.search || "", {
+    status: params.sr_status,
+    target: params.sr_target,
+    room: params.sr_room,
+  });
+  const studyRoomFilterFields = {
+    sr_status: params.sr_status || "open",
+    sr_target: params.sr_target || "all",
+    sr_room: params.sr_room || "",
+  };
 
   return (
     <PageContainer>
@@ -286,7 +302,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
               <Field label="Search users" name="search" defaultValue={params.search} />
               <ActionButton type="submit" className="mt-4">Search</ActionButton>
             </form>
-            <div className="max-h-80 space-y-3 overflow-auto pr-2">
+            <div className="max-h-80 space-y-3 overflow-auto pr-2" tabIndex={0} aria-label="User moderation search results">
               {data.users.map((user) => (
                 <div key={user.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
                   <p className="font-semibold">{user.display_name}</p>
@@ -308,7 +324,13 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                     {user.email || "No email"} · current role: {user.role}
                   </p>
                   <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                    <select name="role" defaultValue={user.role === "platform_engineer" ? "platform_engineer" : "user"} disabled={user.role === "platform_engineer"} className={inputClassName}>
+                    <select
+                      name="role"
+                      aria-label={`Role for ${user.display_name}`}
+                      defaultValue={user.role === "platform_engineer" ? "platform_engineer" : "user"}
+                      disabled={user.role === "platform_engineer"}
+                      className={inputClassName}
+                    >
                       <option value="user">User</option>
                       <option value="platform_engineer">Platform engineer</option>
                     </select>
@@ -375,6 +397,132 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                     </p>
                   </div>
                 ))
+              )}
+            </div>
+          </Panel>
+
+          <Panel title="Study Rooms moderation">
+            <form className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+              <Field label="Room filter" name="sr_room" defaultValue={params.sr_room} />
+              <label className="block">
+                <span className="text-sm font-medium text-[#3b312b]">Status</span>
+                <select name="sr_status" defaultValue={params.sr_status || "open"} className={inputClassName}>
+                  <option value="open">Open first</option>
+                  <option value="reviewed">Reviewed</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="dismissed">Dismissed</option>
+                  <option value="all">All statuses</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-[#3b312b]">Target type</span>
+                <select name="sr_target" defaultValue={params.sr_target || "all"} className={inputClassName}>
+                  <option value="all">All targets</option>
+                  <option value="note">Shared Notes</option>
+                  <option value="thread">Discussion Threads</option>
+                  <option value="reply">Discussion Replies</option>
+                  <option value="prayer">Prayer Requests</option>
+                  <option value="resource">Resources</option>
+                </select>
+              </label>
+              <ActionButton type="submit">Filter</ActionButton>
+            </form>
+            <div className="space-y-4">
+              {data.study_room_reports.length === 0 ? (
+                <p className="text-sm text-[#67564c]">No Study Room reports match these filters.</p>
+              ) : (
+                data.study_room_reports.map((report) => {
+                  const hiddenFields = {
+                    report_id: report.id,
+                    ...studyRoomFilterFields,
+                  };
+                  return (
+                    <article key={report.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="break-words text-base font-semibold">{report.reason}</h3>
+                          <p className="mt-1 break-words text-[#67564c]">
+                            {report.room_name} - {report.room_visibility} - {report.target_type} - {report.status}
+                          </p>
+                        </div>
+                        <ActionButton href={report.href} size="sm" variant="secondary">Open target</ActionButton>
+                      </div>
+                      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <dt className="font-semibold text-[#3b312b]">Target preview</dt>
+                          <dd className="mt-1 break-words text-[#67564c]">{report.target_preview}</dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold text-[#3b312b]">Reported content author</dt>
+                          <dd className="mt-1 break-words text-[#67564c]">{report.target_author_name}</dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold text-[#3b312b]">Reporter</dt>
+                          <dd className="mt-1 break-words text-[#67564c]">{report.reporter_label}</dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold text-[#3b312b]">Created</dt>
+                          <dd className="mt-1 text-[#67564c]">{new Date(report.created_at).toLocaleString()}</dd>
+                        </div>
+                      </dl>
+                      {report.details ? <p className="mt-4 break-words rounded-xl bg-[#fff8f0] p-3 text-[#67564c]">{report.details}</p> : null}
+                      <div className="mt-5 grid gap-3 md:grid-cols-3">
+                        <form action={reviewStudyRoomReport} className="rounded-xl border border-[#ead6c5] bg-white/70 p-3">
+                          {Object.entries(hiddenFields).map(([name, value]) => (
+                            <input key={name} type="hidden" name={name} value={value} />
+                          ))}
+                          <input type="hidden" name="status" value="reviewed" />
+                          <ActionButton type="submit" size="sm" variant="secondary">Mark reviewed</ActionButton>
+                        </form>
+                        <form action={reviewStudyRoomReport} className="rounded-xl border border-[#ead6c5] bg-white/70 p-3">
+                          {Object.entries(hiddenFields).map(([name, value]) => (
+                            <input key={name} type="hidden" name={name} value={value} />
+                          ))}
+                          <input type="hidden" name="status" value="resolved" />
+                          <ActionButton type="submit" size="sm" variant="secondary">Resolve</ActionButton>
+                        </form>
+                        <form action={reviewStudyRoomReport} className="rounded-xl border border-[#ead6c5] bg-white/70 p-3">
+                          {Object.entries(hiddenFields).map(([name, value]) => (
+                            <input key={name} type="hidden" name={name} value={value} />
+                          ))}
+                          <input type="hidden" name="status" value="dismissed" />
+                          <ActionButton type="submit" size="sm" variant="secondary">Dismiss</ActionButton>
+                        </form>
+                      </div>
+                      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                        {(report.target_type === "thread" || report.target_type === "reply") ? (
+                          <ConfirmActionPanel
+                            action={lockReportedStudyRoomThread}
+                            hiddenFields={hiddenFields}
+                            title="Lock reported discussion"
+                            description="The discussion stays readable, but new replies are blocked."
+                            actionLabel="Lock discussion"
+                            confirmationValue="LOCK"
+                            confirmationId={`lock-study-room-report-${report.id}`}
+                          />
+                        ) : null}
+                        <ConfirmActionPanel
+                          action={removeReportedStudyRoomContent}
+                          hiddenFields={hiddenFields}
+                          title="Remove reported content"
+                          description="This soft-deletes only the reported Study Room item and resolves the report."
+                          actionLabel="Remove content"
+                          confirmationValue="REMOVE"
+                          confirmationId={`remove-study-room-report-${report.id}`}
+                        />
+                        <ConfirmActionPanel
+                          action={archiveReportedStudyRoom}
+                          hiddenFields={hiddenFields}
+                          title="Archive this Study Room"
+                          description="Use only for serious abuse. The room remains readable to authorized users and becomes read-only."
+                          actionLabel="Archive room"
+                          confirmationValue="ARCHIVE"
+                          confirmationId={`archive-study-room-report-${report.id}`}
+                        />
+                      </div>
+                    </article>
+                  );
+                })
               )}
             </div>
           </Panel>
