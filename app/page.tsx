@@ -82,22 +82,12 @@ export default async function Home({ searchParams }: HomeProps) {
             <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#d8965c]">
               Fellowship rhythm
             </p>
-            <div className="mt-10 space-y-6">
+            <div className="mt-10">
               <div>
                 <p className="font-serif text-4xl font-semibold">Prayer circle</p>
                 <p className="mt-3 text-[#ead6c5]">
                   Requests, praises, and prayerful care gathered in a quiet shared space.
                 </p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl border border-[#c8874d]/20 bg-white/10 p-4">
-                  <p className="text-2xl font-semibold">12</p>
-                  <p className="mt-1 text-sm text-[#ead6c5]">Groups forming</p>
-                </div>
-                <div className="rounded-xl border border-[#c8874d]/20 bg-white/10 p-4">
-                  <p className="text-2xl font-semibold">4</p>
-                  <p className="mt-1 text-sm text-[#ead6c5]">Events this week</p>
-                </div>
               </div>
             </div>
           </div>
