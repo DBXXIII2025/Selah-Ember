@@ -1,0 +1,794 @@
+[
+  {
+    "id": "GEN",
+    "name": "Genesis",
+    "abbreviation": "Gen",
+    "testament": "OT",
+    "order": 1,
+    "chapters": {
+      "web": 50,
+      "kjv-cpb": 50,
+      "bsb": 50
+    }
+  },
+  {
+    "id": "EXO",
+    "name": "Exodus",
+    "abbreviation": "Exod",
+    "testament": "OT",
+    "order": 2,
+    "chapters": {
+      "web": 40,
+      "kjv-cpb": 40,
+      "bsb": 40
+    }
+  },
+  {
+    "id": "LEV",
+    "name": "Leviticus",
+    "abbreviation": "Lev",
+    "testament": "OT",
+    "order": 3,
+    "chapters": {
+      "web": 27,
+      "kjv-cpb": 27,
+      "bsb": 27
+    }
+  },
+  {
+    "id": "NUM",
+    "name": "Numbers",
+    "abbreviation": "Num",
+    "testament": "OT",
+    "order": 4,
+    "chapters": {
+      "web": 36,
+      "kjv-cpb": 36,
+      "bsb": 36
+    }
+  },
+  {
+    "id": "DEU",
+    "name": "Deuteronomy",
+    "abbreviation": "Deut",
+    "testament": "OT",
+    "order": 5,
+    "chapters": {
+      "web": 34,
+      "kjv-cpb": 34,
+      "bsb": 34
+    }
+  },
+  {
+    "id": "JOS",
+    "name": "Joshua",
+    "abbreviation": "Josh",
+    "testament": "OT",
+    "order": 6,
+    "chapters": {
+      "web": 24,
+      "kjv-cpb": 24,
+      "bsb": 24
+    }
+  },
+  {
+    "id": "JDG",
+    "name": "Judges",
+    "abbreviation": "Judg",
+    "testament": "OT",
+    "order": 7,
+    "chapters": {
+      "web": 21,
+      "kjv-cpb": 21,
+      "bsb": 21
+    }
+  },
+  {
+    "id": "RUT",
+    "name": "Ruth",
+    "abbreviation": "Ruth",
+    "testament": "OT",
+    "order": 8,
+    "chapters": {
+      "web": 4,
+      "kjv-cpb": 4,
+      "bsb": 4
+    }
+  },
+  {
+    "id": "1SA",
+    "name": "1 Samuel",
+    "abbreviation": "1 Sam",
+    "testament": "OT",
+    "order": 9,
+    "chapters": {
+      "web": 31,
+      "kjv-cpb": 31,
+      "bsb": 31
+    }
+  },
+  {
+    "id": "2SA",
+    "name": "2 Samuel",
+    "abbreviation": "2 Sam",
+    "testament": "OT",
+    "order": 10,
+    "chapters": {
+      "web": 24,
+      "kjv-cpb": 24,
+      "bsb": 24
+    }
+  },
+  {
+    "id": "1KI",
+    "name": "1 Kings",
+    "abbreviation": "1 Kgs",
+    "testament": "OT",
+    "order": 11,
+    "chapters": {
+      "web": 22,
+      "kjv-cpb": 22,
+      "bsb": 22
+    }
+  },
+  {
+    "id": "2KI",
+    "name": "2 Kings",
+    "abbreviation": "2 Kgs",
+    "testament": "OT",
+    "order": 12,
+    "chapters": {
+      "web": 25,
+      "kjv-cpb": 25,
+      "bsb": 25
+    }
+  },
+  {
+    "id": "1CH",
+    "name": "1 Chronicles",
+    "abbreviation": "1 Chr",
+    "testament": "OT",
+    "order": 13,
+    "chapters": {
+      "web": 29,
+      "kjv-cpb": 29,
+      "bsb": 29
+    }
+  },
+  {
+    "id": "2CH",
+    "name": "2 Chronicles",
+    "abbreviation": "2 Chr",
+    "testament": "OT",
+    "order": 14,
+    "chapters": {
+      "web": 36,
+      "kjv-cpb": 36,
+      "bsb": 36
+    }
+  },
+  {
+    "id": "EZR",
+    "name": "Ezra",
+    "abbreviation": "Ezra",
+    "testament": "OT",
+    "order": 15,
+    "chapters": {
+      "web": 10,
+      "kjv-cpb": 10,
+      "bsb": 10
+    }
+  },
+  {
+    "id": "NEH",
+    "name": "Nehemiah",
+    "abbreviation": "Neh",
+    "testament": "OT",
+    "order": 16,
+    "chapters": {
+      "web": 13,
+      "kjv-cpb": 13,
+      "bsb": 13
+    }
+  },
+  {
+    "id": "EST",
+    "name": "Esther",
+    "abbreviation": "Esth",
+    "testament": "OT",
+    "order": 17,
+    "chapters": {
+      "web": 10,
+      "kjv-cpb": 10,
+      "bsb": 10
+    }
+  },
+  {
+    "id": "JOB",
+    "name": "Job",
+    "abbreviation": "Job",
+    "testament": "OT",
+    "order": 18,
+    "chapters": {
+      "web": 42,
+      "kjv-cpb": 42,
+      "bsb": 42
+    }
+  },
+  {
+    "id": "PSA",
+    "name": "Psalms",
+    "abbreviation": "Ps",
+    "testament": "OT",
+    "order": 19,
+    "chapters": {
+      "web": 150,
+      "kjv-cpb": 150,
+      "bsb": 150
+    }
+  },
+  {
+    "id": "PRO",
+    "name": "Proverbs",
+    "abbreviation": "Prov",
+    "testament": "OT",
+    "order": 20,
+    "chapters": {
+      "web": 31,
+      "kjv-cpb": 31,
+      "bsb": 31
+    }
+  },
+  {
+    "id": "ECC",
+    "name": "Ecclesiastes",
+    "abbreviation": "Eccl",
+    "testament": "OT",
+    "order": 21,
+    "chapters": {
+      "web": 12,
+      "kjv-cpb": 12,
+      "bsb": 12
+    }
+  },
+  {
+    "id": "SNG",
+    "name": "Song of Songs",
+    "abbreviation": "Song",
+    "testament": "OT",
+    "order": 22,
+    "chapters": {
+      "web": 8,
+      "kjv-cpb": 8,
+      "bsb": 8
+    }
+  },
+  {
+    "id": "ISA",
+    "name": "Isaiah",
+    "abbreviation": "Isa",
+    "testament": "OT",
+    "order": 23,
+    "chapters": {
+      "web": 66,
+      "kjv-cpb": 66,
+      "bsb": 66
+    }
+  },
+  {
+    "id": "JER",
+    "name": "Jeremiah",
+    "abbreviation": "Jer",
+    "testament": "OT",
+    "order": 24,
+    "chapters": {
+      "web": 52,
+      "kjv-cpb": 52,
+      "bsb": 52
+    }
+  },
+  {
+    "id": "LAM",
+    "name": "Lamentations",
+    "abbreviation": "Lam",
+    "testament": "OT",
+    "order": 25,
+    "chapters": {
+      "web": 5,
+      "kjv-cpb": 5,
+      "bsb": 5
+    }
+  },
+  {
+    "id": "EZK",
+    "name": "Ezekiel",
+    "abbreviation": "Ezek",
+    "testament": "OT",
+    "order": 26,
+    "chapters": {
+      "web": 48,
+      "kjv-cpb": 48,
+      "bsb": 48
+    }
+  },
+  {
+    "id": "DAN",
+    "name": "Daniel",
+    "abbreviation": "Dan",
+    "testament": "OT",
+    "order": 27,
+    "chapters": {
+      "web": 12,
+      "kjv-cpb": 12,
+      "bsb": 12
+    }
+  },
+  {
+    "id": "HOS",
+    "name": "Hosea",
+    "abbreviation": "Hos",
+    "testament": "OT",
+    "order": 28,
+    "chapters": {
+      "web": 14,
+      "kjv-cpb": 14,
+      "bsb": 14
+    }
+  },
+  {
+    "id": "JOL",
+    "name": "Joel",
+    "abbreviation": "Joel",
+    "testament": "OT",
+    "order": 29,
+    "chapters": {
+      "web": 3,
+      "kjv-cpb": 3,
+      "bsb": 3
+    }
+  },
+  {
+    "id": "AMO",
+    "name": "Amos",
+    "abbreviation": "Amos",
+    "testament": "OT",
+    "order": 30,
+    "chapters": {
+      "web": 9,
+      "kjv-cpb": 9,
+      "bsb": 9
+    }
+  },
+  {
+    "id": "OBA",
+    "name": "Obadiah",
+    "abbreviation": "Obad",
+    "testament": "OT",
+    "order": 31,
+    "chapters": {
+      "web": 1,
+      "kjv-cpb": 1,
+      "bsb": 1
+    }
+  },
+  {
+    "id": "JON",
+    "name": "Jonah",
+    "abbreviation": "Jonah",
+    "testament": "OT",
+    "order": 32,
+    "chapters": {
+      "web": 4,
+      "kjv-cpb": 4,
+      "bsb": 4
+    }
+  },
+  {
+    "id": "MIC",
+    "name": "Micah",
+    "abbreviation": "Mic",
+    "testament": "OT",
+    "order": 33,
+    "chapters": {
+      "web": 7,
+      "kjv-cpb": 7,
+      "bsb": 7
+    }
+  },
+  {
+    "id": "NAM",
+    "name": "Nahum",
+    "abbreviation": "Nah",
+    "testament": "OT",
+    "order": 34,
+    "chapters": {
+      "web": 3,
+      "kjv-cpb": 3,
+      "bsb": 3
+    }
+  },
+  {
+    "id": "HAB",
+    "name": "Habakkuk",
+    "abbreviation": "Hab",
+    "testament": "OT",
+    "order": 35,
+    "chapters": {
+      "web": 3,
+      "kjv-cpb": 3,
+      "bsb": 3
+    }
+  },
+  {
+    "id": "ZEP",
+    "name": "Zephaniah",
+    "abbreviation": "Zeph",
+    "testament": "OT",
+    "order": 36,
+    "chapters": {
+      "web": 3,
+      "kjv-cpb": 3,
+      "bsb": 3
+    }
+  },
+  {
+    "id": "HAG",
+    "name": "Haggai",
+    "abbreviation": "Hag",
+    "testament": "OT",
+    "order": 37,
+    "chapters": {
+      "web": 2,
+      "kjv-cpb": 2,
+      "bsb": 2
+    }
+  },
+  {
+    "id": "ZEC",
+    "name": "Zechariah",
+    "abbreviation": "Zech",
+    "testament": "OT",
+    "order": 38,
+    "chapters": {
+      "web": 14,
+      "kjv-cpb": 14,
+      "bsb": 14
+    }
+  },
+  {
+    "id": "MAL",
+    "name": "Malachi",
+    "abbreviation": "Mal",
+    "testament": "OT",
+    "order": 39,
+    "chapters": {
+      "web": 4,
+      "kjv-cpb": 4,
+      "bsb": 4
+    }
+  },
+  {
+    "id": "MAT",
+    "name": "Matthew",
+    "abbreviation": "Matt",
+    "testament": "NT",
+    "order": 40,
+    "chapters": {
+      "web": 28,
+      "kjv-cpb": 28,
+      "bsb": 28
+    }
+  },
+  {
+    "id": "MRK",
+    "name": "Mark",
+    "abbreviation": "Mark",
+    "testament": "NT",
+    "order": 41,
+    "chapters": {
+      "web": 16,
+      "kjv-cpb": 16,
+      "bsb": 16
+    }
+  },
+  {
+    "id": "LUK",
+    "name": "Luke",
+    "abbreviation": "Luke",
+    "testament": "NT",
+    "order": 42,
+    "chapters": {
+      "web": 24,
+      "kjv-cpb": 24,
+      "bsb": 24
+    }
+  },
+  {
+    "id": "JHN",
+    "name": "John",
+    "abbreviation": "John",
+    "testament": "NT",
+    "order": 43,
+    "chapters": {
+      "web": 21,
+      "kjv-cpb": 21,
+      "bsb": 21
+    }
+  },
+  {
+    "id": "ACT",
+    "name": "Acts",
+    "abbreviation": "Acts",
+    "testament": "NT",
+    "order": 44,
+    "chapters": {
+      "web": 28,
+      "kjv-cpb": 28,
+      "bsb": 28
+    }
+  },
+  {
+    "id": "ROM",
+    "name": "Romans",
+    "abbreviation": "Rom",
+    "testament": "NT",
+    "order": 45,
+    "chapters": {
+      "web": 16,
+      "kjv-cpb": 16,
+      "bsb": 16
+    }
+  },
+  {
+    "id": "1CO",
+    "name": "1 Corinthians",
+    "abbreviation": "1 Cor",
+    "testament": "NT",
+    "order": 46,
+    "chapters": {
+      "web": 16,
+      "kjv-cpb": 16,
+      "bsb": 16
+    }
+  },
+  {
+    "id": "2CO",
+    "name": "2 Corinthians",
+    "abbreviation": "2 Cor",
+    "testament": "NT",
+    "order": 47,
+    "chapters": {
+      "web": 13,
+      "kjv-cpb": 13,
+      "bsb": 13
+    }
+  },
+  {
+    "id": "GAL",
+    "name": "Galatians",
+    "abbreviation": "Gal",
+    "testament": "NT",
+    "order": 48,
+    "chapters": {
+      "web": 6,
+      "kjv-cpb": 6,
+      "bsb": 6
+    }
+  },
+  {
+    "id": "EPH",
+    "name": "Ephesians",
+    "abbreviation": "Eph",
+    "testament": "NT",
+    "order": 49,
+    "chapters": {
+      "web": 6,
+      "kjv-cpb": 6,
+      "bsb": 6
+    }
+  },
+  {
+    "id": "PHP",
+    "name": "Philippians",
+    "abbreviation": "Phil",
+    "testament": "NT",
+    "order": 50,
+    "chapters": {
+      "web": 4,
+      "kjv-cpb": 4,
+      "bsb": 4
+    }
+  },
+  {
+    "id": "COL",
+    "name": "Colossians",
+    "abbreviation": "Col",
+    "testament": "NT",
+    "order": 51,
+    "chapters": {
+      "web": 4,
+      "kjv-cpb": 4,
+      "bsb": 4
+    }
+  },
+  {
+    "id": "1TH",
+    "name": "1 Thessalonians",
+    "abbreviation": "1 Thess",
+    "testament": "NT",
+    "order": 52,
+    "chapters": {
+      "web": 5,
+      "kjv-cpb": 5,
+      "bsb": 5
+    }
+  },
+  {
+    "id": "2TH",
+    "name": "2 Thessalonians",
+    "abbreviation": "2 Thess",
+    "testament": "NT",
+    "order": 53,
+    "chapters": {
+      "web": 3,
+      "kjv-cpb": 3,
+      "bsb": 3
+    }
+  },
+  {
+    "id": "1TI",
+    "name": "1 Timothy",
+    "abbreviation": "1 Tim",
+    "testament": "NT",
+    "order": 54,
+    "chapters": {
+      "web": 6,
+      "kjv-cpb": 6,
+      "bsb": 6
+    }
+  },
+  {
+    "id": "2TI",
+    "name": "2 Timothy",
+    "abbreviation": "2 Tim",
+    "testament": "NT",
+    "order": 55,
+    "chapters": {
+      "web": 4,
+      "kjv-cpb": 4,
+      "bsb": 4
+    }
+  },
+  {
+    "id": "TIT",
+    "name": "Titus",
+    "abbreviation": "Titus",
+    "testament": "NT",
+    "order": 56,
+    "chapters": {
+      "web": 3,
+      "kjv-cpb": 3,
+      "bsb": 3
+    }
+  },
+  {
+    "id": "PHM",
+    "name": "Philemon",
+    "abbreviation": "Phlm",
+    "testament": "NT",
+    "order": 57,
+    "chapters": {
+      "web": 1,
+      "kjv-cpb": 1,
+      "bsb": 1
+    }
+  },
+  {
+    "id": "HEB",
+    "name": "Hebrews",
+    "abbreviation": "Heb",
+    "testament": "NT",
+    "order": 58,
+    "chapters": {
+      "web": 13,
+      "kjv-cpb": 13,
+      "bsb": 13
+    }
+  },
+  {
+    "id": "JAS",
+    "name": "James",
+    "abbreviation": "Jas",
+    "testament": "NT",
+    "order": 59,
+    "chapters": {
+      "web": 5,
+      "kjv-cpb": 5,
+      "bsb": 5
+    }
+  },
+  {
+    "id": "1PE",
+    "name": "1 Peter",
+    "abbreviation": "1 Pet",
+    "testament": "NT",
+    "order": 60,
+    "chapters": {
+      "web": 5,
+      "kjv-cpb": 5,
+      "bsb": 5
+    }
+  },
+  {
+    "id": "2PE",
+    "name": "2 Peter",
+    "abbreviation": "2 Pet",
+    "testament": "NT",
+    "order": 61,
+    "chapters": {
+      "web": 3,
+      "kjv-cpb": 3,
+      "bsb": 3
+    }
+  },
+  {
+    "id": "1JN",
+    "name": "1 John",
+    "abbreviation": "1 John",
+    "testament": "NT",
+    "order": 62,
+    "chapters": {
+      "web": 5,
+      "kjv-cpb": 5,
+      "bsb": 5
+    }
+  },
+  {
+    "id": "2JN",
+    "name": "2 John",
+    "abbreviation": "2 John",
+    "testament": "NT",
+    "order": 63,
+    "chapters": {
+      "web": 1,
+      "kjv-cpb": 1,
+      "bsb": 1
+    }
+  },
+  {
+    "id": "3JN",
+    "name": "3 John",
+    "abbreviation": "3 John",
+    "testament": "NT",
+    "order": 64,
+    "chapters": {
+      "web": 1,
+      "kjv-cpb": 1,
+      "bsb": 1
+    }
+  },
+  {
+    "id": "JUD",
+    "name": "Jude",
+    "abbreviation": "Jude",
+    "testament": "NT",
+    "order": 65,
+    "chapters": {
+      "web": 1,
+      "kjv-cpb": 1,
+      "bsb": 1
+    }
+  },
+  {
+    "id": "REV",
+    "name": "Revelation",
+    "abbreviation": "Rev",
+    "testament": "NT",
+    "order": 66,
+    "chapters": {
+      "web": 22,
+      "kjv-cpb": 22,
+      "bsb": 22
+    }
+  }
+]

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "web",
+    "name": "World English Bible",
+    "abbreviation": "WEB",
+    "publisher": "eBible.org / World English Bible contributors",
+    "license": "Public domain",
+    "attribution": "Public domain text; identify as World English Bible.",
+    "sourceUrl": "https://ebible.org/find/details.php?id=engwebp"
+  },
+  {
+    "id": "kjv-cpb",
+    "name": "King James Version, Cambridge Paragraph Bible",
+    "abbreviation": "KJV CPB",
+    "publisher": "Cambridge University Press edition distributed by eBible.org",
+    "license": "Public domain in the United States; Crown rights may apply in the United Kingdom.",
+    "attribution": "Identify as King James Version, Cambridge Paragraph Bible.",
+    "sourceUrl": "https://ebible.org/find/details.php?id=engkjvcpb"
+  },
+  {
+    "id": "bsb",
+    "name": "Berean Standard Bible",
+    "abbreviation": "BSB",
+    "publisher": "Bible Hub / Berean Bible Translation Committee",
+    "license": "Public domain",
+    "attribution": "Public domain text; identify as Berean Standard Bible.",
+    "sourceUrl": "https://bereanbible.com/bsb-public-domain.htm"
+  }
+]
