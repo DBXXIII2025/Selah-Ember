@@ -16,6 +16,7 @@ type CommunityPostFormProps = {
   returnTo: string;
   submitLabel: string;
   showPublishToggle?: boolean;
+  topicSlug?: string | null;
   post?: {
     id: string;
     title: string | null;
@@ -33,12 +34,14 @@ export function CommunityPostForm({
   returnTo,
   submitLabel,
   showPublishToggle = true,
+  topicSlug = null,
   post = null,
 }: Readonly<CommunityPostFormProps>) {
   return (
     <form action={action} encType="multipart/form-data">
       <input type="hidden" name="community_id" value={communityId} />
       <input type="hidden" name="return_to" value={returnTo} />
+      {topicSlug ? <input type="hidden" name="topic_slug" value={topicSlug} /> : null}
       {post ? <input type="hidden" name="post_id" value={post.id} /> : null}
 
       <FormSection title="Update content">

@@ -4,6 +4,8 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 const publicPages = [
   { path: "/", name: "home" },
   { path: "/community", name: "community" },
+  { path: "/community/topics", name: "community topics" },
+  { path: "/community/testimonies", name: "community testimonies" },
   { path: "/discover", name: "discover" },
   { path: "/discover/groups", name: "group discovery" },
   { path: "/signin", name: "sign in" },

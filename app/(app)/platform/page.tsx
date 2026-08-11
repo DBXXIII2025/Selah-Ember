@@ -20,6 +20,7 @@ import {
 } from "@/app/actions/platform";
 import { deleteOwnReply, deleteOwnThread } from "@/app/actions/discussions";
 import { deleteOpenCommunityComment, deleteOpenCommunityPost } from "@/app/actions/community-posts";
+import { reviewCommunityTestimonyReport } from "@/app/actions/community-topics";
 import { deleteMediaItem } from "@/app/actions/media";
 import {
   ActionButton,
@@ -582,6 +583,52 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                   )}
                 </div>
               </div>
+            </div>
+          </Panel>
+
+          <Panel title="Community testimony reports">
+            <div className="space-y-3">
+              {data.community_testimony_reports.length === 0 ? (
+                <p className="text-sm text-[#67564c]">No testimony reports yet.</p>
+              ) : (
+                data.community_testimony_reports.map((report) => (
+                  <article key={report.id} className="rounded-xl border border-[#ead6c5] p-4 text-sm">
+                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                      <div>
+                        <p className="font-semibold">{report.reason}</p>
+                        <p className="mt-1 break-words text-[#67564c]">
+                          {report.testimony_title}
+                          {report.topic_name ? ` - ${report.topic_name}` : ""}
+                          {" - "}
+                          {report.status}
+                        </p>
+                      </div>
+                      <ActionButton href={`/community/testimonies/${report.testimony_id}`} size="sm" variant="secondary">Open</ActionButton>
+                    </div>
+                    {report.details ? <p className="mt-3 break-words rounded-xl bg-[#fff8f0] p-3 text-[#67564c]">{report.details}</p> : null}
+                    <dl className="mt-3 grid gap-2 text-[#67564c] sm:grid-cols-3">
+                      <div>
+                        <dt className="font-semibold text-[#3b312b]">Reporter</dt>
+                        <dd>{report.reporter_label}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-semibold text-[#3b312b]">Author</dt>
+                        <dd>{report.author_label}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-semibold text-[#3b312b]">Reported</dt>
+                        <dd>{new Date(report.created_at).toLocaleString()}</dd>
+                      </div>
+                    </dl>
+                    <form action={reviewCommunityTestimonyReport} className="mt-4 flex flex-wrap gap-2 border-t border-[#ead6c5] pt-4">
+                      <input type="hidden" name="report_id" value={report.id} />
+                      <ActionButton type="submit" name="status" value="reviewed" size="sm" variant="secondary">Mark reviewed</ActionButton>
+                      <ActionButton type="submit" name="status" value="resolved" size="sm" variant="secondary">Resolve</ActionButton>
+                      <ActionButton type="submit" name="status" value="dismissed" size="sm" variant="secondary">Dismiss</ActionButton>
+                    </form>
+                  </article>
+                ))
+              )}
             </div>
           </Panel>
 

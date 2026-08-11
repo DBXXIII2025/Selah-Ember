@@ -11,6 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isCanonicalStoragePath } from "@/lib/storage/paths";
 import { getErrorMetadata } from "@/lib/observability/log";
 import { logRequestEvent } from "@/lib/observability/request";
+import { getCommunityTopicBySlug } from "@/app/actions/community-topics";
 
 const COMMUNITY_FEED_BUCKET = "community-feed-media";
 const MAX_TITLE_LENGTH = 160;
@@ -663,6 +664,7 @@ export async function getPublicCommunityPosts(communityId: string, limit = 3) {
 
 export async function createOpenCommunityPost(formData: FormData) {
   const returnTo = safeReturnPath(getFormString(formData, "return_to"), "/community");
+  const topicSlug = getFormString(formData, "topic_slug");
   const title = nullableFormString(formData, "title");
   const body = nullableFormString(formData, "body");
   const kindInput = getFormString(formData, "media_kind") || "text";
@@ -673,11 +675,19 @@ export async function createOpenCommunityPost(formData: FormData) {
     redirect(`${returnTo}?message=Choose a valid post type.`);
   }
 
-  const [{ user }, community] = await Promise.all([getCurrentAuthAndProfile(), getDefaultCommunity()]);
+  const [{ user }, community, topic] = await Promise.all([
+    getCurrentAuthAndProfile(),
+    getDefaultCommunity(),
+    topicSlug ? getCommunityTopicBySlug(topicSlug) : Promise.resolve(null),
+  ]);
   await assertNotBanned(user.id, `${returnTo}?message=Your account cannot post right now.`);
 
   if (!community) {
     redirect(`${returnTo}?message=Community feed is not ready yet.`);
+  }
+
+  if (topicSlug && !topic) {
+    redirect(`${returnTo}?message=Choose a valid topic.`);
   }
 
   validatePostInput({ returnTo, title, body, kind: kindInput, externalUrl, file, hasExistingMedia: false });
@@ -712,7 +722,26 @@ export async function createOpenCommunityPost(formData: FormData) {
     redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
   }
 
+  if (topic) {
+    const { error: topicError } = await admin.from("community_post_topics").insert({
+      post_id: data.id,
+      topic_id: topic.id,
+    });
+
+    if (topicError) {
+      await admin
+        .from("community_posts")
+        .update({ deleted_at: new Date().toISOString(), is_published: false })
+        .eq("id", data.id)
+        .eq("author_id", user.id);
+      redirect(`${returnTo}?message=${encodeURIComponent(topicError.message)}`);
+    }
+  }
+
   revalidatePath("/community");
+  if (topic) {
+    revalidatePath(`/community/topics/${topic.slug}`);
+  }
   redirect(`/community/posts/${data.id}`);
 }
 

@@ -24,6 +24,10 @@ import {
   isStudyRoomUuid,
   pickAllowedValue,
 } from "@/lib/study-rooms/validation";
+import {
+  getCommunityTestimonyReportsForPlatform,
+  type CommunityTestimonyReport,
+} from "@/app/actions/community-topics";
 
 type PlatformProfileSummary = {
   id: string;
@@ -131,6 +135,7 @@ export type PlatformDashboardData = {
     created_at: string;
     deleted_at: string | null;
   }>;
+  community_testimony_reports: CommunityTestimonyReport[];
 };
 
 export type StudyRoomPlatformReport = {
@@ -900,6 +905,7 @@ export async function getPlatformDashboardData(
     communityPostsResult,
     communityCommentsResult,
     studyRoomReports,
+    communityTestimonyReports,
     emailMap,
   ] = await Promise.all([
     admin
@@ -976,6 +982,7 @@ export async function getPlatformDashboardData(
       .order("created_at", { ascending: false })
       .limit(10),
     getStudyRoomPlatformReports(studyRoomFilters),
+    getCommunityTestimonyReportsForPlatform(),
     getUserEmailMap(),
   ]);
 
@@ -1062,6 +1069,7 @@ export async function getPlatformDashboardData(
     message_reports: ((reportsResult.data || []) as unknown as PlatformDashboardData["message_reports"]),
     discussion_reports: ((discussionReportsResult.data || []) as unknown as PlatformDashboardData["discussion_reports"]),
     study_room_reports: studyRoomReports,
+    community_testimony_reports: communityTestimonyReports,
     media_items: ((mediaResult.data || []) as unknown as Record<string, unknown>[]).map((row) => {
       const community = row.churches as { name?: string; slug?: string } | null | undefined;
 

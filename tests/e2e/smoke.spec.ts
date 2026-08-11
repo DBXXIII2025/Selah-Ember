@@ -21,6 +21,8 @@ test.describe("public pages", () => {
 
   test("open community feed loads", async ({ page }) => {
     await expectPageLoads(page, "/community", "Selah Ember Community");
+    await expectPageLoads(page, "/community/topics", "Topics");
+    await expectPageLoads(page, "/community/testimonies", "Testimonies");
   });
 
   test("authentication pages load", async ({ page }) => {

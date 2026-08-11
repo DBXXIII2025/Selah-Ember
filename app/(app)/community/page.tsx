@@ -9,6 +9,7 @@ import { getVisibleEvents } from "@/app/actions/events";
 import { getDiscoverStudyGroupsForPublicPage } from "@/app/actions/groups";
 import { getVisiblePrayerRequests } from "@/app/actions/prayer";
 import { CommunityPostDisplay } from "@/components/community/community-post-display";
+import { CommunityTabs } from "@/components/community/community-tabs";
 import { ActionButton, ContentCard, EmptyState, PageContainer, PageHeader, SectionHeader } from "@/components/ui/app-ui";
 
 type CommunityPageProps = {
@@ -76,6 +77,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           <ActionButton href="/signin">Sign in to post</ActionButton>
         )}
       />
+      <CommunityTabs active="home" />
 
         {params.message ? (
           <div className="mt-6 rounded-xl border border-[#ead6c5] bg-white/80 p-4 text-sm text-[#67564c]">

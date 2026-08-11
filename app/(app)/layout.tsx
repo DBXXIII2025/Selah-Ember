@@ -20,7 +20,13 @@ export default async function ProtectedLayout({
   const pathname = headerStore.get("x-selah-pathname") || "";
   const isPublicGroupDetail = /^\/groups\/[^/]+$/.test(pathname);
   const isPublicEventDetail = /^\/events\/[^/]+$/.test(pathname);
-  const isPublicCommunityFeed = pathname === "/community" || /^\/community\/posts\/[^/]+$/.test(pathname);
+  const isPublicCommunityFeed =
+    pathname === "/community"
+    || /^\/community\/posts\/[^/]+$/.test(pathname)
+    || pathname === "/community/topics"
+    || /^\/community\/topics\/[^/]+$/.test(pathname)
+    || pathname === "/community/testimonies"
+    || /^\/community\/testimonies\/[^/]+$/.test(pathname);
   const supabase = await createClient();
   let user: User | null = null;
 
