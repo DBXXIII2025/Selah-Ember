@@ -513,8 +513,64 @@ async function insertMessageAttachmentRows(
 }
 
 export async function getUnreadMessageCount() {
-  const conversations = await getConversations();
-  return conversations.reduce((total, conversation) => total + conversation.unread_count, 0);
+  const user = await getCurrentUser();
+  return getUnreadMessageCountForUser(user.id);
+}
+
+export async function getUnreadMessageCountForUser(userId: string) {
+  const admin = createAdminClient();
+  const { data: participantRows, error: participantError } = await admin
+    .from("conversation_participants")
+    .select("conversation_id,last_read_at")
+    .eq("user_id", userId)
+    .is("archived_at", null);
+
+  if (participantError) {
+    logMessageIssue("unread_count_participant_lookup_failed", {
+      userId,
+      code: participantError.code,
+      message: participantError.message,
+    });
+    return 0;
+  }
+
+  const readStateByConversation = new Map<string, string | null>();
+  const conversationIds = (participantRows || [])
+    .map((row) => {
+      const conversationId = String(row.conversation_id);
+      readStateByConversation.set(conversationId, typeof row.last_read_at === "string" ? row.last_read_at : null);
+      return conversationId;
+    })
+    .filter(isUuid);
+
+  if (conversationIds.length === 0) {
+    return 0;
+  }
+
+  const { data: messageRows, error: messageError } = await admin
+    .from("direct_messages")
+    .select("conversation_id,sender_id,created_at,deleted_at")
+    .in("conversation_id", conversationIds)
+    .is("deleted_at", null);
+
+  if (messageError) {
+    logMessageIssue("unread_count_message_lookup_failed", {
+      userId,
+      code: messageError.code,
+      message: messageError.message,
+    });
+    return 0;
+  }
+
+  return (messageRows || []).reduce((total, message) => {
+    const conversationId = String(message.conversation_id);
+    if (message.sender_id === userId) {
+      return total;
+    }
+
+    const lastReadAt = readStateByConversation.get(conversationId);
+    return !lastReadAt || new Date(String(message.created_at)) > new Date(lastReadAt) ? total + 1 : total;
+  }, 0);
 }
 
 async function buildConversationSummaries(conversationIds: string[], currentUserId: string) {

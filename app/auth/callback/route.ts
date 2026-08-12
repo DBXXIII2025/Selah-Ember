@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const next = requestUrl.searchParams.get("next") || "/community";
+  const requestedNext = requestUrl.searchParams.get("next") || "/community";
+  const next = requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/community";
 
   if (code) {
     const supabase = await createClient();
@@ -17,6 +18,7 @@ export async function GET(request: Request) {
         provider: "supabase",
         ...getErrorMetadata(error),
       });
+      return NextResponse.redirect(new URL("/signin?message=We could not confirm that sign-in link. Please request a new one.", requestUrl.origin));
     }
   } else {
     logEvent("warn", "auth.callback.code_missing", {
@@ -24,6 +26,7 @@ export async function GET(request: Request) {
       provider: "supabase",
       reason: "missing_code",
     });
+    return NextResponse.redirect(new URL("/signin?message=Confirmation link is missing required information.", requestUrl.origin));
   }
 
   return NextResponse.redirect(new URL(next, requestUrl.origin));

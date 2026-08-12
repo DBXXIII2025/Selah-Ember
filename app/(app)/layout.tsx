@@ -2,11 +2,11 @@ import type { User } from "@supabase/supabase-js";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signOut } from "@/app/actions/auth";
-import { getUnreadMessageCount } from "@/app/actions/messages";
-import { getUnreadNotificationCount } from "@/app/actions/notifications";
+import { getUnreadMessageCountForUser } from "@/app/actions/messages";
+import { getUnreadNotificationCountForUser } from "@/app/actions/notifications";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { PUBLIC_NAVIGATION_ITEMS, ResponsiveNavigation, type NavigationItem } from "@/components/ui/app-navigation";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureProfileForUser } from "@/lib/auth/current";
 import { createClient } from "@/lib/supabase/server";
 import { getErrorMetadata } from "@/lib/observability/log";
 import { logRequestEvent } from "@/lib/observability/request";
@@ -59,33 +59,13 @@ export default async function ProtectedLayout({
     );
   }
 
-  const admin = createAdminClient();
-  const displayName =
-    typeof user.user_metadata.display_name === "string"
-      ? user.user_metadata.display_name
-      : user.email?.split("@")[0] || "Selah Ember Member";
-
-  await admin.from("profiles").upsert(
-    {
-      user_id: user.id,
-      display_name: displayName,
-    },
-    {
-      onConflict: "user_id",
-      ignoreDuplicates: true,
-    },
-  );
+  const profile = await ensureProfileForUser(user);
 
   const [unreadNotificationCount, unreadMessageCount] = await Promise.all([
-    getUnreadNotificationCount(),
-    getUnreadMessageCount(),
+    getUnreadNotificationCountForUser(user.id),
+    getUnreadMessageCountForUser(user.id),
   ]);
-  const { data: currentProfile } = await admin
-    .from("profiles")
-    .select("role")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const isPlatformEngineer = currentProfile?.role === "platform_engineer";
+  const isPlatformEngineer = profile.role === "platform_engineer";
   const navigationItems: NavigationItem[] = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/community", label: "Community" },

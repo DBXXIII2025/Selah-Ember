@@ -64,11 +64,15 @@ export async function getNotifications(): Promise<NotificationRecord[]> {
 
 export async function getUnreadNotificationCount() {
   const user = await getCurrentUser();
+  return getUnreadNotificationCountForUser(user.id);
+}
+
+export async function getUnreadNotificationCountForUser(userId: string) {
   const admin = createAdminClient();
   const { count, error } = await admin
     .from("notifications")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .is("read_at", null);
 
   if (error) {

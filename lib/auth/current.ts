@@ -28,7 +28,7 @@ async function getOptionalUser() {
   return user;
 }
 
-async function getProfileForUser(user: NonNullable<Awaited<ReturnType<typeof getOptionalUser>>>) {
+export async function ensureProfileForUser(user: NonNullable<Awaited<ReturnType<typeof getOptionalUser>>>) {
   const admin = createAdminClient();
   const displayName =
     typeof user.user_metadata.display_name === "string"
@@ -68,7 +68,7 @@ export async function getCurrentAuthAndProfile(): Promise<CurrentAuthAndProfile>
 
   return {
     user,
-    profile: await getProfileForUser(user),
+    profile: await ensureProfileForUser(user),
   };
 }
 
@@ -96,12 +96,12 @@ export async function getOptionalAuthAndProfile(): Promise<CurrentAuthAndProfile
 
   return {
     user,
-    profile: await getProfileForUser(user),
+    profile: await ensureProfileForUser(user),
   };
 }
 
 export async function getCurrentProfileForUser(
   user: NonNullable<Awaited<ReturnType<typeof getOptionalUser>>>,
 ) {
-  return getProfileForUser(user);
+  return ensureProfileForUser(user);
 }

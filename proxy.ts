@@ -15,6 +15,39 @@ function getServerActionBodyLimit(pathname: string) {
   return UPLOAD_ROUTE_LIMITS.find(({ pattern }) => pattern.test(pathname))?.bytes || DEFAULT_SERVER_ACTION_LIMIT;
 }
 
+function isPublicAppPath(pathname: string) {
+  return (
+    pathname === "/community"
+    || /^\/community\/posts\/[^/]+$/.test(pathname)
+    || pathname === "/community/topics"
+    || /^\/community\/topics\/[^/]+$/.test(pathname)
+    || pathname === "/community/testimonies"
+    || /^\/community\/testimonies\/[^/]+$/.test(pathname)
+    || /^\/groups\/[^/]+$/.test(pathname)
+    || /^\/events\/[^/]+$/.test(pathname)
+  );
+}
+
+function isProtectedAppPath(pathname: string) {
+  return (
+    pathname === "/dashboard"
+    || pathname === "/messages"
+    || pathname.startsWith("/messages/")
+    || pathname === "/notifications"
+    || pathname.startsWith("/notifications/")
+    || pathname === "/profile"
+    || pathname === "/platform"
+    || pathname.startsWith("/platform/")
+    || pathname === "/prayer"
+    || pathname === "/bible"
+    || pathname.startsWith("/bible/")
+    || pathname === "/groups"
+    || pathname === "/study-rooms"
+    || pathname.startsWith("/study-rooms/")
+    || pathname === "/events"
+  );
+}
+
 export async function proxy(request: NextRequest) {
   const incomingRequestId = request.headers.get("x-request-id");
   const requestId =
@@ -68,6 +101,20 @@ export async function proxy(request: NextRequest) {
       provider: "supabase",
       ...getErrorMetadata(error),
     });
+  }
+
+  if (
+    !authenticatedUserId
+    && (request.method === "GET" || request.method === "HEAD")
+    && isProtectedAppPath(request.nextUrl.pathname)
+    && !isPublicAppPath(request.nextUrl.pathname)
+  ) {
+    const signInUrl = request.nextUrl.clone();
+    signInUrl.pathname = "/signin";
+    signInUrl.search = "";
+    const redirectResponse = NextResponse.redirect(signInUrl);
+    redirectResponse.headers.set("x-selah-request-id", requestId);
+    return redirectResponse;
   }
 
   const isMultipartServerAction =
@@ -126,6 +173,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|offline.html|\\.well-known/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|robots.txt|sitemap.xml|sw.js|offline.html|\\.well-known/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
