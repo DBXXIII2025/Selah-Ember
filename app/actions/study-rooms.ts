@@ -1795,6 +1795,38 @@ export async function toggleStudyRoomPrayerSupport(formData: FormData) {
   redirect(withMessage(returnTo, existing ? "Prayer acknowledgement removed." : "Prayer acknowledged."));
 }
 
+export async function toggleStudyRoomPrayerSupportState(input: { roomId: string; prayerId: string; returnTo?: string }) {
+  const returnTo = safeReturnPath(input.returnTo || "", `/study-rooms/${input.roomId}?section=prayer`);
+  if (!isStudyRoomUuid(input.roomId) || !isStudyRoomUuid(input.prayerId)) {
+    return { ok: false, message: "Prayer request not found." };
+  }
+
+  const access = await requireWritableStudyRoomMember(input.roomId, returnTo);
+  if (!access.isMember || !access.profile?.id) {
+    return { ok: false, message: "Join this Study Room to participate." };
+  }
+
+  const admin = createAdminClient();
+  const targetRoomId = await getContentRoomId(admin, "study_room_prayer_requests", input.prayerId);
+  if (targetRoomId !== input.roomId) return { ok: false, message: "Prayer request not found." };
+
+  const { data: existing, error: lookupError } = await admin
+    .from("study_room_prayer_support")
+    .select("id")
+    .eq("prayer_request_id", input.prayerId)
+    .eq("profile_id", access.profile.id)
+    .maybeSingle();
+  if (lookupError) return { ok: false, message: lookupError.message };
+
+  const result = existing
+    ? await admin.from("study_room_prayer_support").delete().eq("id", existing.id)
+    : await admin.from("study_room_prayer_support").insert({ prayer_request_id: input.prayerId, profile_id: access.profile.id });
+  if (result.error) return { ok: false, message: result.error.message };
+
+  revalidatePath(`/study-rooms/${input.roomId}`);
+  return { ok: true };
+}
+
 export async function markStudyRoomPrayerAnswered(formData: FormData) {
   const roomId = getFormString(formData, "room_id");
   const prayerId = getFormString(formData, "prayer_id");

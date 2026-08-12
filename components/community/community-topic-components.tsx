@@ -3,11 +3,11 @@ import { AlertTriangle, BookOpen, MessageCircle, Plus, Search, ShieldCheck } fro
 import {
   deleteCommunityTestimony,
   reportCommunityTestimony,
-  toggleTestimonyEncouragement,
   type CommunityTestimony,
   type CommunityTopic,
   type TopicScripture,
 } from "@/app/actions/community-topics";
+import { TestimonyEncouragementButton } from "@/components/community/testimony-encouragement-button";
 import { ActionButton, Badge, ConfirmActionPanel, ContentCard, FormField, FormLabel, FormNotice, formControlClassName } from "@/components/ui/app-ui";
 import { SubmitButton } from "@/components/ui/submit-button";
 
@@ -145,16 +145,12 @@ export function TestimonyDetail({ testimony }: Readonly<{ testimony: CommunityTe
       ) : null}
 
       <ContentCard as="section">
-        <form action={toggleTestimonyEncouragement} className="flex flex-wrap items-center gap-3">
-          <input type="hidden" name="testimony_id" value={testimony.id} />
-          <input type="hidden" name="return_to" value={`/community/testimonies/${testimony.id}`} />
-          <SubmitButton pendingLabel="Saving..." variant={testimony.viewer_encouraged ? "secondary" : "primary"}>
-            Encouraged me
-          </SubmitButton>
-          <span className="text-sm text-[#67564c]">
-            {testimony.encouragement_count} {testimony.encouragement_count === 1 ? "member" : "members"} encouraged
-          </span>
-        </form>
+        <TestimonyEncouragementButton
+          testimonyId={testimony.id}
+          count={testimony.encouragement_count}
+          encouraged={testimony.viewer_encouraged}
+          returnTo={`/community/testimonies/${testimony.id}`}
+        />
       </ContentCard>
     </article>
   );

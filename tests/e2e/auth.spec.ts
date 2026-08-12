@@ -87,7 +87,7 @@ test.describe.serial("authentication correctness", () => {
 
     await page.goto("/signin");
     await page.getByLabel("Email").fill(user.email);
-    await page.getByLabel("Password").fill(password);
+    await page.getByRole("textbox", { name: "Password" }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
 
     await expect(page).toHaveURL(/\/signin\?message=/);
@@ -102,7 +102,7 @@ test.describe.serial("authentication correctness", () => {
 
     await page.goto("/signin");
     await page.getByLabel("Email").fill(user.email);
-    await page.getByLabel("Password").fill(password);
+    await page.getByRole("textbox", { name: "Password" }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
 
     await expect(page).toHaveURL(/\/community$/, { timeout: 90_000 });
@@ -120,7 +120,7 @@ test.describe.serial("authentication correctness", () => {
 
     await page.goto("/signin");
     await page.getByLabel("Email").fill(user.email);
-    await page.getByLabel("Password").fill("WrongPassword!123");
+    await page.getByRole("textbox", { name: "Password" }).fill("WrongPassword!123");
     await page.getByRole("button", { name: "Sign in" }).click();
 
     await expect(page).toHaveURL(/\/signin\?message=/);
@@ -133,7 +133,7 @@ test.describe.serial("authentication correctness", () => {
 
     await page.goto("/signin");
     await page.getByLabel("Email").fill(user.email);
-    await page.getByLabel("Password").fill(password);
+    await page.getByRole("textbox", { name: "Password" }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
 
     await expect(page).toHaveURL(/\/community$/, { timeout: 90_000 });
@@ -154,7 +154,7 @@ test.describe.serial("authentication correctness", () => {
     await page.goto("/signup");
     await page.getByLabel("Display name").fill(`${runId} duplicate new`);
     await page.getByLabel("Email").fill(user.email);
-    await page.getByLabel("Password").fill("DifferentPassword!123");
+    await page.getByRole("textbox", { name: "Password" }).fill("DifferentPassword!123");
     await page.getByRole("button", { name: "Create account" }).click();
 
     await expect(page).toHaveURL(/\/signin\?message=/);

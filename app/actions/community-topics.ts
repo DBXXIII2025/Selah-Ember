@@ -1,9 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentAuthAndProfile, getOptionalAuthAndProfile } from "@/lib/auth/current";
-import { assertNotBanned } from "@/lib/moderation/bans";
+import { assertNotBanned, getActiveBanForUser } from "@/lib/moderation/bans";
 import { getDisplayProfiles } from "@/lib/profiles/display";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -610,6 +610,7 @@ async function hydrateTestimonies(rows: Record<string, unknown>[]): Promise<Comm
 }
 
 export async function getCommunityTestimonies(topicSlug?: string | null) {
+  noStore();
   const admin = createAdminClient();
   let query = admin
     .from("community_testimonies")
@@ -631,6 +632,7 @@ export async function getCommunityTestimonies(topicSlug?: string | null) {
 }
 
 export async function getCommunityTestimony(testimonyId: string) {
+  noStore();
   const row = await getTestimonyRecord(testimonyId);
   if (!row || row.deleted_at || row.is_published === false) return null;
   const [testimony] = await hydrateTestimonies([row]);
@@ -658,6 +660,40 @@ export async function toggleTestimonyEncouragement(formData: FormData) {
   revalidatePath(returnTo);
   revalidatePath("/community/testimonies");
   redirect(returnTo);
+}
+
+export async function toggleTestimonyEncouragementState(input: { testimonyId: string; returnTo?: string }) {
+  const returnTo = safeReturnPath(
+    input.returnTo || "",
+    input.testimonyId ? `/community/testimonies/${input.testimonyId}` : "/community/testimonies",
+  );
+
+  if (!input.testimonyId) return { ok: false, message: "Testimony not found." };
+
+  const { user } = await getCurrentAuthAndProfile();
+  if (await getActiveBanForUser(user.id)) {
+    return { ok: false, message: "Your account cannot encourage testimony right now." };
+  }
+
+  const admin = createAdminClient();
+  const { data: existing, error: existingError } = await admin
+    .from("community_testimony_encouragements")
+    .select("testimony_id")
+    .eq("testimony_id", input.testimonyId)
+    .eq("author_id", user.id)
+    .maybeSingle();
+
+  if (existingError) return { ok: false, message: existingError.message };
+
+  const { error } = existing
+    ? await admin.from("community_testimony_encouragements").delete().eq("testimony_id", input.testimonyId).eq("author_id", user.id)
+    : await admin.from("community_testimony_encouragements").insert({ testimony_id: input.testimonyId, author_id: user.id });
+
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath(returnTo);
+  revalidatePath("/community/testimonies");
+  return { ok: true };
 }
 
 export async function reportCommunityTestimony(formData: FormData) {

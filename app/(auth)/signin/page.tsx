@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { signIn } from "@/app/actions/auth";
+import { PasswordField } from "@/components/auth/password-field";
 
 export const metadata: Metadata = {
   title: "Sign In",
@@ -44,16 +45,10 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             className="mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#a94720] focus:ring-4 focus:ring-[#a94720]/10"
           />
         </label>
-        <label className="block">
-          <span className="text-sm font-medium text-[#3b312b]">Password</span>
-          <input
-            required
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            className="mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#a94720] focus:ring-4 focus:ring-[#a94720]/10"
-          />
-        </label>
+        <div>
+          <label htmlFor="signin-password" className="text-sm font-medium text-[#3b312b]">Password</label>
+          <PasswordField id="signin-password" required autoComplete="current-password" />
+        </div>
         <button
           type="submit"
           className="w-full rounded-full bg-[#a94720] px-6 py-3 font-semibold text-white shadow-lg shadow-[#a94720]/20 transition hover:bg-[#b94f22]"

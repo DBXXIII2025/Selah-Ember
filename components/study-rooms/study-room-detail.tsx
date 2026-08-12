@@ -38,7 +38,6 @@ import {
   reviewStudyRoomJoinRequest,
   transferStudyRoomOwnership,
   toggleStudyRoomBookmark,
-  toggleStudyRoomPrayerSupport,
   updateStudyProgress,
   updateStudyRoomDiscussionModeration,
   updateStudyRoomDiscussionReply,
@@ -82,6 +81,7 @@ import {
   formatStudyStatus,
   formatVisibility,
 } from "@/components/study-rooms/study-room-format";
+import { StudyRoomPrayerSupportButton } from "@/components/study-rooms/study-room-prayer-support-button";
 
 const sectionItems = [
   ["overview", "Overview"],
@@ -799,12 +799,13 @@ function PrayerItem({ prayer, roomId, studies, archived, returnTo }: { prayer: S
       {prayer.answered_update ? <p className="mt-3 rounded-xl bg-[#eef7ee] p-3 text-sm leading-6 text-[#386641]">Answered update: {prayer.answered_update}</p> : null}
       <div className="mt-5 flex flex-wrap gap-3">
         {!archived ? (
-          <form action={toggleStudyRoomPrayerSupport}>
-            <input type="hidden" name="room_id" value={roomId} />
-            <input type="hidden" name="prayer_id" value={prayer.id} />
-            <input type="hidden" name="return_to" value={returnTo} />
-            <SubmitButton pendingLabel="Saving..." variant="secondary">{prayer.viewer_supports ? "Praying" : "I'm praying"} ({prayer.support_count})</SubmitButton>
-          </form>
+          <StudyRoomPrayerSupportButton
+            roomId={roomId}
+            prayerId={prayer.id}
+            count={prayer.support_count}
+            supported={prayer.viewer_supports}
+            returnTo={returnTo}
+          />
         ) : null}
         {!archived && prayer.canEdit && prayer.status !== "answered" ? (
           <details className="rounded-xl border border-[#ead6c5] bg-[#fff8f0] p-4">

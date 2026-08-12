@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createOrGetDirectConversationForCurrentUser } from "@/lib/messages/service";
 import { createNotification } from "@/lib/notifications/service";
 import { isAllowedMessageReaction } from "@/lib/messages/reactions";
-import { assertNotBanned } from "@/lib/moderation/bans";
+import { assertNotBanned, getActiveBanForUser } from "@/lib/moderation/bans";
 import {
   isSafeHttpUrl,
   MEDIA_LIMITS,
@@ -1325,6 +1325,45 @@ export async function addMessageReaction(formData: FormData) {
   redirect(redirectPath);
 }
 
+export async function addMessageReactionState(input: { messageId: string; reaction: string; returnTo?: string }) {
+  const user = await getCurrentUser();
+  if (await getActiveBanForUser(user.id)) {
+    return { ok: false, message: "Your account cannot react right now." };
+  }
+  const message = await getReactableMessage(input.messageId, user.id);
+
+  if (!message) return { ok: false, message: "Message not found." };
+
+  const formData = new FormData();
+  formData.set("return_to", input.returnTo || "");
+  const redirectPath = getScopedReturnPath(formData, message.conversation_id);
+
+  if (message.deleted_at) return { ok: false, message: "Deleted messages cannot be reacted to." };
+  if (!isAllowedMessageReaction(input.reaction)) return { ok: false, message: "Choose a supported reaction." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("message_reactions").upsert(
+    {
+      message_id: message.id,
+      user_id: user.id,
+      reaction: input.reaction,
+    },
+    {
+      onConflict: "message_id,user_id,reaction",
+      ignoreDuplicates: true,
+    },
+  );
+
+  if (error) return { ok: false, message: error.code === "42P01" ? "Reactions are not available until the latest database migration is applied." : error.message };
+
+  revalidatePath("/messages");
+  revalidatePath(`/messages/${message.conversation_id}`);
+  revalidatePath("/platform/messages");
+  revalidatePath(`/platform/messages/${message.conversation_id}`);
+  revalidatePath(redirectPath);
+  return { ok: true };
+}
+
 export async function removeMessageReaction(formData: FormData) {
   const user = await getCurrentUser();
   const messageId = getFormString(formData, "message_id");
@@ -1362,6 +1401,39 @@ export async function removeMessageReaction(formData: FormData) {
   revalidatePath("/platform/messages");
   revalidatePath(`/platform/messages/${message.conversation_id}`);
   redirect(redirectPath);
+}
+
+export async function removeMessageReactionState(input: { messageId: string; reaction: string; returnTo?: string }) {
+  const user = await getCurrentUser();
+  if (await getActiveBanForUser(user.id)) {
+    return { ok: false, message: "Your account cannot react right now." };
+  }
+  const message = await getReactableMessage(input.messageId, user.id);
+
+  if (!message) return { ok: false, message: "Message not found." };
+
+  const formData = new FormData();
+  formData.set("return_to", input.returnTo || "");
+  const redirectPath = getScopedReturnPath(formData, message.conversation_id);
+
+  if (!isAllowedMessageReaction(input.reaction)) return { ok: false, message: "Choose a supported reaction." };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("message_reactions")
+    .delete()
+    .eq("message_id", message.id)
+    .eq("user_id", user.id)
+    .eq("reaction", input.reaction);
+
+  if (error) return { ok: false, message: error.code === "42P01" ? "Reactions are not available until the latest database migration is applied." : error.message };
+
+  revalidatePath("/messages");
+  revalidatePath(`/messages/${message.conversation_id}`);
+  revalidatePath("/platform/messages");
+  revalidatePath(`/platform/messages/${message.conversation_id}`);
+  revalidatePath(redirectPath);
+  return { ok: true };
 }
 
 export async function markConversationRead(conversationId: string) {

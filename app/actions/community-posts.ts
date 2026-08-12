@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentAuthAndProfile, getOptionalAuthAndProfile } from "@/lib/auth/current";
 import { canCreateEvent } from "@/lib/auth/ownership";
-import { assertNotBanned } from "@/lib/moderation/bans";
+import { assertNotBanned, getActiveBanForUser } from "@/lib/moderation/bans";
 import { isSafeHttpUrl, validateImageFile, validateVideoFile } from "@/lib/media/validation";
 import { getDisplayProfiles } from "@/lib/profiles/display";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -832,6 +832,57 @@ export async function toggleOpenCommunityPostReaction(formData: FormData) {
   revalidatePath("/community");
   revalidatePath(returnTo);
   redirect(returnTo);
+}
+
+export async function toggleOpenCommunityPostReactionState(input: {
+  postId: string;
+  reaction: string;
+  returnTo?: string;
+}) {
+  const returnTo = safeReturnPath(input.returnTo || "", input.postId ? `/community/posts/${input.postId}` : "/community");
+
+  if (!input.postId || !isCommunityReaction(input.reaction)) {
+    return { ok: false, message: "Reaction unavailable." };
+  }
+
+  const { user } = await getCurrentAuthAndProfile();
+  if (await getActiveBanForUser(user.id)) {
+    return { ok: false, message: "Your account cannot react right now." };
+  }
+
+  const admin = createAdminClient();
+  const { data: existing, error: existingError } = await admin
+    .from("community_post_reactions")
+    .select("id")
+    .eq("post_id", input.postId)
+    .eq("author_id", user.id)
+    .eq("reaction", input.reaction)
+    .maybeSingle();
+
+  if (existingError && existingError.code !== "42P01") {
+    return { ok: false, message: existingError.message };
+  }
+
+  const { error } = existing
+    ? await admin
+        .from("community_post_reactions")
+        .delete()
+        .eq("post_id", input.postId)
+        .eq("author_id", user.id)
+        .eq("reaction", input.reaction)
+    : await admin.from("community_post_reactions").insert({
+        post_id: input.postId,
+        author_id: user.id,
+        reaction: input.reaction,
+      });
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  revalidatePath("/community");
+  revalidatePath(returnTo);
+  return { ok: true };
 }
 
 export async function deleteOpenCommunityPost(formData: FormData) {

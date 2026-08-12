@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { toggleOpenCommunityPostReaction } from "@/app/actions/community-posts";
+import { CommunityPostReactions } from "@/components/community/community-post-reactions";
 import { SafeLink } from "@/components/media/safe-link";
 import type { CommunityPost } from "@/app/actions/community-posts";
 
@@ -21,12 +21,6 @@ function wasEdited(post: CommunityPost) {
   return Math.abs(new Date(post.updated_at).getTime() - new Date(post.created_at).getTime()) > 1000;
 }
 
-const reactionLabels = {
-  like: "👍",
-  pray: "🙏",
-  fire: "🔥",
-  laugh: "😂",
-} as const;
 
 function Media({ post }: Readonly<{ post: CommunityPost }>) {
   if (post.media_kind === "link" && post.media_url) {
@@ -113,27 +107,12 @@ export function CommunityPostDisplay({ post, href, editHref, compact = false }: 
       {post.deleted_at ? <p className="mt-4 text-sm font-semibold text-[#8a3f1e]">Deleted</p> : null}
       {!post.is_published ? <p className="mt-4 text-sm font-semibold text-[#8a3f1e]">Draft</p> : null}
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        {Object.entries(reactionLabels).map(([reaction, emoji]) => {
-          const selected = post.viewer_reactions.includes(reaction as keyof typeof reactionLabels);
-          return (
-            <form key={reaction} action={toggleOpenCommunityPostReaction}>
-              <input type="hidden" name="post_id" value={post.id} />
-              <input type="hidden" name="reaction" value={reaction} />
-              <input type="hidden" name="return_to" value={href || `/community/posts/${post.id}`} />
-              <button
-                type="submit"
-                className={`inline-flex h-9 items-center gap-1 rounded-full border px-3 text-sm font-semibold transition ${
-                  selected
-                    ? "border-[#a94720] bg-[#fff4e8] text-[#8a3f1e]"
-                    : "border-[#2f2722]/15 bg-white/70 text-[#594a42] hover:bg-[#fff4e8]"
-                }`}
-              >
-                <span aria-hidden="true">{emoji}</span>
-                <span>{post.reaction_counts[reaction as keyof typeof reactionLabels] || 0}</span>
-              </button>
-            </form>
-          );
-        })}
+        <CommunityPostReactions
+          postId={post.id}
+          counts={post.reaction_counts}
+          selected={post.viewer_reactions}
+          returnTo={href || `/community/posts/${post.id}`}
+        />
         {href ? (
           <Link href={href} className="inline-flex h-9 items-center rounded-full border border-[#2f2722]/15 px-3 text-sm font-semibold text-[#8a3f1e] hover:bg-[#fff4e8]">
             {post.comment_count === 1 ? "1 comment" : `${post.comment_count} comments`}

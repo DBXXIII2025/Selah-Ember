@@ -74,7 +74,9 @@ test.describe("automated accessibility", () => {
     const email = page.getByRole("textbox", { name: "Email" });
     await email.focus();
     await page.keyboard.press("Tab");
-    await expect(page.getByLabel("Password")).toBeFocused();
+    await expect(page.getByRole("textbox", { name: "Password" })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "Show password" })).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByRole("button", { name: "Sign in" })).toBeFocused();
   });
