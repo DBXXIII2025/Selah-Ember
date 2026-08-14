@@ -164,7 +164,7 @@ test.describe.serial("Community topics and testimonies", () => {
   test("Community Home, topic list, sensitive topics, mobile widths, and axe checks", async ({ page }, testInfo) => {
     await page.goto("/community");
     await expect(page.getByRole("heading", { level: 1, name: "Selah Ember Community" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("link", { name: "Home", exact: true })).toHaveAttribute("aria-current", "page");
 
     await page.goto("/community/topics");
     await expect(page.getByRole("heading", { level: 1, name: "Topics" })).toBeVisible();

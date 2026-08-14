@@ -25,7 +25,9 @@ import {
   pickAllowedValue,
 } from "@/lib/study-rooms/validation";
 import {
+  getCommunityTopicsForPlatform,
   getCommunityTestimonyReportsForPlatform,
+  type CommunityTopic,
   type CommunityTestimonyReport,
 } from "@/app/actions/community-topics";
 
@@ -135,6 +137,7 @@ export type PlatformDashboardData = {
     created_at: string;
     deleted_at: string | null;
   }>;
+  community_topics: CommunityTopic[];
   community_testimony_reports: CommunityTestimonyReport[];
 };
 
@@ -904,6 +907,7 @@ export async function getPlatformDashboardData(
     mediaResult,
     communityPostsResult,
     communityCommentsResult,
+    communityTopics,
     studyRoomReports,
     communityTestimonyReports,
     emailMap,
@@ -981,6 +985,7 @@ export async function getPlatformDashboardData(
       .select("id,post_id,body,author_id,created_at,deleted_at")
       .order("created_at", { ascending: false })
       .limit(10),
+    getCommunityTopicsForPlatform(),
     getStudyRoomPlatformReports(studyRoomFilters),
     getCommunityTestimonyReportsForPlatform(),
     getUserEmailMap(),
@@ -1069,6 +1074,7 @@ export async function getPlatformDashboardData(
     message_reports: ((reportsResult.data || []) as unknown as PlatformDashboardData["message_reports"]),
     discussion_reports: ((discussionReportsResult.data || []) as unknown as PlatformDashboardData["discussion_reports"]),
     study_room_reports: studyRoomReports,
+    community_topics: communityTopics,
     community_testimony_reports: communityTestimonyReports,
     media_items: ((mediaResult.data || []) as unknown as Record<string, unknown>[]).map((row) => {
       const community = row.churches as { name?: string; slug?: string } | null | undefined;

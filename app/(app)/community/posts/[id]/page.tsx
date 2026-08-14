@@ -5,8 +5,11 @@ import {
   deleteOpenCommunityComment,
   deleteOpenCommunityPost,
   getOpenCommunityPost,
+  updateOpenCommunityComment,
 } from "@/app/actions/community-posts";
 import { CommunityPostDisplay } from "@/components/community/community-post-display";
+import { ActionButton } from "@/components/ui/app-ui";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 type CommunityPostPageProps = {
   params: Promise<{ id: string }>;
@@ -14,6 +17,8 @@ type CommunityPostPageProps = {
     message?: string;
   }>;
 };
+
+export const dynamic = "force-dynamic";
 
 export default async function CommunityPostPage({ params, searchParams }: CommunityPostPageProps) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
@@ -39,7 +44,7 @@ export default async function CommunityPostPage({ params, searchParams }: Commun
         ) : null}
 
         <div className="mt-8 space-y-3">
-          <CommunityPostDisplay post={data.post} />
+          <CommunityPostDisplay post={data.post} editHref={data.post.can_edit ? `/community/posts/${data.post.id}/edit` : null} />
           {data.post.can_delete ? (
             <form action={deleteOpenCommunityPost}>
               <input type="hidden" name="post_id" value={data.post.id} />
@@ -77,15 +82,45 @@ export default async function CommunityPostPage({ params, searchParams }: Commun
                         </p>
                       </div>
                     </div>
-                    {comment.can_delete ? (
-                      <form action={deleteOpenCommunityComment}>
-                        <input type="hidden" name="comment_id" value={comment.id} />
-                        <input type="hidden" name="return_to" value={returnTo} />
-                        <button type="submit" className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
-                          Delete
-                        </button>
-                      </form>
-                    ) : null}
+                    <div className="flex flex-wrap gap-3">
+                      {comment.can_edit ? (
+                        <details className="text-sm">
+                          <summary className="cursor-pointer font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
+                            Edit
+                          </summary>
+                          <form action={updateOpenCommunityComment} className="mt-3 min-w-[16rem] space-y-3 rounded-xl border border-[#ead6c5] bg-[#fffaf4] p-4 sm:min-w-96">
+                            <input type="hidden" name="comment_id" value={comment.id} />
+                            <input type="hidden" name="return_to" value={returnTo} />
+                            <label className="block">
+                              <span className="text-sm font-medium text-[#3b312b]">Edit comment</span>
+                              <textarea
+                                name="body"
+                                rows={4}
+                                maxLength={5000}
+                                defaultValue={comment.body}
+                                className="mt-2 w-full rounded-xl border border-[#ead6c5] bg-white px-4 py-3 outline-none transition focus:border-[#a94720] focus:ring-4 focus:ring-[#a94720]/10"
+                                required
+                              />
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              <button type="reset" className="rounded-full border border-[#d9b99d] px-4 py-2 text-sm font-semibold text-[#67564c] hover:bg-white">
+                                Cancel
+                              </button>
+                              <SubmitButton pendingLabel="Saving comment...">Save comment</SubmitButton>
+                            </div>
+                          </form>
+                        </details>
+                      ) : null}
+                      {comment.can_delete ? (
+                        <form action={deleteOpenCommunityComment}>
+                          <input type="hidden" name="comment_id" value={comment.id} />
+                          <input type="hidden" name="return_to" value={returnTo} />
+                          <ActionButton type="submit" size="sm" variant="secondary">
+                            Delete
+                          </ActionButton>
+                        </form>
+                      ) : null}
+                    </div>
                   </div>
                   <p className="mt-4 whitespace-pre-wrap leading-7 text-[#3b312b]">{comment.body}</p>
                 </article>

@@ -20,7 +20,7 @@ import {
 } from "@/app/actions/platform";
 import { deleteOwnReply, deleteOwnThread } from "@/app/actions/discussions";
 import { deleteOpenCommunityComment, deleteOpenCommunityPost } from "@/app/actions/community-posts";
-import { reviewCommunityTestimonyReport } from "@/app/actions/community-topics";
+import { reviewCommunityTestimonyReport, saveCommunityTopic } from "@/app/actions/community-topics";
 import { deleteMediaItem } from "@/app/actions/media";
 import {
   ActionButton,
@@ -296,6 +296,81 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
               Open participation is active. Users can post, pray, create groups, message, and join group discussions.
             </p>
             <ActionButton href="/community">Open community feed</ActionButton>
+          </Panel>
+
+          <Panel title="Community Topics">
+            <div className="space-y-6">
+              <form action={saveCommunityTopic} className="rounded-xl border border-[#ead6c5] bg-[#fffaf4] p-4">
+                <h3 className="text-lg font-semibold">Create topic</h3>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <Field label="Topic name" name="name" required />
+                  <Field label="Sort order" name="sort_order" type="number" defaultValue="100" required />
+                </div>
+                <label className="mt-4 block">
+                  <span className="text-sm font-medium text-[#3b312b]">Description</span>
+                  <textarea name="description" rows={3} maxLength={500} className={inputClassName} />
+                </label>
+                <div className="mt-4 flex flex-wrap gap-4">
+                  <label className="flex items-center gap-3 text-sm font-medium text-[#3b312b]">
+                    <input name="is_sensitive" type="checkbox" className="h-4 w-4 accent-[#a94720]" />
+                    Sensitive
+                  </label>
+                  <label className="flex items-center gap-3 text-sm font-medium text-[#3b312b]">
+                    <input name="is_active" type="checkbox" defaultChecked className="h-4 w-4 accent-[#a94720]" />
+                    Active
+                  </label>
+                </div>
+                <ActionButton type="submit" className="mt-5">Create topic</ActionButton>
+              </form>
+
+              <div className="space-y-4">
+                {data.community_topics.length === 0 ? (
+                  <p className="text-sm text-[#67564c]">No Community topics yet.</p>
+                ) : (
+                  data.community_topics.map((topic) => (
+                    <form key={topic.id} action={saveCommunityTopic} className="rounded-xl border border-[#ead6c5] p-4">
+                      <input type="hidden" name="topic_id" value={topic.id} />
+                      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                        <div>
+                          <p className="font-semibold">{topic.name}</p>
+                          <p className="mt-1 break-words text-sm text-[#67564c]">
+                            /community/topics/{topic.slug}
+                            {topic.is_active ? "" : " - inactive"}
+                            {topic.is_sensitive ? " - sensitive" : ""}
+                          </p>
+                        </div>
+                        <ActionButton href={`/community/topics/${topic.slug}`} size="sm" variant="secondary">Open</ActionButton>
+                      </div>
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <Field label="Topic name" name="name" defaultValue={topic.name} required />
+                        <Field label="Sort order" name="sort_order" type="number" defaultValue={String(topic.sort_order)} required />
+                      </div>
+                      <label className="mt-4 block">
+                        <span className="text-sm font-medium text-[#3b312b]">Description</span>
+                        <textarea
+                          name="description"
+                          rows={3}
+                          maxLength={500}
+                          defaultValue={topic.description || ""}
+                          className={inputClassName}
+                        />
+                      </label>
+                      <div className="mt-4 flex flex-wrap gap-4">
+                        <label className="flex items-center gap-3 text-sm font-medium text-[#3b312b]">
+                          <input name="is_sensitive" type="checkbox" defaultChecked={topic.is_sensitive} className="h-4 w-4 accent-[#a94720]" />
+                          Sensitive
+                        </label>
+                        <label className="flex items-center gap-3 text-sm font-medium text-[#3b312b]">
+                          <input name="is_active" type="checkbox" defaultChecked={topic.is_active} className="h-4 w-4 accent-[#a94720]" />
+                          Active
+                        </label>
+                      </div>
+                      <ActionButton type="submit" className="mt-5">Update topic</ActionButton>
+                    </form>
+                  ))
+                )}
+              </div>
+            </div>
           </Panel>
 
           <Panel title="Moderation">

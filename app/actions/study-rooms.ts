@@ -1285,14 +1285,19 @@ async function assertAuthorOrModerator(
 async function getReplyForMutation(admin: ReturnType<typeof createAdminClient>, replyId: string, roomId: string) {
   const { data, error } = await admin
     .from("study_room_discussion_replies")
-    .select("id,thread_id,author_user_id,study_room_discussion_threads:thread_id(room_id)")
+    .select("id,thread_id,author_user_id,study_room_discussion_threads:thread_id(room_id,is_locked)")
     .eq("id", replyId)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
   const thread = data?.study_room_discussion_threads as Record<string, unknown> | null | undefined;
   if (!data || thread?.room_id !== roomId) return null;
-  return data as { id: string; thread_id: string; author_user_id: string | null };
+  return {
+    id: String(data.id),
+    thread_id: String(data.thread_id),
+    author_user_id: typeof data.author_user_id === "string" ? data.author_user_id : null,
+    is_locked: thread?.is_locked === true,
+  };
 }
 
 async function getScopedStudyId(admin: ReturnType<typeof createAdminClient>, roomId: string, rawStudyId: string, returnTo: string) {
@@ -1612,6 +1617,7 @@ export async function updateStudyRoomDiscussionReply(formData: FormData) {
   const admin = createAdminClient();
   const reply = await getReplyForMutation(admin, replyId, roomId);
   if (!reply) redirect(withMessage(returnTo, "Reply not found."));
+  if (reply.is_locked && !access.canModerate) redirect(withMessage(returnTo, "This discussion is locked."));
   await assertAuthorOrModerator(access, typeof reply.author_user_id === "string" ? reply.author_user_id : null, returnTo);
   const { error } = await admin.from("study_room_discussion_replies").update({ body: body.slice(0, STUDY_ROOM_LIMITS.discussionReplyBody) }).eq("id", replyId).eq("thread_id", reply.thread_id);
   if (error) redirect(withMessage(returnTo, error.message));

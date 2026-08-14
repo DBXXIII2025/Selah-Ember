@@ -38,7 +38,7 @@ export function CommunityPostForm({
   post = null,
 }: Readonly<CommunityPostFormProps>) {
   return (
-    <form action={action} encType="multipart/form-data">
+    <form action={action}>
       <input type="hidden" name="community_id" value={communityId} />
       <input type="hidden" name="return_to" value={returnTo} />
       {topicSlug ? <input type="hidden" name="topic_slug" value={topicSlug} /> : null}
@@ -93,7 +93,7 @@ export function CommunityPostForm({
 
       <FormActions className="mt-7">
         <ActionButton href={returnTo} variant="secondary">Cancel</ActionButton>
-        <SubmitButton pendingLabel={post ? "Saving update…" : "Publishing update…"}>{submitLabel}</SubmitButton>
+        <SubmitButton pendingLabel={post ? "Saving update..." : "Publishing update..."}>{submitLabel}</SubmitButton>
       </FormActions>
     </form>
   );

@@ -22,6 +22,10 @@ const MAX_TESTIMONY_SECTION = 4000;
 const MAX_SCRIPTURE_REFLECTION = 2000;
 const MAX_REPORT_REASON = 160;
 const MAX_REPORT_DETAILS = 1000;
+const MAX_TOPIC_NAME = 120;
+const MAX_TOPIC_DESCRIPTION = 500;
+const MIN_TOPIC_SORT_ORDER = -100000;
+const MAX_TOPIC_SORT_ORDER = 100000;
 const DEFAULT_TRANSLATION_ID = getBibleTranslations()[0]?.id || "web";
 
 export type CommunityTopic = {
@@ -95,7 +99,8 @@ const topicDescriptions: Record<string, string> = {
   ptsd: "Personal stories and support for hard memories and trauma-affected seasons.",
   "postpartum-depression-ppd": "Supportive Christian community for postpartum depression experiences.",
   relationships: "Wisdom and prayer for friendships, dating, marriage, and conflict.",
-  forgiveness: "Stories and discussion about confession, mercy, repair, and release.",
+  forgiveness:
+    "Support for struggling to forgive after hurt, resentment, bitterness, reconciliation questions, boundaries, healing, and seeking biblical guidance without staying in unsafe circumstances.",
   temptation: "Support for resisting temptation and walking in repentance.",
   "faith-doubt": "Honest questions, assurance, and learning to keep seeking Christ.",
   purpose: "Conversation about calling, work, gifts, and faithful next steps.",
@@ -201,12 +206,59 @@ function safeReturnPath(path: string, fallback: string) {
   return path.startsWith("/") && !path.startsWith("//") ? path : fallback;
 }
 
+function normalizeTopicSlug(name: string) {
+  return name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-")
+    .slice(0, 80);
+}
+
+function getCheckboxBoolean(formData: FormData, key: string) {
+  return formData.get(key) === "on";
+}
+
+function parseTopicSortOrder(value: string) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : Number.NaN;
+}
+
+async function generateUniqueTopicSlug(admin: ReturnType<typeof createAdminClient>, name: string) {
+  const baseSlug = normalizeTopicSlug(name);
+  if (!baseSlug) return "";
+
+  for (let index = 0; index < 100; index += 1) {
+    const suffix = index === 0 ? "" : `-${index + 1}`;
+    const candidate = `${baseSlug.slice(0, 80 - suffix.length)}${suffix}`;
+    const { data, error } = await admin
+      .from("community_topics")
+      .select("id")
+      .eq("slug", candidate)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (!data) {
+      return candidate;
+    }
+  }
+
+  throw new Error("Could not create a unique topic slug.");
+}
+
 function mapTopic(row: Record<string, unknown>): CommunityTopic {
   const slug = String(row.slug);
+  const storedName = String(row.name);
   return {
     id: String(row.id),
     slug,
-    name: String(row.name),
+    name: slug === "forgiveness" && storedName === "Forgiveness" ? "Unforgiveness" : storedName,
     description: typeof row.description === "string" ? row.description : topicDescriptions[slug] || null,
     sort_order: Number(row.sort_order || 0),
     is_sensitive: row.is_sensitive === true,
@@ -255,6 +307,119 @@ export async function getCommunityTopics() {
   return ((data || []) as unknown as Record<string, unknown>[]).map(mapTopic);
 }
 
+export async function getCommunityTopicsForPlatform() {
+  const { requirePlatformEngineer } = await import("@/lib/platform/auth");
+  await requirePlatformEngineer();
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("community_topics")
+    .select("id,slug,name,description,sort_order,is_sensitive,is_active")
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data || []) as unknown as Record<string, unknown>[]).map(mapTopic);
+}
+
+export async function saveCommunityTopic(formData: FormData) {
+  const { requirePlatformEngineer } = await import("@/lib/platform/auth");
+  await requirePlatformEngineer();
+
+  const topicId = getFormString(formData, "topic_id");
+  const name = getFormString(formData, "name");
+  const description = nullableFormString(formData, "description");
+  const sortOrder = parseTopicSortOrder(getFormString(formData, "sort_order"));
+  const isSensitive = getCheckboxBoolean(formData, "is_sensitive");
+  const isActive = getCheckboxBoolean(formData, "is_active");
+
+  if (!name) {
+    redirect("/platform?message=Topic name is required.");
+  }
+
+  if (name.length > MAX_TOPIC_NAME) {
+    redirect(`/platform?message=Topic name must be ${MAX_TOPIC_NAME} characters or fewer.`);
+  }
+
+  if (description && description.length > MAX_TOPIC_DESCRIPTION) {
+    redirect(`/platform?message=Topic description must be ${MAX_TOPIC_DESCRIPTION} characters or fewer.`);
+  }
+
+  if (!Number.isInteger(sortOrder) || sortOrder < MIN_TOPIC_SORT_ORDER || sortOrder > MAX_TOPIC_SORT_ORDER) {
+    redirect("/platform?message=Topic sort order must be a whole number between -100000 and 100000.");
+  }
+
+  const admin = createAdminClient();
+
+  if (topicId) {
+    const { data: existing, error: existingError } = await admin
+      .from("community_topics")
+      .select("id,slug")
+      .eq("id", topicId)
+      .maybeSingle();
+
+    if (existingError) {
+      redirect(`/platform?message=${encodeURIComponent(existingError.message)}`);
+    }
+
+    if (!existing) {
+      redirect("/platform?message=Topic not found.");
+    }
+
+    const { error } = await admin
+      .from("community_topics")
+      .update({
+        name,
+        description,
+        sort_order: sortOrder,
+        is_sensitive: isSensitive,
+        is_active: isActive,
+      })
+      .eq("id", topicId);
+
+    if (error) {
+      redirect(`/platform?message=${encodeURIComponent(error.message)}`);
+    }
+
+    const slug = typeof existing.slug === "string" ? existing.slug : "";
+    revalidatePath("/platform");
+    revalidatePath("/community");
+    revalidatePath("/community/topics");
+    if (slug) revalidatePath(`/community/topics/${slug}`);
+    redirect("/platform?message=Community topic updated.");
+  }
+
+  let slug = "";
+  try {
+    slug = await generateUniqueTopicSlug(admin, name);
+  } catch (error) {
+    redirect(`/platform?message=${encodeURIComponent(error instanceof Error ? error.message : "Could not create a unique topic slug.")}`);
+  }
+  if (!slug) {
+    redirect("/platform?message=Topic name must produce a valid slug.");
+  }
+
+  const { error } = await admin.from("community_topics").insert({
+    slug,
+    name,
+    description,
+    sort_order: sortOrder,
+    is_sensitive: isSensitive,
+    is_active: isActive,
+  });
+
+  if (error) {
+    redirect(`/platform?message=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/platform");
+  revalidatePath("/community");
+  revalidatePath("/community/topics");
+  redirect("/platform?message=Community topic created.");
+}
+
 export async function getCommunityTopicBySlug(slug: string) {
   const admin = createAdminClient();
   const { data, error } = await admin
@@ -297,6 +462,7 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
     reaction_counts: { like: 0, pray: 0, fire: 0, laugh: 0 },
     viewer_reactions: [],
     can_delete: false,
+    can_edit: false,
   };
 }
 
@@ -329,6 +495,7 @@ export async function getTopicCommunityPosts(topicId: string): Promise<Community
       author_name: post.author_id ? profile?.display_name || "Member" : "Deleted user",
       author_avatar_url: profile?.avatar_url || null,
       can_delete: canModerate || Boolean(currentUserId && post.author_id === currentUserId),
+      can_edit: canModerate || Boolean(currentUserId && post.author_id === currentUserId),
     };
   });
 }
@@ -396,24 +563,27 @@ async function replaceTestimonyScriptures(testimonyId: string, formData: FormDat
   const chapter = Number.parseInt(getFormString(formData, "chapter"), 10);
   const verseStart = nullableFormString(formData, "verse_start");
   const verseEnd = nullableFormString(formData, "verse_end");
+  let reference: Awaited<ReturnType<typeof validateScriptureReference>>;
+
+  try {
+    reference = await validateScriptureReference({ translationId, bookId, chapter, verseStart, verseEnd });
+  } catch (error) {
+    redirect(`${returnTo}?message=${encodeURIComponent(error instanceof Error ? error.message : "Choose a valid Bible reference.")}`);
+  }
+
   const admin = createAdminClient();
   const { error: deleteError } = await admin.from("community_testimony_scriptures").delete().eq("testimony_id", testimonyId);
   if (deleteError) redirect(`${returnTo}?message=${encodeURIComponent(deleteError.message)}`);
 
-  try {
-    const reference = await validateScriptureReference({ translationId, bookId, chapter, verseStart, verseEnd });
-    const { error } = await admin.from("community_testimony_scriptures").insert({
-      testimony_id: testimonyId,
-      translation_id: reference.translationId,
-      book_id: reference.bookId,
-      chapter: reference.chapter,
-      verse_start: reference.verseStart,
-      verse_end: reference.verseEnd,
-    });
-    if (error) redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
-  } catch (error) {
-    redirect(`${returnTo}?message=${encodeURIComponent(error instanceof Error ? error.message : "Choose a valid Bible reference.")}`);
-  }
+  const { error } = await admin.from("community_testimony_scriptures").insert({
+    testimony_id: testimonyId,
+    translation_id: reference.translationId,
+    book_id: reference.bookId,
+    chapter: reference.chapter,
+    verse_start: reference.verseStart,
+    verse_end: reference.verseEnd,
+  });
+  if (error) redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
 }
 
 export async function createCommunityTestimony(formData: FormData) {
@@ -477,6 +647,9 @@ export async function updateCommunityTestimony(formData: FormData) {
   if (!record) redirect(`${returnTo}?message=Testimony not found.`);
   const { user, profile } = await getCurrentAuthAndProfile();
   await assertNotBanned(user.id, `${returnTo}?message=Your account cannot edit testimony right now.`);
+  if (record.deleted_at || record.is_published === false) {
+    redirect(`${returnTo}?message=Testimony not found.`);
+  }
   if (profile.role !== "platform_engineer" && record.author_id !== user.id) {
     redirect(`${returnTo}?message=You can only edit your own testimony.`);
   }
@@ -492,7 +665,7 @@ export async function updateCommunityTestimony(formData: FormData) {
   validateTestimonyInput(returnTo, input);
 
   const admin = createAdminClient();
-  const { error } = await admin
+  let updateQuery = admin
     .from("community_testimonies")
     .update({
       title: input.title,
@@ -502,8 +675,17 @@ export async function updateCommunityTestimony(formData: FormData) {
       where_i_am_now: input.whereNow,
       scripture_reflection: input.scriptureReflection,
     })
-    .eq("id", testimonyId);
+    .eq("id", testimonyId)
+    .eq("is_published", true)
+    .is("deleted_at", null);
+
+  if (profile.role !== "platform_engineer") {
+    updateQuery = updateQuery.eq("author_id", user.id);
+  }
+
+  const { data: updated, error } = await updateQuery.select("id").maybeSingle();
   if (error) redirect(`${returnTo}?message=${encodeURIComponent(error.message)}`);
+  if (!updated) redirect(`${returnTo}?message=Testimony update was not authorized.`);
   await replaceTestimonyScriptures(testimonyId, formData, returnTo);
   revalidatePath("/community/testimonies");
   revalidatePath(`/community/testimonies/${testimonyId}`);

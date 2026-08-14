@@ -72,7 +72,13 @@ export default async function CommunityTopicPage({ params }: TopicPageProps) {
             {posts.length === 0 ? (
               <EmptyState title="No topic posts yet" description="Start a focused discussion for this topic." action={auth ? <ActionButton href={`/community/topics/${topic.slug}/posts/new`}>Create post</ActionButton> : <ActionButton href="/signin">Sign in to post</ActionButton>} />
             ) : posts.map((post) => (
-              <CommunityPostDisplay key={post.id} post={post} href={`/community/posts/${post.id}`} compact />
+              <CommunityPostDisplay
+                key={post.id}
+                post={post}
+                href={`/community/posts/${post.id}`}
+                editHref={post.can_edit ? `/community/posts/${post.id}/edit` : null}
+                compact
+              />
             ))}
           </div>
         </section>

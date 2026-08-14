@@ -5,11 +5,13 @@ import {
   getOpenCommunityFeedForPublicPage,
   getRecentCommunityMembersForPublicPage,
 } from "@/app/actions/community-posts";
+import { getCommunityTopics } from "@/app/actions/community-topics";
 import { getVisibleEvents } from "@/app/actions/events";
 import { getDiscoverStudyGroupsForPublicPage } from "@/app/actions/groups";
 import { getVisiblePrayerRequests } from "@/app/actions/prayer";
 import { CommunityPostDisplay } from "@/components/community/community-post-display";
 import { CommunityTabs } from "@/components/community/community-tabs";
+import { TopicGrid } from "@/components/community/community-topic-components";
 import { ActionButton, ContentCard, EmptyState, PageContainer, PageHeader, SectionHeader } from "@/components/ui/app-ui";
 
 type CommunityPageProps = {
@@ -19,8 +21,8 @@ type CommunityPageProps = {
 };
 
 export const metadata: Metadata = {
-  title: "Community Feed",
-  description: "Share encouragement, testimony, prayer follow-up, media, and safe links with the open Selah Ember community.",
+  title: "Community",
+  description: "Find a focused Selah Ember Community topic, or share uncategorized encouragement in General Community.",
 };
 
 export const dynamic = "force-dynamic";
@@ -51,8 +53,9 @@ function Widget({ title, href, hrefLabel, children }: Readonly<{
 }
 
 export default async function CommunityPage({ searchParams }: CommunityPageProps) {
-  const [data, groupDiscovery, memberDiscovery, params] = await Promise.all([
+  const [data, topics, groupDiscovery, memberDiscovery, params] = await Promise.all([
     getOpenCommunityFeedForPublicPage(),
+    getCommunityTopics(),
     getDiscoverStudyGroupsForPublicPage(),
     getRecentCommunityMembersForPublicPage(),
     searchParams,
@@ -69,10 +72,10 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
       <PageHeader
         eyebrow="Community"
         title="Selah Ember Community"
-        description="A shared faith feed for encouragement, prayer follow-up, group discovery, events, safe links, images, and video."
+        description="Choose the space that fits what you are facing, or use General Community for encouragement that does not belong to one topic."
         bordered
         action={data.isSignedIn ? (
-          <ActionButton href="/community/new">Create post</ActionButton>
+          <ActionButton href="/community/new">Create general post</ActionButton>
         ) : (
           <ActionButton href="/signin">Sign in to post</ActionButton>
         )}
@@ -85,8 +88,31 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           </div>
         ) : null}
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <section aria-label="Community posts" className="space-y-5">
+        <section aria-label="Community topics" className="mt-8">
+          <SectionHeader
+            title="Find a topic"
+            description="Start with the issue you are dealing with. Topic spaces keep posts, testimonies, prayer, and Scripture focused."
+            action={<ActionButton href="/community/topics" variant="secondary">View topics</ActionButton>}
+          />
+          <div className="mt-5">
+            {topics.length === 0 ? (
+              <EmptyState
+                title="Topics are temporarily unavailable"
+                description="General Community is still available below."
+              />
+            ) : (
+              <TopicGrid topics={topics} />
+            )}
+          </div>
+        </section>
+
+        <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <section aria-label="General Community" className="space-y-5">
+            <SectionHeader
+              title="General Community"
+              description="Uncategorized posts remain here. Topic posts stay inside their topic spaces."
+              action={data.isSignedIn ? <ActionButton href="/community/new" variant="secondary">Create general post</ActionButton> : null}
+            />
             {!data.community ? (
               <ContentCard as="div" className="bg-white/80">
                 <h2 className="text-2xl font-semibold">
@@ -102,14 +128,18 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
 
             {data.posts.length === 0 ? (
               <EmptyState
-                title="Start the first conversation"
-                description="Share an encouragement, testimony, question, prayer follow-up, image, video, or safe link with the community."
-                action={data.isSignedIn ? <ActionButton href="/community/new">Create post</ActionButton> : <ActionButton href="/signin">Sign in to post</ActionButton>}
+                title="No General Community posts yet"
+                description="Topic posts are kept in their own spaces. Share here only when the post is not tied to one topic."
+                action={data.isSignedIn ? <ActionButton href="/community/new">Create general post</ActionButton> : <ActionButton href="/signin">Sign in to post</ActionButton>}
               />
             ) : (
               data.posts.map((post) => (
                 <div key={post.id} className="space-y-3">
-                  <CommunityPostDisplay post={post} href={`/community/posts/${post.id}`} />
+                  <CommunityPostDisplay
+                    post={post}
+                    href={`/community/posts/${post.id}`}
+                    editHref={post.can_edit ? `/community/posts/${post.id}/edit` : null}
+                  />
                   {post.can_delete ? (
                     <form action={deleteOpenCommunityPost}>
                       <input type="hidden" name="post_id" value={post.id} />

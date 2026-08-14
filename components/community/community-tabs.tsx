@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils/cn";
 
 const tabs = [
   { href: "/community", label: "Home" },
-  { href: "/community/topics", label: "Topics" },
   { href: "/community/testimonies", label: "Testimonies" },
 ] as const;
 
@@ -14,7 +13,6 @@ export function CommunityTabs({ active }: Readonly<{ active: "home" | "topics" |
         {tabs.map((tab) => {
           const selected =
             (active === "home" && tab.label === "Home")
-            || (active === "topics" && tab.label === "Topics")
             || (active === "testimonies" && tab.label === "Testimonies");
           return (
             <Link
