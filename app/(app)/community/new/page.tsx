@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { createOpenCommunityPost, getDefaultCommunity } from "@/app/actions/community-posts";
-import { CommunityPostForm } from "@/components/community/community-post-form";
+import { createOpenCommunityPostWithState, getDefaultCommunity } from "@/app/actions/community-posts";
+import { CommunityPostActionForm } from "@/components/community/community-post-action-form";
 
 type NewCommunityPostPageProps = {
   searchParams: Promise<{
@@ -35,8 +35,8 @@ export default async function NewCommunityPostPage({ searchParams }: NewCommunit
           </div>
         ) : (
           <div className="mt-8 rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
-            <CommunityPostForm
-              action={createOpenCommunityPost}
+            <CommunityPostActionForm
+              action={createOpenCommunityPostWithState}
               communityId={community.id}
               returnTo="/community/new"
               submitLabel="Post"

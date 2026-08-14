@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { createOpenCommunityPost, getDefaultCommunity } from "@/app/actions/community-posts";
+import { createOpenCommunityPostWithState, getDefaultCommunity } from "@/app/actions/community-posts";
 import { getCommunityTopicBySlug } from "@/app/actions/community-topics";
-import { CommunityPostForm } from "@/components/community/community-post-form";
+import { CommunityPostActionForm } from "@/components/community/community-post-action-form";
 import { DetailHeader, FormShell, PageContainer } from "@/components/ui/app-ui";
 
 type NewTopicPostPageProps = {
@@ -29,8 +29,8 @@ export default async function NewTopicPostPage({ params, searchParams }: NewTopi
           <FormShell title="Posting unavailable">Community posting is temporarily unavailable while setup finishes.</FormShell>
         ) : (
           <FormShell title="New topic post" description={query.message}>
-            <CommunityPostForm
-              action={createOpenCommunityPost}
+            <CommunityPostActionForm
+              action={createOpenCommunityPostWithState}
               communityId={community.id}
               returnTo={returnTo}
               submitLabel="Post"

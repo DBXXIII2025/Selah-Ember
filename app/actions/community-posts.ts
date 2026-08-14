@@ -79,6 +79,11 @@ export type PublicCommunityMembersResult = {
   isUnavailable: boolean;
 };
 
+export type CommunityPostFormState = {
+  status: "idle" | "error";
+  message: string;
+};
+
 export type CommunityRecord = {
   id: string;
   name: string;
@@ -123,6 +128,34 @@ function sanitizeFilename(name: string) {
 
 function isMediaKind(value: string): value is "text" | "link" | "image" | "video" {
   return ["text", "link", "image", "video"].includes(value);
+}
+
+function inferFileMediaKind(file: File | null): "image" | "video" | null {
+  if (!file) {
+    return null;
+  }
+
+  if (file.type.startsWith("image/")) {
+    return "image";
+  }
+
+  if (file.type.startsWith("video/")) {
+    return "video";
+  }
+
+  return null;
+}
+
+function resolvePostMediaKind(kindInput: string, file: File | null) {
+  if (!isMediaKind(kindInput)) {
+    return null;
+  }
+
+  if (kindInput === "text") {
+    return inferFileMediaKind(file) || kindInput;
+  }
+
+  return kindInput;
 }
 
 function isCommunityReaction(value: string): value is CommunityReaction {
@@ -739,8 +772,9 @@ export async function createOpenCommunityPost(formData: FormData) {
   const kindInput = getFormString(formData, "media_kind") || "text";
   const externalUrl = nullableFormString(formData, "media_url");
   const file = getOptionalFile(formData, "media_file");
+  const mediaKind = resolvePostMediaKind(kindInput, file);
 
-  if (!isMediaKind(kindInput)) {
+  if (!mediaKind) {
     redirect(`${returnTo}?message=Choose a valid post type.`);
   }
 
@@ -759,7 +793,7 @@ export async function createOpenCommunityPost(formData: FormData) {
     redirect(`${returnTo}?message=Choose a valid topic.`);
   }
 
-  validatePostInput({ returnTo, title, body, kind: kindInput, externalUrl, file, hasExistingMedia: false });
+  validatePostInput({ returnTo, title, body, kind: mediaKind, externalUrl, file, hasExistingMedia: false });
 
   let uploadedFile: Awaited<ReturnType<typeof uploadPostMedia>> | null = null;
 
@@ -775,8 +809,8 @@ export async function createOpenCommunityPost(formData: FormData) {
       author_id: user.id,
       title,
       body,
-      media_url: kindInput === "link" ? externalUrl : null,
-      media_kind: kindInput === "text" ? null : kindInput,
+      media_url: mediaKind === "link" ? externalUrl : null,
+      media_kind: mediaKind === "text" ? null : mediaKind,
       storage_path: uploadedFile?.storage_path || null,
       file_name: uploadedFile?.file_name || null,
       mime_type: uploadedFile?.mime_type || null,
@@ -803,7 +837,117 @@ export async function createOpenCommunityPost(formData: FormData) {
         .update({ deleted_at: new Date().toISOString(), is_published: false })
         .eq("id", data.id)
         .eq("author_id", user.id);
+      await deleteStoredPostObject(uploadedFile?.storage_path || null, community.id, user.id);
       redirect(`${returnTo}?message=${encodeURIComponent(topicError.message)}`);
+    }
+  }
+
+  revalidatePath("/community");
+  if (topic) {
+    revalidatePath(`/community/topics/${topic.slug}`);
+  }
+  redirect(`/community/posts/${data.id}`);
+}
+
+function communityPostFormError(message: string): CommunityPostFormState {
+  return { status: "error", message };
+}
+
+export async function createOpenCommunityPostWithState(
+  _state: CommunityPostFormState,
+  formData: FormData,
+): Promise<CommunityPostFormState> {
+  const topicSlug = getFormString(formData, "topic_slug");
+  const title = nullableFormString(formData, "title");
+  const body = nullableFormString(formData, "body");
+  const kindInput = getFormString(formData, "media_kind") || "text";
+  const externalUrl = nullableFormString(formData, "media_url");
+  const file = getOptionalFile(formData, "media_file");
+  const mediaKind = resolvePostMediaKind(kindInput, file);
+
+  if (!mediaKind) {
+    return communityPostFormError("Choose a valid post type.");
+  }
+
+  const [{ user }, community, topic] = await Promise.all([
+    getCurrentAuthAndProfile(),
+    getDefaultCommunity(),
+    topicSlug ? getCommunityTopicBySlug(topicSlug) : Promise.resolve(null),
+  ]);
+
+  if (await getActiveBanForUser(user.id)) {
+    return communityPostFormError("Your account cannot post right now.");
+  }
+
+  if (!community) {
+    return communityPostFormError("Community feed is not ready yet.");
+  }
+
+  if (topicSlug && !topic) {
+    return communityPostFormError("Choose a valid topic.");
+  }
+
+  const validationError = getPostInputError({
+    title,
+    body,
+    kind: mediaKind,
+    externalUrl,
+    file,
+    hasExistingMedia: false,
+  });
+
+  if (validationError) {
+    return communityPostFormError(validationError);
+  }
+
+  let uploadedFile: Awaited<ReturnType<typeof uploadPostMedia>> | null = null;
+
+  if (file) {
+    try {
+      uploadedFile = await uploadPostMedia({ communityId: community.id, userId: user.id, file });
+    } catch {
+      return communityPostFormError("Upload failed. Check the file and try again.");
+    }
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("community_posts")
+    .insert({
+      community_id: community.id,
+      author_id: user.id,
+      title,
+      body,
+      media_url: mediaKind === "link" ? externalUrl : null,
+      media_kind: mediaKind === "text" ? null : mediaKind,
+      storage_path: uploadedFile?.storage_path || null,
+      file_name: uploadedFile?.file_name || null,
+      mime_type: uploadedFile?.mime_type || null,
+      size_bytes: uploadedFile?.size_bytes || null,
+      is_published: true,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    await deleteStoredPostObject(uploadedFile?.storage_path || null, community.id, user.id);
+    return communityPostFormError("Post creation failed. Your draft is still here; please try again.");
+  }
+
+  if (topic) {
+    const { error: topicError } = await admin.from("community_post_topics").insert({
+      post_id: data.id,
+      topic_id: topic.id,
+    });
+
+    if (topicError) {
+      await admin
+        .from("community_posts")
+        .update({ deleted_at: new Date().toISOString(), is_published: false })
+        .eq("id", data.id)
+        .eq("author_id", user.id);
+      await deleteStoredPostObject(uploadedFile?.storage_path || null, community.id, user.id);
+      return communityPostFormError("Topic association failed. Your draft is still here; please try again.");
     }
   }
 
@@ -858,12 +1002,13 @@ export async function updateOpenCommunityPost(formData: FormData) {
   const kindInput = getFormString(formData, "media_kind") || "text";
   const externalUrl = nullableFormString(formData, "media_url");
   const file = getOptionalFile(formData, "media_file");
+  const mediaKind = resolvePostMediaKind(kindInput, file);
 
   if (!postId) {
     redirect("/community?message=Post not found.");
   }
 
-  if (!isMediaKind(kindInput)) {
+  if (!mediaKind) {
     redirect(`${returnTo}?message=Choose a valid post type.`);
   }
 
@@ -910,17 +1055,17 @@ export async function updateOpenCommunityPost(formData: FormData) {
         ? Number(existingPost.size_bytes)
         : null;
   const hasExistingMediaForKind =
-    kindInput === "link"
+    mediaKind === "link"
       ? Boolean(existingPost.media_url && existingMediaKind === "link")
-      : kindInput === "image" || kindInput === "video"
-        ? Boolean(existingStoragePath && existingMediaKind === kindInput)
+      : mediaKind === "image" || mediaKind === "video"
+        ? Boolean(existingStoragePath && existingMediaKind === mediaKind)
         : false;
 
   validatePostInput({
     returnTo,
     title,
     body,
-    kind: kindInput,
+    kind: mediaKind,
     externalUrl,
     file,
     hasExistingMedia: hasExistingMediaForKind,
@@ -934,12 +1079,12 @@ export async function updateOpenCommunityPost(formData: FormData) {
   const updatePayload = {
     title,
     body,
-    media_url: kindInput === "link" ? externalUrl : null,
-    media_kind: kindInput === "text" ? null : kindInput,
-    storage_path: uploadedFile?.storage_path || (kindInput === "image" || kindInput === "video" ? existingStoragePath : null),
-    file_name: uploadedFile?.file_name || (kindInput === "image" || kindInput === "video" ? existingFileName : null),
-    mime_type: uploadedFile?.mime_type || (kindInput === "image" || kindInput === "video" ? existingMimeType : null),
-    size_bytes: uploadedFile?.size_bytes || (kindInput === "image" || kindInput === "video" ? existingSizeBytes : null),
+    media_url: mediaKind === "link" ? externalUrl : null,
+    media_kind: mediaKind === "text" ? null : mediaKind,
+    storage_path: uploadedFile?.storage_path || (mediaKind === "image" || mediaKind === "video" ? existingStoragePath : null),
+    file_name: uploadedFile?.file_name || (mediaKind === "image" || mediaKind === "video" ? existingFileName : null),
+    mime_type: uploadedFile?.mime_type || (mediaKind === "image" || mediaKind === "video" ? existingMimeType : null),
+    size_bytes: uploadedFile?.size_bytes || (mediaKind === "image" || mediaKind === "video" ? existingSizeBytes : null),
   };
 
   let updateQuery = admin
@@ -958,6 +1103,143 @@ export async function updateOpenCommunityPost(formData: FormData) {
   if (error || !updated) {
     await deleteStoredPostObject(uploadedFile?.storage_path || null, community.id, authorId);
     redirect(`${returnTo}?message=${encodeURIComponent(error?.message || "Post update was not authorized.")}`);
+  }
+
+  if (uploadedFile?.storage_path && existingStoragePath) {
+    await deleteStoredPostObject(existingStoragePath, community.id, authorId);
+  }
+
+  const topicSlug = await getPostTopicSlug(postId);
+  revalidatePath("/community");
+  revalidatePath(`/community/posts/${postId}`);
+  revalidatePath(`/community/posts/${postId}/edit`);
+  if (topicSlug) {
+    revalidatePath(`/community/topics/${topicSlug}`);
+  }
+  redirect(`/community/posts/${postId}?message=Post updated.`);
+}
+
+export async function updateOpenCommunityPostWithState(
+  _state: CommunityPostFormState,
+  formData: FormData,
+): Promise<CommunityPostFormState> {
+  const postId = getFormString(formData, "post_id");
+  const title = nullableFormString(formData, "title");
+  const body = nullableFormString(formData, "body");
+  const kindInput = getFormString(formData, "media_kind") || "text";
+  const externalUrl = nullableFormString(formData, "media_url");
+  const file = getOptionalFile(formData, "media_file");
+  const mediaKind = resolvePostMediaKind(kindInput, file);
+
+  if (!postId) {
+    return communityPostFormError("Post not found.");
+  }
+
+  if (!mediaKind) {
+    return communityPostFormError("Choose a valid post type.");
+  }
+
+  const [{ user, profile }, community] = await Promise.all([getCurrentAuthAndProfile(), getDefaultCommunity()]);
+
+  if (await getActiveBanForUser(user.id)) {
+    return communityPostFormError("Your account cannot edit posts right now.");
+  }
+
+  if (!community) {
+    return communityPostFormError("Community feed is not ready yet.");
+  }
+
+  const admin = createAdminClient();
+  const { data: existing, error: existingError } = await admin
+    .from("community_posts")
+    .select("id,community_id,author_id,media_url,media_kind,storage_path,file_name,mime_type,size_bytes,deleted_at")
+    .eq("id", postId)
+    .eq("community_id", community.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (existingError) {
+    return communityPostFormError("Post lookup failed. Your draft is still here; please try again.");
+  }
+
+  if (!existing) {
+    return communityPostFormError("Post not found.");
+  }
+
+  const existingPost = existing as Record<string, unknown>;
+  const authorId = typeof existingPost.author_id === "string" ? existingPost.author_id : "";
+  if (profile.role !== "platform_engineer" && authorId !== user.id) {
+    return communityPostFormError("You can only edit your own posts.");
+  }
+
+  const existingMediaKind = existingPost.media_kind === "image" || existingPost.media_kind === "video" || existingPost.media_kind === "link"
+    ? existingPost.media_kind
+    : null;
+  const existingStoragePath = typeof existingPost.storage_path === "string" ? existingPost.storage_path : null;
+  const existingFileName = typeof existingPost.file_name === "string" ? existingPost.file_name : null;
+  const existingMimeType = typeof existingPost.mime_type === "string" ? existingPost.mime_type : null;
+  const existingSizeBytes =
+    typeof existingPost.size_bytes === "number"
+      ? existingPost.size_bytes
+      : typeof existingPost.size_bytes === "string"
+        ? Number(existingPost.size_bytes)
+        : null;
+  const hasExistingMediaForKind =
+    mediaKind === "link"
+      ? Boolean(existingPost.media_url && existingMediaKind === "link")
+      : mediaKind === "image" || mediaKind === "video"
+        ? Boolean(existingStoragePath && existingMediaKind === mediaKind)
+        : false;
+
+  const validationError = getPostInputError({
+    title,
+    body,
+    kind: mediaKind,
+    externalUrl,
+    file,
+    hasExistingMedia: hasExistingMediaForKind,
+  });
+
+  if (validationError) {
+    return communityPostFormError(validationError);
+  }
+
+  let uploadedFile: Awaited<ReturnType<typeof uploadPostMedia>> | null = null;
+  if (file) {
+    try {
+      uploadedFile = await uploadPostMedia({ communityId: community.id, userId: authorId, file });
+    } catch {
+      return communityPostFormError("Upload failed. Check the file and try again.");
+    }
+  }
+
+  const updatePayload = {
+    title,
+    body,
+    media_url: mediaKind === "link" ? externalUrl : null,
+    media_kind: mediaKind === "text" ? null : mediaKind,
+    storage_path: uploadedFile?.storage_path || (mediaKind === "image" || mediaKind === "video" ? existingStoragePath : null),
+    file_name: uploadedFile?.file_name || (mediaKind === "image" || mediaKind === "video" ? existingFileName : null),
+    mime_type: uploadedFile?.mime_type || (mediaKind === "image" || mediaKind === "video" ? existingMimeType : null),
+    size_bytes: uploadedFile?.size_bytes || (mediaKind === "image" || mediaKind === "video" ? existingSizeBytes : null),
+  };
+
+  let updateQuery = admin
+    .from("community_posts")
+    .update(updatePayload)
+    .eq("id", postId)
+    .eq("community_id", community.id)
+    .is("deleted_at", null);
+
+  if (profile.role !== "platform_engineer") {
+    updateQuery = updateQuery.eq("author_id", user.id);
+  }
+
+  const { data: updated, error } = await updateQuery.select("id").maybeSingle();
+
+  if (error || !updated) {
+    await deleteStoredPostObject(uploadedFile?.storage_path || null, community.id, authorId);
+    return communityPostFormError("Post update failed or was not authorized. Your draft is still here.");
   }
 
   if (uploadedFile?.storage_path && existingStoragePath) {
@@ -1226,8 +1508,7 @@ export async function getCommunityPostForLeader(communityId: string, postId: str
   };
 }
 
-function validatePostInput({
-  returnTo,
+function getPostInputError({
   title,
   body,
   kind,
@@ -1235,7 +1516,6 @@ function validatePostInput({
   file,
   hasExistingMedia,
 }: {
-  returnTo: string;
   title: string | null;
   body: string | null;
   kind: "text" | "link" | "image" | "video";
@@ -1244,37 +1524,39 @@ function validatePostInput({
   hasExistingMedia: boolean;
 }) {
   if (title && title.length > MAX_TITLE_LENGTH) {
-    redirect(`${returnTo}?message=Title must be ${MAX_TITLE_LENGTH} characters or fewer.`);
+    return `Title must be ${MAX_TITLE_LENGTH} characters or fewer.`;
   }
 
   if (body && body.length > MAX_BODY_LENGTH) {
-    redirect(`${returnTo}?message=Body must be ${MAX_BODY_LENGTH} characters or fewer.`);
+    return `Body must be ${MAX_BODY_LENGTH} characters or fewer.`;
   }
 
   if (!title && !body && !externalUrl && !file && !hasExistingMedia) {
-    redirect(`${returnTo}?message=Add text, a link, or a media file.`);
+    return "Add text, a link, or a media file.";
   }
 
   if (kind === "text" && (externalUrl || file)) {
-    redirect(`${returnTo}?message=Text updates do not use media or external links.`);
+    return file
+      ? "Choose an image or video file, or remove the attachment."
+      : "Text updates do not use external links.";
   }
 
   if (kind === "link") {
     if (!externalUrl) {
-      redirect(`${returnTo}?message=Add a safe URL for link updates.`);
+      return "Add a safe URL for link updates.";
     }
 
     if (!isSafeHttpUrl(externalUrl)) {
-      redirect(`${returnTo}?message=Add a valid HTTP or HTTPS link.`);
+      return "Add a valid HTTP or HTTPS link.";
     }
 
     if (file) {
-      redirect(`${returnTo}?message=Link updates do not use file uploads.`);
+      return "Link updates do not use file uploads.";
     }
   }
 
   if ((kind === "image" || kind === "video") && externalUrl) {
-    redirect(`${returnTo}?message=Use file uploads for image and video updates.`);
+    return "Use file uploads for image and video updates.";
   }
 
   if (file) {
@@ -1285,8 +1567,26 @@ function validatePostInput({
         bucket: COMMUNITY_FEED_BUCKET,
         reason: "file_validation_failed",
       });
-      redirect(`${returnTo}?message=${encodeURIComponent(validation?.message || "Invalid upload.")}`);
+      return validation?.message || "Invalid upload.";
     }
+  }
+
+  return null;
+}
+
+function validatePostInput(args: {
+  returnTo: string;
+  title: string | null;
+  body: string | null;
+  kind: "text" | "link" | "image" | "video";
+  externalUrl: string | null;
+  file: File | null;
+  hasExistingMedia: boolean;
+}) {
+  const message = getPostInputError(args);
+
+  if (message) {
+    redirect(`${args.returnTo}?message=${encodeURIComponent(message)}`);
   }
 }
 

@@ -6,6 +6,7 @@ import { getCurrentAuthAndProfile, getOptionalAuthAndProfile } from "@/lib/auth/
 import { assertNotBanned, getActiveBanForUser } from "@/lib/moderation/bans";
 import { getDisplayProfiles } from "@/lib/profiles/display";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isCanonicalStoragePath } from "@/lib/storage/paths";
 import {
   getBibleBook,
   getBibleTranslations,
@@ -27,6 +28,7 @@ const MAX_TOPIC_DESCRIPTION = 500;
 const MIN_TOPIC_SORT_ORDER = -100000;
 const MAX_TOPIC_SORT_ORDER = 100000;
 const DEFAULT_TRANSLATION_ID = getBibleTranslations()[0]?.id || "web";
+const COMMUNITY_FEED_BUCKET = "community-feed-media";
 
 export type CommunityTopic = {
   id: string;
@@ -466,6 +468,17 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
   };
 }
 
+async function signTopicPost(post: CommunityPost) {
+  if (!post.storage_path || !isCanonicalStoragePath(post.storage_path, post.community_id, post.author_id)) {
+    return post;
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin.storage.from(COMMUNITY_FEED_BUCKET).createSignedUrl(post.storage_path, 60 * 60);
+
+  return error ? post : { ...post, signed_url: data.signedUrl };
+}
+
 export async function getTopicCommunityPosts(topicId: string): Promise<CommunityPost[]> {
   const auth = await getOptionalAuthAndProfile();
   const admin = createAdminClient();
@@ -484,11 +497,14 @@ export async function getTopicCommunityPosts(topicId: string): Promise<Community
     .map((row) => row.community_posts as Record<string, unknown> | null)
     .filter((post): post is Record<string, unknown> => Boolean(post && !post.deleted_at && post.is_published !== false))
     .map(mapPost);
-  const profiles = await getDisplayProfiles(posts.map((post) => post.author_id));
+  const [signedPosts, profiles] = await Promise.all([
+    Promise.all(posts.map((post) => signTopicPost(post))),
+    getDisplayProfiles(posts.map((post) => post.author_id)),
+  ]);
   const currentUserId = auth?.user.id || null;
   const canModerate = auth?.profile.role === "platform_engineer";
 
-  return posts.map((post) => {
+  return signedPosts.map((post) => {
     const profile = profiles.get(post.author_id);
     return {
       ...post,
