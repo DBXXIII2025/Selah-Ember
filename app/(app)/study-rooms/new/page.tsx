@@ -14,7 +14,7 @@ export default async function NewStudyRoomPage({ searchParams }: NewStudyRoomPag
     <PageContainer size="medium">
       <DetailHeader
         backHref="/study-rooms"
-        backLabel="Back to Study Rooms"
+        backLabel="Go back to Study Rooms"
         eyebrow="New Study Room"
         title="Create a Study Room"
         description="Start a structured Bible study space with clear membership, studies, Scripture, and long-term organization."

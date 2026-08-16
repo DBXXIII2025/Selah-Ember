@@ -17,7 +17,7 @@ export default async function NewGivingCampaignPage({ params }: NewGivingCampaig
 
   return (
     <PageContainer size="medium">
-      <DetailHeader backHref={`/leader/communities/${id}/giving`} backLabel="Back to giving" eyebrow="Planning foundation" title="New giving campaign" description="Payments are not live. This creates a planning record only." />
+      <DetailHeader backHref={`/leader/communities/${id}/giving`} backLabel="Go back to giving" eyebrow="Planning foundation" title="New giving campaign" description="Payments are not live. This creates a planning record only." />
       <FormShell className="mt-8" title="Campaign details" description="Define the purpose and optional target amount for this planning record.">
           <GivingCampaignForm communityId={id} returnTo={`/leader/communities/${id}/giving`} />
       </FormShell>

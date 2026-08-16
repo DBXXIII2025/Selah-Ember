@@ -20,7 +20,7 @@ export default async function EditTestimonyPage({ params, searchParams }: EditTe
     <PageContainer size="medium">
       <DetailHeader
         backHref={`/community/testimonies/${testimony.id}`}
-        backLabel="Back to testimony"
+        backLabel="Go back to testimony"
         eyebrow="Edit testimony"
         title={testimony.title}
         description="Update your structured testimony and Scripture reference."

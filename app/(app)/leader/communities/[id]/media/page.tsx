@@ -22,7 +22,7 @@ export default async function LeaderCommunityMediaPage({ params }: LeaderCommuni
     <PageContainer>
       <DetailHeader
         backHref={`/leader/communities/${id}`}
-        backLabel="Back to management"
+        backLabel="Go back to management"
         eyebrow="Media management"
         title="Media library"
         description={<>Manage teachings, testimonies, notes, and resource links for {media.community.name}.</>}

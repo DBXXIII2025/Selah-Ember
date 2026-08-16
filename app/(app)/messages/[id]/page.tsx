@@ -34,7 +34,7 @@ function formatMessageDate(value: string) {
 function ConversationUnavailable() {
   return (
     <PageContainer size="medium">
-      <DetailHeader backHref="/messages" backLabel="Back to messages" eyebrow="Messages" title="Conversation unavailable" />
+      <DetailHeader backHref="/messages" backLabel="Go back to Messages" eyebrow="Messages" title="Conversation unavailable" />
       <EmptyState className="mt-8" title="This conversation cannot be opened" description="It may have been removed, or your account may not have access to it." />
     </PageContainer>
   );
@@ -62,7 +62,7 @@ export default async function ConversationPage({ params, searchParams }: Convers
     <PageContainer size="medium">
       <DetailHeader
         backHref="/messages"
-        backLabel="Back to messages"
+        backLabel="Go back to Messages"
         eyebrow="Conversation"
         title={title}
         description={<span className="break-words text-sm">{participantLabels}</span>}

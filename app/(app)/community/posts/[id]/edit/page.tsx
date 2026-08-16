@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOpenCommunityPostForEdit, updateOpenCommunityPostWithState } from "@/app/actions/community-posts";
 import { CommunityPostActionForm } from "@/components/community/community-post-action-form";
-import { FormNotice, PageContainer, PageHeader } from "@/components/ui/app-ui";
+import { BackToLink, FormNotice, PageContainer, PageHeader } from "@/components/ui/app-ui";
 
 type EditCommunityPostPageProps = {
   params: Promise<{ id: string }>;
@@ -23,9 +22,7 @@ export default async function EditCommunityPostPage({ params, searchParams }: Ed
 
   return (
     <PageContainer className="py-10">
-      <Link href={returnTo} className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
-        Back to post
-      </Link>
+      <BackToLink href={returnTo} label="Go back to post" />
       <PageHeader
         eyebrow="Community"
         title="Edit post"

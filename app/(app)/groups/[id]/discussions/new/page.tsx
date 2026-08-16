@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createGroupThread, getGroupThreads } from "@/app/actions/discussions";
+import { BackToLink } from "@/components/ui/app-ui";
 
 type NewGroupDiscussionPageProps = {
   params: Promise<{ id: string }>;
@@ -42,7 +43,7 @@ export default async function NewGroupDiscussionPage({ params, searchParams }: N
           <h1 className="text-3xl font-semibold">Join to start a discussion</h1>
           <p className="mt-3 text-[#67564c]">Group discussions are private to members.</p>
           <Link href={`/groups/${group!.id}/discussions`} className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
-            Back to discussions
+            Go back to discussions
           </Link>
         </div>
       </section>
@@ -52,9 +53,7 @@ export default async function NewGroupDiscussionPage({ params, searchParams }: N
   return (
     <section className="px-6 py-12 sm:px-10 lg:px-16">
       <div className="mx-auto max-w-3xl">
-        <Link href={`/groups/${group!.id}/discussions`} className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
-          Back to discussions
-        </Link>
+        <BackToLink href={`/groups/${group!.id}/discussions`} label="Go back to discussions" />
         <div className="mt-8 rounded-2xl border border-[#ead6c5] bg-white/75 p-8 shadow-sm">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">New group thread</p>
           <h1 className="mt-3 text-4xl font-semibold">{group!.title}</h1>

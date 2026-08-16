@@ -229,8 +229,9 @@ test.describe.serial("Community image attachments", () => {
     await expect(page.getByLabel("Update type")).toHaveValue("image");
     await expect(page.getByText("depression-topic.png")).toBeVisible();
     await page.getByRole("button", { name: "Post" }).click();
-    await expect(page).toHaveURL(/\/community\/posts\//, { timeout: 90_000 });
-    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    await expect(page).toHaveURL(/\/community\/topics\/depression(?:\?|$)/, { timeout: 90_000 });
+    await expect(page.getByText("Post shared.")).toBeVisible();
+    await expect(page.getByText(title)).toBeVisible();
     await expect(page.locator("article").filter({ hasText: title }).locator("img").first()).toBeVisible();
 
     const post = await findPostByTitle(title);
@@ -249,6 +250,7 @@ test.describe.serial("Community image attachments", () => {
     expect(topicLink.data!.topic_id).toBe(depressionTopicId);
 
     await page.reload();
+    await expect(page).toHaveURL(/\/community\/topics\/depression(?:\?|$)/, { timeout: 90_000 });
     await expect(page.locator("article").filter({ hasText: title }).locator("img").first()).toBeVisible({ timeout: 90_000 });
     await page.goto("/community");
     await expect(page.getByText(title)).toHaveCount(0);
@@ -289,8 +291,9 @@ test.describe.serial("Community image attachments", () => {
     await page.getByLabel("Body").fill("General Community image post fixture.");
     await attachPng(page, "general-community.png");
     await page.getByRole("button", { name: "Post" }).click();
-    await expect(page).toHaveURL(/\/community\/posts\//, { timeout: 90_000 });
-    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    await expect(page).toHaveURL(/\/community(?:\?|$)/, { timeout: 90_000 });
+    await expect(page.getByText("Post shared.")).toBeVisible();
+    await expect(page.getByText(title)).toBeVisible();
 
     const post = await findPostByTitle(title);
     expect(post).toBeTruthy();
@@ -317,7 +320,7 @@ test.describe.serial("Community image attachments", () => {
     await page.getByLabel("Body").fill("Original image post body.");
     await attachPng(page, "edit-preserve.png");
     await page.getByRole("button", { name: "Post" }).click();
-    await expect(page).toHaveURL(/\/community\/posts\//, { timeout: 90_000 });
+    await expect(page).toHaveURL(/\/community\/topics\/depression(?:\?|$)/, { timeout: 90_000 });
 
     const original = await findPostByTitle(title);
     expect(original).toBeTruthy();
@@ -375,7 +378,7 @@ test.describe.serial("Community image attachments", () => {
     await page.getByLabel("Body").fill("Protected image post fixture.");
     await attachPng(page, "protected-image.png");
     await page.getByRole("button", { name: "Post" }).click();
-    await expect(page).toHaveURL(/\/community\/posts\//, { timeout: 90_000 });
+    await expect(page).toHaveURL(/\/community\/topics\/depression(?:\?|$)/, { timeout: 90_000 });
     const protectedPost = await findPostByTitle(protectedTitle);
     expect(protectedPost).toBeTruthy();
     postIds.push(protectedPost!.id);

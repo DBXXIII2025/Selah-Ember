@@ -869,7 +869,7 @@ export async function createGroupThread(formData: FormData) {
   revalidatePath(`/groups/${groupId}/discussions`);
   revalidatePath(`/groups/${groupId}/discussions/${threadId}`);
   revalidatePath("/notifications");
-  redirect(`/groups/${groupId}/discussions/${threadId}`);
+  redirect(`/groups/${groupId}/discussions?message=Thread created.`);
 }
 
 export async function createDiscussionReply(formData: FormData) {

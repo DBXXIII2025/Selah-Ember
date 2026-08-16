@@ -846,7 +846,7 @@ export async function createOpenCommunityPost(formData: FormData) {
   if (topic) {
     revalidatePath(`/community/topics/${topic.slug}`);
   }
-  redirect(`/community/posts/${data.id}`);
+  redirect(topic ? `/community/topics/${topic.slug}?message=Post shared.` : "/community?message=Post shared.");
 }
 
 function communityPostFormError(message: string): CommunityPostFormState {
@@ -955,7 +955,7 @@ export async function createOpenCommunityPostWithState(
   if (topic) {
     revalidatePath(`/community/topics/${topic.slug}`);
   }
-  redirect(`/community/posts/${data.id}`);
+  redirect(topic ? `/community/topics/${topic.slug}?message=Post shared.` : "/community?message=Post shared.");
 }
 
 export async function createOpenCommunityComment(formData: FormData) {

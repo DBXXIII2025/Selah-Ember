@@ -183,7 +183,7 @@ export async function createPrayerRequest(formData: FormData) {
   }
 
   revalidatePath("/prayer");
-  redirect("/prayer");
+  redirect("/prayer?message=Prayer request created.");
 }
 
 export async function getVisiblePrayerRequests(): Promise<PrayerRequest[]> {

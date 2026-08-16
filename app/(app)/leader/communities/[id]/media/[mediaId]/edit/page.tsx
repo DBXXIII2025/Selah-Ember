@@ -28,7 +28,7 @@ export default async function LeaderCommunityMediaEditPage({ params }: LeaderCom
     <PageContainer size="medium">
       <DetailHeader
         backHref={`/leader/communities/${id}/media`}
-        backLabel="Back to media library"
+        backLabel="Go back to media library"
         eyebrow="Media management"
         title="Edit media"
         description="Update this media item without changing its existing library route."

@@ -17,7 +17,7 @@ export default async function EditCommunityUpdatePage({ params }: EditCommunityU
 
   return (
     <PageContainer size="medium">
-      <DetailHeader backHref={`/leader/communities/${id}/updates`} backLabel="Back to updates" eyebrow="Official content" title="Edit community update" description="Update this existing public post." />
+      <DetailHeader backHref={`/leader/communities/${id}/updates`} backLabel="Go back to updates" eyebrow="Official content" title="Edit community update" description="Update this existing public post." />
       <FormShell className="mt-8" title="Update details" description="Review the content and save only the intended changes.">
           <CommunityPostForm
             action={updateCommunityPost}

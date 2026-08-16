@@ -13,13 +13,12 @@ export default async function NewTopicPostPage({ params, searchParams }: NewTopi
   const [{ slug }, query, community] = await Promise.all([params, searchParams, getDefaultCommunity()]);
   const topic = await getCommunityTopicBySlug(slug);
   if (!topic) notFound();
-  const returnTo = `/community/topics/${topic.slug}/posts/new`;
 
   return (
     <PageContainer size="medium">
       <DetailHeader
         backHref={`/community/topics/${topic.slug}`}
-        backLabel={`Back to ${topic.name}`}
+        backLabel={`Go back to ${topic.name}`}
         eyebrow="Topic post"
         title={`Share in ${topic.name}`}
         description="Create a Community post associated with this topic. It remains part of the existing Community feed architecture."
@@ -32,7 +31,7 @@ export default async function NewTopicPostPage({ params, searchParams }: NewTopi
             <CommunityPostActionForm
               action={createOpenCommunityPostWithState}
               communityId={community.id}
-              returnTo={returnTo}
+              returnTo={`/community/topics/${topic.slug}`}
               submitLabel="Post"
               showPublishToggle={false}
               topicSlug={topic.slug}

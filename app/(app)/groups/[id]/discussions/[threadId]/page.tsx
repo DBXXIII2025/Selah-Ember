@@ -11,6 +11,7 @@ import {
   reportDiscussionThread,
 } from "@/app/actions/discussions";
 import { DiscussionBody } from "@/components/discussions/discussion-body";
+import { BackToLink } from "@/components/ui/app-ui";
 
 type GroupDiscussionThreadPageProps = {
   params: Promise<{ id: string; threadId: string }>;
@@ -44,7 +45,7 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
           <h1 className="text-3xl font-semibold">Sign in to view discussions</h1>
           <p className="mt-3 text-[#67564c]">Group discussions are private to members.</p>
           <Link href={`/groups/${id}/discussions`} className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
-            Back to discussions
+            Go back to discussions
           </Link>
         </div>
       </section>
@@ -58,7 +59,7 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
           <h1 className="text-3xl font-semibold">Join this group to view discussions</h1>
           <p className="mt-3 text-[#67564c]">Private study threads are visible only to group members.</p>
           <Link href={`/groups/${id}/discussions`} className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
-            Back to discussions
+            Go back to discussions
           </Link>
         </div>
       </section>
@@ -72,7 +73,7 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
           <h1 className="text-3xl font-semibold">Discussion unavailable</h1>
           <p className="mt-3 text-[#67564c]">This thread may have moved or been removed.</p>
           <Link href={`/groups/${id}/discussions`} className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
-            Back to discussions
+            Go back to discussions
           </Link>
         </div>
       </section>
@@ -95,9 +96,7 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
   return (
     <section className="px-6 py-12 sm:px-10 lg:px-16">
       <div className="mx-auto max-w-4xl">
-        <Link href={`/groups/${id}/discussions`} className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
-          Back to discussions
-        </Link>
+        <BackToLink href={`/groups/${id}/discussions`} label="Go back to discussions" />
         {message ? (
           <p className="mt-6 rounded-xl border border-[#e5b08c] bg-[#fff4e8] px-4 py-3 text-sm text-[#8a3f1e]">
             {message}

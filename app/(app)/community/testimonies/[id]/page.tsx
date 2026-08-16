@@ -20,7 +20,7 @@ export default async function TestimonyPage({ params, searchParams }: TestimonyP
     <PageContainer size="medium">
       <DetailHeader
         backHref={testimony.topic_slug ? `/community/topics/${testimony.topic_slug}` : "/community/testimonies"}
-        backLabel={testimony.topic_name ? `Back to ${testimony.topic_name}` : "Back to testimonies"}
+        backLabel={testimony.topic_name ? `Go back to ${testimony.topic_name}` : "Go back to Testimonies"}
         eyebrow="Personal testimony"
         title="Community testimony"
         description={query.message}

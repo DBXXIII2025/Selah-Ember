@@ -24,7 +24,7 @@ export default async function NewEventPage({ searchParams }: NewEventPageProps) 
     <PageContainer size="medium">
       <DetailHeader
         backHref="/events"
-        backLabel="Back to events"
+        backLabel="Go back to Events"
         eyebrow="New event"
         title="Create a fellowship event"
         description="Official community events are managed by platform engineers while the open community model is simplified."
@@ -39,7 +39,7 @@ export default async function NewEventPage({ searchParams }: NewEventPageProps) 
           title="Official event creation is limited"
           description={params.message || access.message}
         >
-          <ActionButton href="/events">Back to events</ActionButton>
+          <ActionButton href="/events">Go back to Events</ActionButton>
         </FormShell>
       )}
     </PageContainer>

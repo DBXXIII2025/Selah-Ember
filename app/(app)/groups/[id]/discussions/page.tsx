@@ -1,6 +1,7 @@
 import { MessageSquareText, Plus } from "lucide-react";
 import Link from "next/link";
 import { getGroupThreads } from "@/app/actions/discussions";
+import { BackToLink } from "@/components/ui/app-ui";
 
 type GroupDiscussionsPageProps = {
   params: Promise<{ id: string }>;
@@ -33,7 +34,7 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
           <h1 className="mt-4 text-3xl font-semibold">Group discussions unavailable</h1>
           <p className="mt-3 text-[#67564c]">This group could not be found.</p>
           <Link href="/groups" className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
-            Back to groups
+            Go back to Groups
           </Link>
         </div>
       </section>
@@ -65,7 +66,7 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
           <h1 className="mt-4 text-3xl font-semibold">Join this group to view discussions</h1>
           <p className="mt-3 text-[#67564c]">Private study threads are visible only to group members.</p>
           <Link href={`/groups/${data.group?.id || id}`} className="mt-6 inline-flex text-sm font-semibold text-[#8a3f1e]">
-            Back to group
+            {data.group?.title ? `Go back to ${data.group.title}` : "Go back to group"}
           </Link>
         </div>
       </section>
@@ -75,9 +76,7 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
   return (
     <section className="px-6 py-12 sm:px-10 lg:px-16">
       <div className="mx-auto max-w-5xl">
-        <Link href={`/groups/${group!.id}`} className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
-          Back to group
-        </Link>
+        <BackToLink href={`/groups/${group!.id}`} label={`Go back to ${group!.title}`} />
 
         <div className="mt-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>

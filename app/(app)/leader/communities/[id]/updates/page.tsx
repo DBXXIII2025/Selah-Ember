@@ -20,7 +20,7 @@ export default async function LeaderCommunityUpdatesPage({ params }: LeaderCommu
     <PageContainer>
       <DetailHeader
         backHref={`/leader/communities/${id}`}
-        backLabel="Back to management"
+        backLabel="Go back to management"
         eyebrow="Official content"
         title="Community updates"
         description={<>Publish official updates, links, images, and videos for {data.community.name}.</>}

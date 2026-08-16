@@ -43,12 +43,12 @@ export default async function StudyRoomPage({ params, searchParams }: StudyRoomP
   if (!data.room) {
     return (
       <PageContainer size="medium">
-        <DetailHeader backHref="/study-rooms" backLabel="Back to Study Rooms" title="Study Room unavailable" />
+        <DetailHeader backHref="/study-rooms" backLabel="Go back to Study Rooms" title="Study Room unavailable" />
         <EmptyState
           className="mt-8"
           title="This Study Room cannot be opened"
           description="It may not exist, may be private, or may no longer be available to your account."
-          action={<ActionButton href="/study-rooms">Back to Study Rooms</ActionButton>}
+          action={<ActionButton href="/study-rooms">Go back to Study Rooms</ActionButton>}
         />
       </PageContainer>
     );
@@ -58,7 +58,7 @@ export default async function StudyRoomPage({ params, searchParams }: StudyRoomP
     <PageContainer>
       <DetailHeader
         backHref="/study-rooms"
-        backLabel="Back to Study Rooms"
+        backLabel="Go back to Study Rooms"
         eyebrow="Study Room"
         title={data.room.name}
         description={data.room.study_topic || data.room.primary_bible_book || "Structured Bible study space"}

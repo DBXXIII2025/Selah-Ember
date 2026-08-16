@@ -6,10 +6,11 @@ import { getCommunityTopicBySlug, getCommunityTestimonies, getCuratedTopicScript
 import { getVisiblePrayerRequests } from "@/app/actions/prayer";
 import { CommunityPostDisplay } from "@/components/community/community-post-display";
 import { SensitiveTopicNotice, ShareActions, ScriptureList, TestimonyCard } from "@/components/community/community-topic-components";
-import { ActionButton, ContentCard, EmptyState, PageContainer, PageHeader, SectionHeader } from "@/components/ui/app-ui";
+import { ActionButton, ContentCard, EmptyState, FormNotice, PageContainer, PageHeader, SectionHeader } from "@/components/ui/app-ui";
 
 type TopicPageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ message?: string }>;
 };
 
 export const dynamic = "force-dynamic";
@@ -23,8 +24,8 @@ export async function generateMetadata({ params }: TopicPageProps): Promise<Meta
   };
 }
 
-export default async function CommunityTopicPage({ params }: TopicPageProps) {
-  const { slug } = await params;
+export default async function CommunityTopicPage({ params, searchParams }: TopicPageProps) {
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
   const topic = await getCommunityTopicBySlug(slug);
   if (!topic) notFound();
 
@@ -52,6 +53,7 @@ export default async function CommunityTopicPage({ params }: TopicPageProps) {
         <span aria-hidden="true"> / </span>
         <span>{topic.name}</span>
       </nav>
+      {query.message ? <FormNotice className="mt-6 max-w-2xl">{query.message}</FormNotice> : null}
       {topic.is_sensitive ? <SensitiveTopicNotice /> : null}
 
       <div className="mt-8 space-y-8">

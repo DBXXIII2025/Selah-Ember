@@ -5,7 +5,7 @@ export default function NewCommunityPage() {
     <PageContainer size="medium">
       <DetailHeader
         backHref="/communities"
-        backLabel="Back to communities"
+        backLabel="Go back to communities"
         eyebrow="Open community"
         title="One community, open to everyone"
         description="Selah Ember centers one shared faith community rather than separate organization-managed spaces."

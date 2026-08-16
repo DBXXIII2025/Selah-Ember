@@ -50,7 +50,7 @@ export default async function PlatformMessagesPage({ searchParams }: PlatformMes
     <PageContainer>
       <DetailHeader
         backHref="/platform"
-        backLabel="Back to platform"
+        backLabel="Go back to Platform"
         eyebrow="Platform messages"
         title="Support conversations"
         description="Message users directly while keeping the normal user inbox and notifications intact."

@@ -15,7 +15,7 @@ export default async function NewGroupPage({ searchParams }: NewGroupPageProps) 
     <PageContainer size="medium">
       <DetailHeader
         backHref="/groups"
-        backLabel="Back to groups"
+        backLabel="Go back to Groups"
         eyebrow="New study group"
         title="Create a Bible study group"
         description="Start a focused space for Scripture, conversation, and belonging."

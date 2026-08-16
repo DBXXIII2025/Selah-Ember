@@ -40,7 +40,7 @@ export default async function EventDetailPage({ params, searchParams }: EventDet
       <div className="mx-auto max-w-5xl">
         <DetailHeader
           backHref="/events"
-          backLabel="Back to events"
+          backLabel="Go back to Events"
           eyebrow="Event"
           title={event.title}
           description={<p className="whitespace-pre-line">{event.description || "A simple gathering ready for fellowship."}</p>}

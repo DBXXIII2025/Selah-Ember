@@ -17,7 +17,7 @@ export default async function EditGivingCampaignPage({ params }: EditGivingCampa
 
   return (
     <PageContainer size="medium">
-      <DetailHeader backHref={`/leader/communities/${id}/giving`} backLabel="Back to giving" eyebrow="Planning foundation" title="Edit giving campaign" description="Update this existing planning record. Payments remain disabled." />
+      <DetailHeader backHref={`/leader/communities/${id}/giving`} backLabel="Go back to giving" eyebrow="Planning foundation" title="Edit giving campaign" description="Update this existing planning record. Payments remain disabled." />
       <FormShell className="mt-8" title="Campaign details" description="Review the record and save only the intended changes.">
           <GivingCampaignForm communityId={id} returnTo={`/leader/communities/${id}/giving`} campaign={data.campaign} />
       </FormShell>

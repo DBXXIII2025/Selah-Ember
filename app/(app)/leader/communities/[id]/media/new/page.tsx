@@ -21,7 +21,7 @@ export default async function LeaderCommunityMediaNewPage({ params }: LeaderComm
     <PageContainer size="medium">
       <DetailHeader
         backHref={`/leader/communities/${id}/media`}
-        backLabel="Back to media library"
+        backLabel="Go back to media library"
         eyebrow="Media management"
         title="Add media"
         description={<>Create a teaching, testimony, announcement, or resource for {media.community.name}.</>}

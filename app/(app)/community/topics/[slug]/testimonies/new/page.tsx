@@ -18,7 +18,7 @@ export default async function NewTopicTestimonyPage({ params, searchParams }: Ne
     <PageContainer size="medium">
       <DetailHeader
         backHref={`/community/topics/${topic.slug}`}
-        backLabel={`Back to ${topic.name}`}
+        backLabel={`Go back to ${topic.name}`}
         eyebrow="Personal testimony"
         title={`Share a testimony in ${topic.name}`}
         description="Share your personal experience in a structured way. Testimonies are not professional advice."

@@ -18,7 +18,7 @@ export default async function NewMessagePage({ searchParams }: NewMessagePagePro
     <PageContainer size="medium">
       <DetailHeader
         backHref="/messages"
-        backLabel="Back to messages"
+        backLabel="Go back to Messages"
         eyebrow="New message"
         title="Choose a person"
         description="Search visible profiles and start a private one-on-one conversation."

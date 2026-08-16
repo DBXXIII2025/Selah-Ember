@@ -15,7 +15,7 @@ export default async function NewPrayerPage({ searchParams }: NewPrayerPageProps
     <PageContainer size="medium">
       <DetailHeader
         backHref="/prayer"
-        backLabel="Back to prayer"
+        backLabel="Go back to Prayer"
         eyebrow="New prayer request"
         title="Invite prayerful care"
         description="Share what should be carried in prayer, publicly with authenticated members or privately for your own record."

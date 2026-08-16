@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink } from "lucide-react";
-import { ActionButton, ContentCard, PageContainer, PageHeader } from "@/components/ui/app-ui";
+import { ExternalLink } from "lucide-react";
+import { ActionButton, BackToLink, ContentCard, PageContainer, PageHeader } from "@/components/ui/app-ui";
 import { getCanonicalUrl } from "@/lib/site-url";
 
 export const metadata: Metadata = {
@@ -29,10 +29,7 @@ export default function DeleteAccountPage() {
   return (
     <main className="min-h-screen bg-[#f7ead7] text-[#211814]">
       <PageContainer size="medium">
-        <ActionButton href="/" variant="quiet" size="sm" className="-ml-4">
-          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-          Back home
-        </ActionButton>
+        <BackToLink href="/profile" label="Go back to Profile" />
 
         <PageHeader
           className="mt-8"

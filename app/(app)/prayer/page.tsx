@@ -1,9 +1,13 @@
 import { Lock, Plus, UsersRound } from "lucide-react";
 import { deleteOwnPrayerRequest, getVisiblePrayerRequests } from "@/app/actions/prayer";
-import { ActionButton, Badge, ConfirmActionPanel, ContentCard, EmptyState, PageContainer, PageHeader } from "@/components/ui/app-ui";
+import { ActionButton, Badge, ConfirmActionPanel, ContentCard, EmptyState, FormNotice, PageContainer, PageHeader } from "@/components/ui/app-ui";
 
-export default async function PrayerPage() {
-  const requests = await getVisiblePrayerRequests();
+type PrayerPageProps = {
+  searchParams: Promise<{ message?: string }>;
+};
+
+export default async function PrayerPage({ searchParams }: PrayerPageProps) {
+  const [requests, query] = await Promise.all([getVisiblePrayerRequests(), searchParams]);
 
   return (
     <PageContainer>
@@ -13,6 +17,8 @@ export default async function PrayerPage() {
         description="Hold public community needs and your own private requests in a quiet, protected place."
         action={<ActionButton href="/prayer/new"><Plus aria-hidden="true" className="h-4 w-4" />New request</ActionButton>}
       />
+
+      {query.message ? <FormNotice className="mt-6 max-w-2xl">{query.message}</FormNotice> : null}
 
       {requests.length === 0 ? (
         <EmptyState

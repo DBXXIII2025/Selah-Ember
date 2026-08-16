@@ -30,7 +30,7 @@ function formatDate(value: string) {
 function ConversationUnavailable() {
   return (
     <PageContainer size="medium">
-      <DetailHeader backHref="/platform/messages" backLabel="Back to platform messages" eyebrow="Platform messages" title="Conversation unavailable" />
+      <DetailHeader backHref="/platform/messages" backLabel="Go back to Platform messages" eyebrow="Platform messages" title="Conversation unavailable" />
       <EmptyState className="mt-8" title="This support conversation cannot be opened" description="It may have been removed, or this platform account may not be a participant." />
     </PageContainer>
   );
@@ -51,7 +51,7 @@ export default async function PlatformConversationPage({ params, searchParams }:
       <div className="mx-auto max-w-6xl">
         <DetailHeader
           backHref="/platform/messages"
-          backLabel="Back to platform messages"
+          backLabel="Go back to Platform messages"
           eyebrow="Support conversation"
           title={targetName}
           description={<span className="break-words text-sm">Conversation ID: {conversation.id}</span>}

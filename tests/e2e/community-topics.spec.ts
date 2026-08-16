@@ -198,7 +198,9 @@ test.describe.serial("Community topics and testimonies", () => {
     await page.getByLabel("Title").fill(`${runId} topic post`);
     await page.getByLabel("Body").fill("A focused Anger post fixture.");
     await page.getByRole("button", { name: "Post" }).click();
-    await expect(page).toHaveURL(/\/community\/posts\//, { timeout: 90_000 });
+    await expect(page).toHaveURL(/\/community\/topics\/anger(?:\?|$)/, { timeout: 90_000 });
+    await expect(page.getByText("Post shared.")).toBeVisible();
+    await expect(page.getByText(`${runId} topic post`)).toBeVisible();
     const postResult = await admin.from("community_posts").select("id").eq("title", `${runId} topic post`).single();
     expect(postResult.error).toBeNull();
     postId = postResult.data!.id;
@@ -215,10 +217,12 @@ test.describe.serial("Community topics and testimonies", () => {
     await page.getByLabel("Ending verse").fill("20");
     await page.getByLabel("Reflection on Scripture").fill("This is my reflection on the passage.");
     await page.getByRole("button", { name: "Share testimony" }).click();
-    await expect(page).toHaveURL(/\/community\/testimonies\//, { timeout: 90_000 });
+    await expect(page).toHaveURL(/\/community\/topics\/anger(?:\?|$)/, { timeout: 90_000 });
+    await expect(page.getByText("Testimony shared.")).toBeVisible();
     const testimonyResult = await admin.from("community_testimonies").select("id").eq("title", `${runId} testimony`).single();
     expect(testimonyResult.error).toBeNull();
     testimonyId = testimonyResult.data!.id;
+    await page.goto(`/community/testimonies/${testimonyId}`);
     await expect(page.getByRole("heading", { name: `${runId} testimony` })).toBeVisible();
     await expect(page.getByRole("link", { name: "James 1:19-20" })).toBeVisible();
 

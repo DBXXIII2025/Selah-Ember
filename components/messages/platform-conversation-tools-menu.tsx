@@ -34,7 +34,7 @@ export function PlatformConversationToolsMenu() {
             className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-[#3b312b] transition hover:bg-[#fff4e8] hover:text-[#b94f22]"
           >
             <MessageCircle aria-hidden="true" className="h-4 w-4" />
-            Back to platform messages
+            Go back to Platform messages
           </Link>
           <button
             type="button"

@@ -22,7 +22,7 @@ export default async function LeaderGivingPage({ params, searchParams }: LeaderG
     <PageContainer>
       <DetailHeader
         backHref={`/leader/communities/${id}`}
-        backLabel="Back to management"
+        backLabel="Go back to management"
         eyebrow="Planning foundation"
         title="Giving"
         description={<>Manage campaign planning records and review non-payment giving intents for {data.community.name}.</>}

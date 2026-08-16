@@ -642,7 +642,7 @@ export async function createCommunityTestimony(formData: FormData) {
   revalidatePath("/community");
   revalidatePath("/community/testimonies");
   revalidatePath(`/community/topics/${topic.slug}`);
-  redirect(`/community/testimonies/${data.id}`);
+  redirect(`/community/topics/${topic.slug}?message=Testimony shared.`);
 }
 
 async function getTestimonyRecord(testimonyId: string) {

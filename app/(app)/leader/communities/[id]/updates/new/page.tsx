@@ -17,7 +17,7 @@ export default async function NewCommunityUpdatePage({ params }: NewCommunityUpd
 
   return (
     <PageContainer size="medium">
-      <DetailHeader backHref={`/leader/communities/${id}/updates`} backLabel="Back to updates" eyebrow="Official content" title="New community update" description={<>Share an official update for {data.community.name}.</>} />
+      <DetailHeader backHref={`/leader/communities/${id}/updates`} backLabel="Go back to updates" eyebrow="Official content" title="New community update" description={<>Share an official update for {data.community.name}.</>} />
       <FormShell className="mt-8" title="Update details" description="Add text, a safe link, or an image or video attachment.">
           <CommunityPostForm
             action={createCommunityPost}

@@ -66,6 +66,23 @@ export function ActionButton({
   );
 }
 
+export function BackToLink({
+  href,
+  label,
+  className,
+}: Readonly<{
+  href: string;
+  label: string;
+  className?: string;
+}>) {
+  return (
+    <ActionButton href={href} variant="quiet" size="sm" className={cn("-ml-4", className)}>
+      <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+      {label}
+    </ActionButton>
+  );
+}
+
 export function PageContainer({
   children,
   size = "wide",
@@ -402,10 +419,7 @@ export function DetailHeader({
 }>) {
   return (
     <div className={className}>
-      <ActionButton href={backHref} variant="quiet" size="sm" className="-ml-4">
-        <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-        {backLabel}
-      </ActionButton>
+      <BackToLink href={backHref} label={backLabel} />
       <PageHeader eyebrow={eyebrow} title={title} description={description} action={action} className="mt-6" />
       {children ? <div className="mt-5">{children}</div> : null}
     </div>

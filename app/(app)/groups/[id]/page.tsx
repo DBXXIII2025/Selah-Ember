@@ -33,7 +33,7 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
       <div className="mx-auto max-w-5xl">
         <DetailHeader
           backHref={status.isSignedIn ? "/groups" : "/discover/groups"}
-          backLabel="Back to groups"
+          backLabel="Go back to Groups"
           eyebrow="Study group"
           title={group.title}
           description={<p className="whitespace-pre-line">{group.description || "A quiet group foundation ready for Scripture and fellowship."}</p>}

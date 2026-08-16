@@ -8,7 +8,7 @@ import {
   updateOpenCommunityComment,
 } from "@/app/actions/community-posts";
 import { CommunityPostDisplay } from "@/components/community/community-post-display";
-import { ActionButton } from "@/components/ui/app-ui";
+import { ActionButton, BackToLink } from "@/components/ui/app-ui";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 type CommunityPostPageProps = {
@@ -33,9 +33,7 @@ export default async function CommunityPostPage({ params, searchParams }: Commun
   return (
     <section className="px-6 py-10 sm:px-10 lg:px-16">
       <div className="mx-auto max-w-3xl">
-        <Link href="/community" className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">
-          Back to community
-        </Link>
+        <BackToLink href="/community" label="Go back to Community" />
 
         {query.message ? (
           <div className="mt-6 rounded-xl border border-[#ead6c5] bg-white/80 p-4 text-sm text-[#67564c]">
