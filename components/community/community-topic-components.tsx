@@ -91,7 +91,7 @@ export function TestimonyCard({ testimony, href }: Readonly<{ testimony: Communi
       <h2 className="mt-4 text-xl font-semibold text-[#2f2722]">{testimony.title}</h2>
       <p className="mt-3 line-clamp-4 whitespace-pre-line text-sm leading-6 text-[#67564c]">{testimony.what_i_went_through}</p>
       <div className="mt-5 flex flex-wrap items-center gap-2 text-sm text-[#67564c]">
-        <span>{testimony.author_name || "Member"}</span>
+        <Link href={testimony.author_id ? `/members/${testimony.author_id}` : "#"}>{testimony.author_name || "Member"}</Link>
         {testimony.scriptures.length > 0 ? <Badge>Scripture linked</Badge> : null}
       </div>
     </ContentCard>
@@ -119,7 +119,7 @@ export function TestimonyDetail({ testimony }: Readonly<{ testimony: CommunityTe
               <span className="text-xs text-[#715e54]">{formatDate(testimony.created_at)}</span>
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">{testimony.title}</h1>
-            <p className="mt-3 text-sm font-semibold text-[#67564c]">{testimony.author_name || "Member"}</p>
+            <Link href={testimony.author_id ? `/members/${testimony.author_id}` : "#"} className="mt-3 inline-flex text-sm font-semibold text-[#67564c] hover:text-[#a94720]">{testimony.author_name || "Member"}</Link>
           </div>
           {testimony.can_edit ? <ActionButton href={`/community/testimonies/${testimony.id}/edit`} variant="secondary">Edit</ActionButton> : null}
         </div>

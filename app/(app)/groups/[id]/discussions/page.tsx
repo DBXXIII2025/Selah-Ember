@@ -1,11 +1,11 @@
 import { MessageSquareText, Plus } from "lucide-react";
 import Link from "next/link";
-import { getGroupThreads } from "@/app/actions/discussions";
+import { getGroupThreads, toggleGroupThreadPin } from "@/app/actions/discussions";
 import { BackToLink } from "@/components/ui/app-ui";
 
 type GroupDiscussionsPageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ message?: string }>;
+  searchParams: Promise<{ message?: string; q?: string; member?: string; category?: string; sort?: string; page?: string }>;
 };
 
 function formatDate(value: string) {
@@ -23,8 +23,9 @@ function previewBody(body: string) {
 
 export default async function GroupDiscussionsPage({ params, searchParams }: GroupDiscussionsPageProps) {
   const { id } = await params;
-  const { message } = await searchParams;
-  const data = await getGroupThreads(id);
+  const query = await searchParams;
+  const { message } = query;
+  const data = await getGroupThreads(id, { ...query, page: Number(query.page) || 1 });
 
   if (data.state === "missing") {
     return (
@@ -102,6 +103,8 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
             {message}
           </p>
         ) : null}
+        {data.migrationRequired ? <p className="mt-4 rounded-xl bg-[#fff4e8] p-4 text-sm text-[#8a3f1e]">Migration 0047 is required for categories and pins. Discussions remain readable.</p> : null}
+        {data.isMember ? <form className="mt-6 grid gap-3 rounded-2xl border border-[#ead6c5] bg-white/75 p-5 md:grid-cols-4"><label className="text-sm font-semibold">Keywords<input name="q" defaultValue={query.q} className="mt-2 w-full rounded-xl border border-[#d9b99d] px-3 py-2" /></label><label className="text-sm font-semibold">Member<input name="member" defaultValue={query.member} className="mt-2 w-full rounded-xl border border-[#d9b99d] px-3 py-2" /></label><label className="text-sm font-semibold">Category<select name="category" defaultValue={query.category || "all"} className="mt-2 w-full rounded-xl border border-[#d9b99d] px-3 py-2"><option value="all">All</option><option value="general">General</option><option value="bible_study">Bible Study</option><option value="question">Question</option><option value="prayer">Prayer</option><option value="testimony">Testimony</option><option value="fellowship">Fellowship</option><option value="announcement">Announcement</option></select></label><label className="text-sm font-semibold">Sort<select name="sort" defaultValue={query.sort || "active"} className="mt-2 w-full rounded-xl border border-[#d9b99d] px-3 py-2"><option value="active">Recently active</option><option value="newest">Newest</option><option value="oldest">Oldest</option></select></label><button className="rounded-full bg-[#a94720] px-5 py-2 font-semibold text-white md:col-span-4 md:justify-self-start">Apply filters</button></form> : null}
 
         {!data.isSignedIn ? (
           <div className="mt-8 rounded-2xl border border-[#ead6c5] bg-white/75 p-8 text-center shadow-sm">
@@ -130,6 +133,7 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
               <article key={thread.id} className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#8a3f1e]">{thread.is_pinned ? "Pinned · " : ""}{thread.category.replace("_", " ")}</p>
                     <Link
                       href={`/groups/${group!.id}/discussions/${thread.id}`}
                       className="text-2xl font-semibold hover:text-[#b94f22]"
@@ -137,7 +141,7 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
                       {thread.deleted_at ? "Thread deleted" : thread.title}
                     </Link>
                     <p className="mt-2 text-sm text-[#715e54]">
-                      {thread.author.display_name} · updated {formatDate(thread.updated_at)}
+                      <Link href={`/members/${thread.author.user_id}`} className="hover:text-[#a94720]">{thread.author.display_name}</Link> · updated {formatDate(thread.updated_at)}
                     </p>
                   </div>
                   <span className="rounded-full bg-[#fff4e8] px-3 py-1 text-sm font-semibold text-[#8a3f1e]">
@@ -147,10 +151,12 @@ export default async function GroupDiscussionsPage({ params, searchParams }: Gro
                 <p className="mt-4 leading-7 text-[#67564c]">
                   {thread.deleted_at ? "Thread deleted" : previewBody(thread.body)}
                 </p>
+                {data.canPin && !data.migrationRequired ? <form action={toggleGroupThreadPin} className="mt-4"><input type="hidden" name="thread_id" value={thread.id}/><input type="hidden" name="group_id" value={group!.id}/><input type="hidden" name="return_path" value={`/groups/${group!.id}/discussions`}/><button className="text-sm font-semibold text-[#8a3f1e]">{thread.is_pinned ? "Unpin" : "Pin"} discussion</button></form> : null}
               </article>
             ))}
           </div>
         )}
+        {data.isMember ? <nav aria-label="Discussion pages" className="mt-8 flex justify-between">{data.page > 1 ? <Link className="font-semibold text-[#8a3f1e]" href={`?${new URLSearchParams({ ...query, page: String(data.page - 1) })}`}>Previous</Link> : <span />}{data.page < data.pageCount ? <Link className="font-semibold text-[#8a3f1e]" href={`?${new URLSearchParams({ ...query, page: String(data.page + 1) })}`}>Next</Link> : null}</nav> : null}
       </div>
     </section>
   );

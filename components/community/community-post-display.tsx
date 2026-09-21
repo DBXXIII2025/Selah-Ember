@@ -63,16 +63,16 @@ export function CommunityPostDisplay({ post, href, editHref, compact = false }: 
     <article className="rounded-2xl border border-[#ead6c5] bg-white/80 p-5 shadow-sm">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div className="flex gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#ffe2cb] text-sm font-semibold text-[#8a3f1e]">
+          <Link href={post.author_id ? `/members/${post.author_id}` : "#"} aria-label={`View ${post.author_name || "member"}'s profile`} className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#ffe2cb] text-sm font-semibold text-[#8a3f1e]">
             {post.author_avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={post.author_avatar_url} alt="" className="h-full w-full object-cover" />
             ) : (
               (post.author_name || "Member").slice(0, 1).toUpperCase()
             )}
-          </div>
+          </Link>
           <div>
-            <p className="text-sm font-semibold text-[#3b312b]">{post.author_name || "Member"}</p>
+            <Link href={post.author_id ? `/members/${post.author_id}` : "#"} className="text-sm font-semibold text-[#3b312b] hover:text-[#a94720]">{post.author_name || "Member"}</Link>
             <p className="mt-1 text-xs text-[#715e54]">
               {formatDate(post.created_at)}
               {wasEdited(post) ? " - edited" : ""}

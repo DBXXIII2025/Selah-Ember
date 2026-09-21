@@ -44,6 +44,15 @@ export type CommunityPost = {
   viewer_reactions: CommunityReaction[];
   can_delete: boolean;
   can_edit: boolean;
+  is_pinned: boolean;
+};
+
+export type CommunityBrowseResult = {
+  posts: CommunityPost[];
+  total: number;
+  page: number;
+  pageCount: number;
+  migrationRequired: boolean;
 };
 
 export type CommunityPostComment = {
@@ -214,7 +223,63 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
     viewer_reactions: [],
     can_delete: false,
     can_edit: false,
+    is_pinned: row.is_pinned === true,
   };
+}
+
+export async function browseCommunityPosts(input: {
+  q?: string;
+  member?: string;
+  topic?: string;
+  sort?: string;
+  page?: number;
+}): Promise<CommunityBrowseResult> {
+  const auth = await getOptionalAuthAndProfile();
+  const page = Math.max(1, Math.floor(input.page || 1));
+  const admin = createAdminClient();
+  const select = "id,community_id,author_id,title,body,media_url,media_kind,storage_path,file_name,mime_type,size_bytes,is_published,created_at,updated_at,deleted_at,is_pinned,topic_links:community_post_topics(topic:community_topics(slug))";
+  let migrationRequired = false;
+  const initialResult = await admin.from("community_posts").select(select).eq("is_published", true).is("deleted_at", null);
+  let rows = (initialResult.data || []) as unknown as Record<string, unknown>[];
+  let error = initialResult.error;
+  if (error?.code === "42703") {
+    migrationRequired = true;
+    const fallbackResult = await admin.from("community_posts").select(select.replace(",is_pinned", "")).eq("is_published", true).is("deleted_at", null);
+    rows = (fallbackResult.data || []) as unknown as Record<string, unknown>[];
+    error = fallbackResult.error;
+  }
+  if (error) throw new Error(error.message);
+
+  const profiles = await getDisplayProfiles(rows.map((row) => String(row.author_id || "")));
+  const profileRows = await admin.from("profiles").select("user_id,display_name,username").in("user_id", rows.map((row) => String(row.author_id || "")).filter(Boolean));
+  const profileSearch = new Map((profileRows.data || []).map((row) => [String(row.user_id), `${row.display_name || ""} ${row.username || ""}`.toLowerCase()]));
+  const q = input.q?.trim().toLowerCase();
+  const member = input.member?.trim().toLowerCase();
+  rows = rows.filter((row) => {
+    if (q && !`${row.title || ""} ${row.body || ""}`.toLowerCase().includes(q)) return false;
+    if (member && !(profileSearch.get(String(row.author_id)) || "").includes(member)) return false;
+    if (input.topic) {
+      const links = Array.isArray(row.topic_links) ? row.topic_links : [];
+      if (!links.some((link) => {
+        const topic = (link as Record<string, unknown>).topic as Record<string, unknown> | null;
+        return topic?.slug === input.topic;
+      })) return false;
+    }
+    return true;
+  });
+  const sort = input.sort === "oldest" ? "oldest" : input.sort === "newest" ? "newest" : "updated";
+  rows.sort((a, b) => {
+    const pin = Number(b.is_pinned === true) - Number(a.is_pinned === true);
+    if (pin) return pin;
+    const field = sort === "updated" ? "updated_at" : "created_at";
+    const delta = new Date(String(b[field])).getTime() - new Date(String(a[field])).getTime();
+    return sort === "oldest" ? -delta : delta;
+  });
+  const total = rows.length;
+  const pageRows = rows.slice((page - 1) * 10, page * 10);
+  let posts: CommunityPost[] = pageRows.map(mapPost).map((post) => ({ ...post, author_name: profiles.get(post.author_id)?.display_name || "Member", author_avatar_url: profiles.get(post.author_id)?.avatar_url || null }));
+  posts = await signPosts(await addReactionState(await addCommentCounts(posts, auth?.user.id || null, auth?.profile.role === "platform_engineer"), auth?.user.id || null));
+  return { posts, total, page, pageCount: Math.max(1, Math.ceil(total / 10)), migrationRequired };
 }
 
 function mapComment(row: Record<string, unknown>, currentUserId: string | null, canModerate = false): CommunityPostComment {

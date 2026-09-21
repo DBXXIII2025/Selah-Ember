@@ -64,6 +64,7 @@ export default async function NewGroupDiscussionPage({ params, searchParams }: N
           ) : null}
           <form action={createGroupThread} className="mt-8 space-y-5">
             <input type="hidden" name="group_id" value={group!.id} />
+            <label className="block"><span className="text-sm font-medium text-[#3b312b]">Category</span><select name="category" className={inputClassName}><option value="general">General</option><option value="bible_study">Bible Study</option><option value="question">Question</option><option value="prayer">Prayer</option><option value="testimony">Testimony</option><option value="fellowship">Fellowship</option><option value="announcement">Announcement</option></select></label>
             <label className="block">
               <span className="text-sm font-medium text-[#3b312b]">Title</span>
               <input name="title" required maxLength={160} className={inputClassName} />

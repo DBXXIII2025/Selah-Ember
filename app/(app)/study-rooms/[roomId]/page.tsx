@@ -24,6 +24,11 @@ type StudyRoomPageProps = {
     prayer_category?: string;
     resource_type?: string;
     saved?: string;
+    discussion_q?: string;
+    discussion_member?: string;
+    discussion_study?: string;
+    discussion_sort?: string;
+    discussion_page?: string;
   }>;
 };
 
@@ -80,6 +85,11 @@ export default async function StudyRoomPage({ params, searchParams }: StudyRoomP
           prayerCategory: query.prayer_category || "all",
           resourceType: query.resource_type || "all",
           saved: query.saved === "1",
+          discussionQuery: query.discussion_q || "",
+          discussionMember: query.discussion_member || "",
+          discussionStudy: query.discussion_study || "all",
+          discussionSort: query.discussion_sort || "active",
+          discussionPage: Math.max(1, Number(query.discussion_page) || 1),
         }}
       />
     </PageContainer>

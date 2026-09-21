@@ -3,16 +3,18 @@ import { cn } from "@/lib/utils/cn";
 
 const tabs = [
   { href: "/community", label: "Home" },
+  { href: "/community/browse", label: "Browse" },
   { href: "/community/testimonies", label: "Testimonies" },
 ] as const;
 
-export function CommunityTabs({ active }: Readonly<{ active: "home" | "topics" | "testimonies" }>) {
+export function CommunityTabs({ active }: Readonly<{ active: "home" | "browse" | "topics" | "testimonies" }>) {
   return (
     <nav aria-label="Community views" className="mt-6 overflow-x-auto">
       <div className="inline-flex min-w-full rounded-full border border-[#d9b99d] bg-white/70 p-1 sm:min-w-0">
         {tabs.map((tab) => {
           const selected =
             (active === "home" && tab.label === "Home")
+            || (active === "browse" && tab.label === "Browse")
             || (active === "testimonies" && tab.label === "Testimonies");
           return (
             <Link

@@ -22,11 +22,13 @@ export default async function ProtectedLayout({
   const isPublicEventDetail = /^\/events\/[^/]+$/.test(pathname);
   const isPublicCommunityFeed =
     pathname === "/community"
+    || pathname === "/community/browse"
     || /^\/community\/posts\/[^/]+$/.test(pathname)
     || pathname === "/community/topics"
     || /^\/community\/topics\/[^/]+$/.test(pathname)
     || pathname === "/community/testimonies"
     || /^\/community\/testimonies\/[^/]+$/.test(pathname);
+  const isPublicMemberPage = pathname === "/members" || /^\/members\/[^/]+$/.test(pathname);
   const supabase = await createClient();
   let user: User | null = null;
 
@@ -40,7 +42,7 @@ export default async function ProtectedLayout({
     });
   }
 
-  if (!user && !isPublicGroupDetail && !isPublicEventDetail && !isPublicCommunityFeed) {
+  if (!user && !isPublicGroupDetail && !isPublicEventDetail && !isPublicCommunityFeed && !isPublicMemberPage) {
     redirect("/signin");
   }
 
@@ -69,6 +71,7 @@ export default async function ProtectedLayout({
   const navigationItems: NavigationItem[] = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/community", label: "Community" },
+    { href: "/members", label: "Members" },
     { href: "/prayer", label: "Prayer" },
     { href: "/bible", label: "Bible" },
     { href: "/groups", label: "Groups" },

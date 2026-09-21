@@ -54,6 +54,8 @@ export type DiscussionThreadSummary = {
   deleted_at: string | null;
   reply_count: number;
   author: DiscussionAuthor;
+  category: string;
+  is_pinned: boolean;
 };
 
 export type DiscussionReply = {
@@ -94,6 +96,11 @@ export type GroupDiscussionData = {
   isMember: boolean;
   role: string | null;
   threads: DiscussionThreadSummary[];
+  total: number;
+  page: number;
+  pageCount: number;
+  migrationRequired: boolean;
+  canPin: boolean;
 };
 
 export type DiscussionThreadData = {
@@ -507,6 +514,8 @@ async function normalizeThreads(rows: Record<string, unknown>[]) {
         display_name: authorId ? "Selah Ember Member" : "Deleted user",
         username: null,
       },
+      category: typeof row.category === "string" ? row.category : "general",
+      is_pinned: row.is_pinned === true,
     } satisfies DiscussionThreadSummary;
   });
 }
@@ -672,7 +681,7 @@ export async function getCommunityThreads(communityId: string): Promise<Communit
   return { community, state: "allowed", isSignedIn: true, isMember, role, threads };
 }
 
-export async function getGroupThreads(groupId: string): Promise<GroupDiscussionData> {
+export async function getGroupThreads(groupId: string, filters: { q?: string; member?: string; category?: string; sort?: string; page?: number } = {}): Promise<GroupDiscussionData> {
   const [profile, group] = await Promise.all([getOptionalProfile(), getGroup(groupId)]);
 
   if (!group) {
@@ -684,11 +693,11 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
       membershipCheckPassed: false,
       membershipResultCount: 0,
     });
-    return { group: null, state: "missing", isSignedIn: Boolean(profile), isMember: false, role: null, threads: [] };
+    return { group: null, state: "missing", isSignedIn: Boolean(profile), isMember: false, role: null, threads: [], total: 0, page: 1, pageCount: 1, migrationRequired: false, canPin: false };
   }
 
   if (!profile) {
-    return { group, state: "signed_out", isSignedIn: false, isMember: false, role: null, threads: [] };
+    return { group, state: "signed_out", isSignedIn: false, isMember: false, role: null, threads: [], total: 0, page: 1, pageCount: 1, migrationRequired: false, canPin: false };
   }
 
   const access = await getGroupAccess(groupId);
@@ -704,16 +713,24 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
       membershipCheckPassed: access.membershipCheckPassed,
       membershipResultCount: access.membershipResultCount,
     });
-    return { group, state: "non_member", isSignedIn: true, isMember: false, role: null, threads: [] };
+    return { group, state: "non_member", isSignedIn: true, isMember: false, role: null, threads: [], total: 0, page: 1, pageCount: 1, migrationRequired: false, canPin: false };
   }
 
   const admin = createAdminClient();
-  const { data, error } = await admin
+  const initialResult = await admin
     .from("discussion_threads")
-    .select("id,scope_type,community_id,group_id,author_id,title,body,created_at,updated_at,deleted_at")
+    .select("id,scope_type,community_id,group_id,author_id,title,body,category,is_pinned,created_at,updated_at,deleted_at")
     .eq("scope_type", "group")
-    .eq("group_id", groupId)
-    .order("updated_at", { ascending: false });
+    .eq("group_id", groupId);
+  let data = initialResult.data as unknown as Record<string, unknown>[] | null;
+  let error = initialResult.error;
+  let migrationRequired = false;
+  if (error?.code === "42703") {
+    migrationRequired = true;
+    const fallbackResult = await admin.from("discussion_threads").select("id,scope_type,community_id,group_id,author_id,title,body,created_at,updated_at,deleted_at").eq("scope_type", "group").eq("group_id", groupId);
+    data = fallbackResult.data as unknown as Record<string, unknown>[] | null;
+    error = fallbackResult.error;
+  }
 
   if (error) {
     discussionLog("group_threads_lookup_failed", {
@@ -723,11 +740,16 @@ export async function getGroupThreads(groupId: string): Promise<GroupDiscussionD
       code: error.code,
       message: error.message,
     });
-    return { group, state: "allowed", isSignedIn: true, isMember, role, threads: [] };
+    return { group, state: "allowed", isSignedIn: true, isMember, role, threads: [], total: 0, page: 1, pageCount: 1, migrationRequired, canPin: role === "owner" || role === "leader" || profile.role === "platform_engineer" };
   }
 
-  const threads = await normalizeThreads((data || []) as unknown as Record<string, unknown>[]);
-  return { group, state: "allowed", isSignedIn: true, isMember, role, threads };
+  let threads = await normalizeThreads(data || []);
+  const q = filters.q?.trim().toLowerCase(); const member = filters.member?.trim().toLowerCase();
+  threads = threads.filter((thread) => (!q || `${thread.title} ${thread.body}`.toLowerCase().includes(q)) && (!member || `${thread.author.display_name} ${thread.author.username || ""}`.toLowerCase().includes(member)) && (!filters.category || filters.category === "all" || thread.category === filters.category));
+  const sort = filters.sort === "newest" || filters.sort === "oldest" ? filters.sort : "active";
+  threads.sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned) || (sort === "oldest" ? 1 : -1) * (new Date(sort === "active" ? a.updated_at : a.created_at).getTime() - new Date(sort === "active" ? b.updated_at : b.created_at).getTime()));
+  const total = threads.length; const page = Math.max(1, filters.page || 1); const pageCount = Math.max(1, Math.ceil(total / 10));
+  return { group, state: "allowed", isSignedIn: true, isMember, role, threads: threads.slice((page - 1) * 10, page * 10), total, page, pageCount, migrationRequired, canPin: role === "owner" || role === "leader" || profile.role === "platform_engineer" };
 }
 
 export async function getDiscussionThread(threadId: string): Promise<DiscussionThreadData> {
@@ -832,6 +854,7 @@ export async function createGroupThread(formData: FormData) {
   const groupId = getFormString(formData, "group_id");
   const title = getFormString(formData, "title");
   const body = getFormString(formData, "body");
+  const category = getFormString(formData, "category") || "general";
   const redirectPath = `/groups/${groupId}/discussions/new`;
 
   if (!groupId || !isUuid(groupId)) {
@@ -855,12 +878,13 @@ export async function createGroupThread(formData: FormData) {
       author_id: profile.authUserId,
       title,
       body,
+      category,
     })
     .select("id")
     .single();
 
   if (error) {
-    redirect(`${redirectPath}?message=${safeMessage(error.message)}`);
+    redirect(`${redirectPath}?message=${safeMessage(error.code === "42703" ? "Migration 0047 is required before categories can be saved." : error.message)}`);
   }
 
   const threadId = String(data.id);
@@ -870,6 +894,16 @@ export async function createGroupThread(formData: FormData) {
   revalidatePath(`/groups/${groupId}/discussions/${threadId}`);
   revalidatePath("/notifications");
   redirect(`/groups/${groupId}/discussions?message=Thread created.`);
+}
+
+export async function toggleGroupThreadPin(formData: FormData) {
+  const profile = await getCurrentProfile(); const threadId = getFormString(formData, "thread_id"); const groupId = getFormString(formData, "group_id"); const returnPath = safeReturnPath(getFormString(formData, "return_path"), `/groups/${groupId}/discussions`);
+  const access = await getGroupAccess(groupId);
+  if (profile.role !== "platform_engineer" && access.role !== "owner" && access.role !== "leader") redirect(`${returnPath}?message=You cannot pin discussions.`);
+  const admin = createAdminClient(); const { data } = await admin.from("discussion_threads").select("is_pinned").eq("id", threadId).eq("group_id", groupId).maybeSingle();
+  const { error } = await admin.from("discussion_threads").update({ is_pinned: !data?.is_pinned }).eq("id", threadId).eq("group_id", groupId);
+  if (error) redirect(`${returnPath}?message=${safeMessage(error.code === "42703" ? "Migration 0047 is required for pinning." : "Could not update pin.")}`);
+  revalidatePath(returnPath); redirect(returnPath);
 }
 
 export async function createDiscussionReply(formData: FormData) {

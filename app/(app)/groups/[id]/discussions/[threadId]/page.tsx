@@ -109,7 +109,7 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">Group thread</p>
               <h1 className="mt-3 text-4xl font-semibold">{thread.deleted_at ? "Thread deleted" : thread.title}</h1>
               <p className="mt-3 text-sm text-[#715e54]">
-                {thread.author.display_name} · {formatDate(thread.created_at)}
+                <Link href={`/members/${thread.author.user_id}`} className="hover:text-[#a94720]">{thread.author.display_name}</Link> · {formatDate(thread.created_at)}
               </p>
             </div>
             {!thread.deleted_at ? (
@@ -151,7 +151,7 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
               <article key={reply.id} className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <p className="text-sm font-semibold text-[#8a3f1e]">
-                    {reply.author.display_name} · <span className="font-normal text-[#715e54]">{formatDate(reply.created_at)}</span>
+                    <Link href={`/members/${reply.author.user_id}`} className="hover:text-[#a94720]">{reply.author.display_name}</Link> · <span className="font-normal text-[#715e54]">{formatDate(reply.created_at)}</span>
                   </p>
                   {!reply.deleted_at ? (
                     <form action={reportDiscussionReply}>

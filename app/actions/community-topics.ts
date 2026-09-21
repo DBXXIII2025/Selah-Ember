@@ -465,6 +465,7 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
     viewer_reactions: [],
     can_delete: false,
     can_edit: false,
+    is_pinned: false,
   };
 }
 

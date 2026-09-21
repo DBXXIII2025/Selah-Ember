@@ -6,6 +6,8 @@ const publicPages = [
   { path: "/community", name: "community" },
   { path: "/community/topics", name: "community topics" },
   { path: "/community/testimonies", name: "community testimonies" },
+  { path: "/community/browse", name: "community browse" },
+  { path: "/members", name: "members" },
   { path: "/discover", name: "discover" },
   { path: "/discover/groups", name: "group discovery" },
   { path: "/signin", name: "sign in" },
