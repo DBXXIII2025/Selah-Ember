@@ -2,12 +2,14 @@ import Link from "next/link";
 import { CommunityPostReactions } from "@/components/community/community-post-reactions";
 import { SafeLink } from "@/components/media/safe-link";
 import type { CommunityPost } from "@/app/actions/community-posts";
+import { toggleCommunityPostPin } from "@/app/actions/community-posts";
 
 type CommunityPostDisplayProps = {
   post: CommunityPost;
   href?: string | null;
   editHref?: string | null;
   compact?: boolean;
+  pinReturnTo?: string;
 };
 
 function formatDate(value: string) {
@@ -56,14 +58,14 @@ function Media({ post }: Readonly<{ post: CommunityPost }>) {
   return null;
 }
 
-export function CommunityPostDisplay({ post, href, editHref, compact = false }: Readonly<CommunityPostDisplayProps>) {
+export function CommunityPostDisplay({ post, href, editHref, compact = false, pinReturnTo = "/community/browse" }: Readonly<CommunityPostDisplayProps>) {
   const title = post.title || "Community post";
 
   return (
     <article className="rounded-2xl border border-[#ead6c5] bg-white/80 p-5 shadow-sm">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div className="flex gap-3">
-          <Link href={post.author_id ? `/members/${post.author_id}` : "#"} aria-label={`View ${post.author_name || "member"}'s profile`} className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#ffe2cb] text-sm font-semibold text-[#8a3f1e]">
+          <Link href={post.author_profile_id ? `/members/${post.author_profile_id}` : "#"} aria-label={`View ${post.author_name || "member"}'s profile`} className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#ffe2cb] text-sm font-semibold text-[#8a3f1e]">
             {post.author_avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={post.author_avatar_url} alt="" className="h-full w-full object-cover" />
@@ -72,7 +74,8 @@ export function CommunityPostDisplay({ post, href, editHref, compact = false }: 
             )}
           </Link>
           <div>
-            <Link href={post.author_id ? `/members/${post.author_id}` : "#"} className="text-sm font-semibold text-[#3b312b] hover:text-[#a94720]">{post.author_name || "Member"}</Link>
+            <Link href={post.author_profile_id ? `/members/${post.author_profile_id}` : "#"} className="text-sm font-semibold text-[#3b312b] hover:text-[#a94720]">{post.author_name || "Member"}</Link>
+            {post.author_username ? <span className="ml-2 text-xs text-[#715e54]">@{post.author_username}</span> : null}
             <p className="mt-1 text-xs text-[#715e54]">
               {formatDate(post.created_at)}
               {wasEdited(post) ? " - edited" : ""}
@@ -90,6 +93,8 @@ export function CommunityPostDisplay({ post, href, editHref, compact = false }: 
             ) : null}
           </div>
         </div>
+        <div className="flex flex-wrap gap-2">
+        {post.is_pinned ? <span className="rounded-full bg-[#ffe2cb] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#8a3f1e]">Pinned</span> : null}
         {editHref ? (
           <Link
             href={editHref}
@@ -98,9 +103,11 @@ export function CommunityPostDisplay({ post, href, editHref, compact = false }: 
             Edit
           </Link>
         ) : null}
+        </div>
       </div>
 
       {post.body ? <p className="mt-4 whitespace-pre-wrap leading-7 text-[#3b312b]">{post.body}</p> : null}
+      {post.topics.length ? <div className="mt-4 flex flex-wrap gap-2">{post.topics.map((topic) => <Link key={topic.slug} href={`/community/browse?topic=${encodeURIComponent(topic.slug)}`} className="rounded-full bg-[#fff4e8] px-3 py-1 text-xs font-semibold text-[#8a3f1e]">{topic.name}</Link>)}</div> : <Link href="/community/browse?topic=general" className="mt-4 inline-flex rounded-full bg-[#fff4e8] px-3 py-1 text-xs font-semibold text-[#8a3f1e]">General Community</Link>}
       <div className="mt-4">
         <Media post={post} />
       </div>
@@ -123,6 +130,7 @@ export function CommunityPostDisplay({ post, href, editHref, compact = false }: 
           </span>
         )}
       </div>
+      {post.can_pin ? <form action={toggleCommunityPostPin} className="mt-4"><input type="hidden" name="post_id" value={post.id} /><input type="hidden" name="return_to" value={pinReturnTo} /><button className="text-sm font-semibold text-[#8a3f1e] hover:text-[#b94f22]">{post.is_pinned ? "Unpin" : "Pin"} post</button></form> : null}
     </article>
   );
 }

@@ -109,6 +109,7 @@ export type StudyRoomInvitation = {
 export type StudyRoomAuthorContent = {
   id: string;
   author_user_id: string | null;
+  author_profile_id: string | null;
   author_name: string;
   canEdit: boolean;
   canModerate: boolean;
@@ -246,6 +247,18 @@ export type StudyRoomDetailData = StudyRoomOverviewData & {
   resourcesDetail: StudyRoomResource[];
   savedNotes: StudyRoomNote[];
   savedThreads: StudyRoomDiscussionThread[];
+  discussionTotal: number;
+  discussionPage: number;
+  discussionPageCount: number;
+};
+
+export type StudyRoomDiscussionFilters = {
+  q?: string;
+  member?: string;
+  study?: string;
+  saved?: boolean;
+  sort?: string;
+  page?: number;
 };
 
 const roomSummarySelect =
@@ -702,6 +715,7 @@ export async function getStudyRoomOverview(roomId: string): Promise<StudyRoomOve
 function normalizeAuthorContent(
   row: Record<string, unknown>,
   authorMap: Map<string, string>,
+  authorProfileMap: Map<string, string>,
   viewerUserId: string | null,
   canModerate: boolean,
 ): StudyRoomAuthorContent {
@@ -711,6 +725,7 @@ function normalizeAuthorContent(
   return {
     id: String(row.id),
     author_user_id: authorUserId,
+    author_profile_id: authorUserId ? authorProfileMap.get(authorUserId) || null : null,
     author_name: authorUserId ? authorMap.get(authorUserId) || "Deleted user" : "Deleted user",
     canEdit: isOwnContent || canModerate,
     canModerate,
@@ -720,7 +735,7 @@ function normalizeAuthorContent(
   };
 }
 
-export async function getStudyRoomDetail(roomId: string): Promise<StudyRoomDetailData> {
+export async function getStudyRoomDetail(roomId: string, discussionFilters: StudyRoomDiscussionFilters = {}): Promise<StudyRoomDetailData> {
   const [overview, access] = await Promise.all([
     getStudyRoomOverview(roomId),
     getStudyRoomAccess(roomId),
@@ -739,6 +754,9 @@ export async function getStudyRoomDetail(roomId: string): Promise<StudyRoomDetai
       resourcesDetail: [],
       savedNotes: [],
       savedThreads: [],
+      discussionTotal: 0,
+      discussionPage: 1,
+      discussionPageCount: 1,
     };
   }
 
@@ -751,7 +769,6 @@ export async function getStudyRoomDetail(roomId: string): Promise<StudyRoomDetai
     { data: requestRows, error: requestError },
     { data: invitationRows, error: invitationError },
     { data: noteRows, error: noteError },
-    { data: threadRows, error: threadError },
     { data: prayerRows, error: prayerError },
     { data: resourceRows, error: resourceError },
     { data: bookmarkRows, error: bookmarkError },
@@ -801,14 +818,6 @@ export async function getStudyRoomDetail(roomId: string): Promise<StudyRoomDetai
       .order("updated_at", { ascending: false })
       .limit(30),
     admin
-      .from("study_room_discussion_threads")
-      .select("id,room_id,study_id,author_user_id,title,body,is_pinned,is_locked,deleted_at,created_at,updated_at")
-      .eq("room_id", roomId)
-      .is("deleted_at", null)
-      .order("is_pinned", { ascending: false })
-      .order("updated_at", { ascending: false })
-      .limit(20),
-    admin
       .from("study_room_prayer_requests")
       .select("id,room_id,study_id,author_user_id,title,body,category,status,answered_at,answered_update,deleted_at,created_at,updated_at")
       .eq("room_id", roomId)
@@ -839,7 +848,6 @@ export async function getStudyRoomDetail(roomId: string): Promise<StudyRoomDetai
     requestError,
     invitationError,
     noteError,
-    threadError,
     prayerError,
     resourceError,
     bookmarkError,
@@ -885,7 +893,44 @@ export async function getStudyRoomDetail(roomId: string): Promise<StudyRoomDetai
     normalizeStudy(row, progressByStudy, overview.viewer.canLead ? completedCounts : undefined),
   );
   const studyMap = new Map(studies.map((study) => [study.id, study]));
-  const threadsRaw = (threadRows || []) as unknown as Record<string, unknown>[];
+  const threadBookmarks = new Set(
+    ((bookmarkRows || []) as unknown as Record<string, unknown>[]).map((row) => row.thread_id).filter((id): id is string => typeof id === "string"),
+  );
+  const discussionQuery = (discussionFilters.q || "").replace(/[\u0000-\u001f\u007f(),.\\"'%_]/g, " ").replace(/\s+/g, " ").trim().slice(0, 100);
+  const discussionMember = (discussionFilters.member || "").replace(/[\u0000-\u001f\u007f(),.\\"'%_]/g, " ").replace(/\s+/g, " ").trim().slice(0, 100);
+  const requestedDiscussionPage = Math.max(1, Math.floor(discussionFilters.page || 1));
+  let discussionAuthorIds: string[] | null = null;
+  if (discussionMember) {
+    const { data: authorRows, error } = await admin.from("profiles").select("user_id").or(`display_name.ilike.%${discussionMember}%,username.ilike.%${discussionMember}%`).not("user_id", "is", null).limit(500);
+    if (error) throw new Error(error.message);
+    discussionAuthorIds = (authorRows || []).map((row) => String(row.user_id)).filter(Boolean);
+  }
+  const canQueryDiscussions = !discussionFilters.saved || threadBookmarks.size > 0;
+  let threadRows: unknown[] = [];
+  let discussionTotal = 0;
+  if (canQueryDiscussions && (!discussionAuthorIds || discussionAuthorIds.length > 0)) {
+    let threadQuery = admin
+      .from("study_room_discussion_threads")
+      .select("id,room_id,study_id,author_user_id,title,body,is_pinned,is_locked,deleted_at,created_at,updated_at", { count: "exact" })
+      .eq("room_id", roomId)
+      .is("deleted_at", null);
+    if (discussionQuery) threadQuery = threadQuery.or(`title.ilike.%${discussionQuery}%,body.ilike.%${discussionQuery}%`);
+    if (discussionAuthorIds) threadQuery = threadQuery.in("author_user_id", discussionAuthorIds);
+    if (discussionFilters.study && discussionFilters.study !== "all" && isStudyRoomUuid(discussionFilters.study)) threadQuery = threadQuery.eq("study_id", discussionFilters.study);
+    if (discussionFilters.saved) threadQuery = threadQuery.in("id", [...threadBookmarks]);
+    const discussionSort = discussionFilters.sort === "newest" || discussionFilters.sort === "oldest" ? discussionFilters.sort : "active";
+    const sortField = discussionSort === "active" ? "updated_at" : "created_at";
+    const result = await threadQuery.order("is_pinned", { ascending: false }).order(sortField, { ascending: discussionSort === "oldest" }).order("id", { ascending: discussionSort === "oldest" }).range((requestedDiscussionPage - 1) * 8, requestedDiscussionPage * 8 - 1);
+    if (result.error) throw new Error(result.error.message);
+    threadRows = result.data || [];
+    discussionTotal = result.count || 0;
+  }
+  const discussionPageCount = Math.max(1, Math.ceil(discussionTotal / 8));
+  const discussionPage = Math.min(requestedDiscussionPage, discussionPageCount);
+  if (discussionPage !== requestedDiscussionPage && discussionTotal > 0) {
+    return getStudyRoomDetail(roomId, { ...discussionFilters, page: discussionPage });
+  }
+  const threadsRaw = threadRows as Record<string, unknown>[];
   const threadIds = threadsRaw.map((row) => String(row.id)).filter(isStudyRoomUuid);
   const { data: replyRows, error: replyError } = threadIds.length
     ? await admin
@@ -925,12 +970,9 @@ export async function getStudyRoomDetail(roomId: string): Promise<StudyRoomDetai
     ...((replyRows || []) as unknown as Record<string, unknown>[]).map((row) => row.author_user_id),
     ...((prayerRows || []) as unknown as Record<string, unknown>[]).map((row) => row.author_user_id),
   ].filter((id): id is string => typeof id === "string" && isStudyRoomUuid(id));
-  const authorMap = await getAuthorDisplayMap(authorIds);
+  const [authorMap, authorProfileMap] = await Promise.all([getAuthorDisplayMap(authorIds), getAuthorProfileIdMap(authorIds)]);
   const noteBookmarks = new Set(
     ((bookmarkRows || []) as unknown as Record<string, unknown>[]).map((row) => row.note_id).filter((id): id is string => typeof id === "string"),
-  );
-  const threadBookmarks = new Set(
-    ((bookmarkRows || []) as unknown as Record<string, unknown>[]).map((row) => row.thread_id).filter((id): id is string => typeof id === "string"),
   );
   const supportCounts = new Map<string, number>();
   for (const row of (supportRows || []) as unknown as Record<string, unknown>[]) {
@@ -945,7 +987,7 @@ export async function getStudyRoomDetail(roomId: string): Promise<StudyRoomDetai
   const canModerate = overview.viewer.canModerate;
   for (const row of (replyRows || []) as unknown as Record<string, unknown>[]) {
     const threadId = String(row.thread_id);
-    const reply = normalizeAuthorContent(row, authorMap, viewerUserId, canModerate) as StudyRoomDiscussionReply;
+    const reply = normalizeAuthorContent(row, authorMap, authorProfileMap, viewerUserId, canModerate) as StudyRoomDiscussionReply;
     reply.thread_id = threadId;
     reply.body = String(row.body);
     repliesByThread.set(threadId, [...(repliesByThread.get(threadId) || []), reply]);
@@ -953,7 +995,7 @@ export async function getStudyRoomDetail(roomId: string): Promise<StudyRoomDetai
   const notes = ((noteRows || []) as unknown as Record<string, unknown>[]).map((row) => {
     const study = typeof row.study_id === "string" ? studyMap.get(row.study_id) || null : null;
     return {
-      ...normalizeAuthorContent(row, authorMap, viewerUserId, canModerate),
+      ...normalizeAuthorContent(row, authorMap, authorProfileMap, viewerUserId, canModerate),
       room_id: String(row.room_id),
       study_id: typeof row.study_id === "string" ? row.study_id : null,
       study_title: study?.title || null,
@@ -967,7 +1009,7 @@ export async function getStudyRoomDetail(roomId: string): Promise<StudyRoomDetai
   const discussionThreads = threadsRaw.map((row) => {
     const study = typeof row.study_id === "string" ? studyMap.get(row.study_id) || null : null;
     return {
-      ...normalizeAuthorContent(row, authorMap, viewerUserId, canModerate),
+      ...normalizeAuthorContent(row, authorMap, authorProfileMap, viewerUserId, canModerate),
       room_id: String(row.room_id),
       study_id: typeof row.study_id === "string" ? row.study_id : null,
       study_title: study?.title || null,
@@ -986,7 +1028,7 @@ export async function getStudyRoomDetail(roomId: string): Promise<StudyRoomDetai
     const category = pickAllowedValue(String(row.category || "other"), STUDY_ROOM_PRAYER_CATEGORIES, "other");
     const status = pickAllowedValue(String(row.status || "active"), STUDY_ROOM_PRAYER_STATUSES, "active");
     return {
-      ...normalizeAuthorContent(row, authorMap, viewerUserId, canModerate),
+      ...normalizeAuthorContent(row, authorMap, authorProfileMap, viewerUserId, canModerate),
       room_id: String(row.room_id),
       study_id: typeof row.study_id === "string" ? row.study_id : null,
       study_title: study?.title || null,
@@ -1080,6 +1122,9 @@ export async function getStudyRoomDetail(roomId: string): Promise<StudyRoomDetai
     resourcesDetail,
     savedNotes: notes.filter((note) => note.is_bookmarked),
     savedThreads: discussionThreads.filter((thread) => thread.is_bookmarked),
+    discussionTotal,
+    discussionPage,
+    discussionPageCount,
   };
 }
 
@@ -1119,6 +1164,17 @@ async function getAuthorDisplayMap(userIds: string[]) {
     }
   }
 
+  return map;
+}
+
+async function getAuthorProfileIdMap(userIds: string[]) {
+  const uniqueIds = Array.from(new Set(userIds.filter(isStudyRoomUuid)));
+  const map = new Map<string, string>();
+  if (uniqueIds.length === 0) return map;
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("profiles").select("id,user_id").in("user_id", uniqueIds);
+  if (error) throw new Error(error.message);
+  for (const row of data || []) if (row.user_id && row.id) map.set(String(row.user_id), String(row.id));
   return map;
 }
 

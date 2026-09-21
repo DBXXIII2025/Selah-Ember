@@ -14,6 +14,7 @@ import { logRequestEvent } from "@/lib/observability/request";
 const TITLE_MAX_LENGTH = 160;
 const BODY_MAX_LENGTH = 10000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const GROUP_DISCUSSION_CATEGORIES = ["general", "bible_study", "question", "prayer", "testimony", "fellowship", "announcement"] as const;
 
 type Profile = {
   id: string;
@@ -37,6 +38,7 @@ type GroupAccess = CommunityAccess;
 
 export type DiscussionAuthor = {
   user_id: string;
+  profile_id: string | null;
   display_name: string;
   username: string | null;
 };
@@ -85,6 +87,10 @@ export type CommunityDiscussionData = {
   role: string | null;
   threads: DiscussionThreadSummary[];
 };
+
+function sanitizeSearchTerm(value: string | undefined, maxLength = 100) {
+  return (value || "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/[(),.\\"'%_]/g, " ").replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
 
 export type GroupDiscussionData = {
   group: {
@@ -432,6 +438,7 @@ async function getAuthorMap(userIds: string[]) {
   for (const userId of uniqueUserIds) {
     fallback.set(userId, {
       user_id: userId,
+      profile_id: null,
       display_name: "Selah Ember Member",
       username: null,
     });
@@ -444,7 +451,7 @@ async function getAuthorMap(userIds: string[]) {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("profiles")
-    .select("user_id,display_name,username")
+    .select("id,user_id,display_name,username")
     .in("user_id", uniqueUserIds);
 
   if (error) {
@@ -456,6 +463,7 @@ async function getAuthorMap(userIds: string[]) {
     const userId = String(profile.user_id);
     fallback.set(userId, {
       user_id: userId,
+      profile_id: typeof profile.id === "string" ? profile.id : null,
       display_name: typeof profile.display_name === "string" ? profile.display_name : "Selah Ember Member",
       username: typeof profile.username === "string" ? profile.username : null,
     });
@@ -511,6 +519,7 @@ async function normalizeThreads(rows: Record<string, unknown>[]) {
       reply_count: replyCounts.get(String(row.id)) || 0,
       author: authorMap.get(authorId) || {
         user_id: authorId,
+        profile_id: null,
         display_name: authorId ? "Selah Ember Member" : "Deleted user",
         username: null,
       },
@@ -528,9 +537,19 @@ async function getThreadRow(threadId: string) {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("discussion_threads")
-    .select("id,scope_type,community_id,group_id,author_id,title,body,created_at,updated_at,deleted_at")
+    .select("id,scope_type,community_id,group_id,author_id,title,body,category,is_pinned,created_at,updated_at,deleted_at")
     .eq("id", threadId)
     .maybeSingle();
+
+  if (error?.code === "42703") {
+    const fallback = await admin
+      .from("discussion_threads")
+      .select("id,scope_type,community_id,group_id,author_id,title,body,created_at,updated_at,deleted_at")
+      .eq("id", threadId)
+      .maybeSingle();
+    if (fallback.error) return null;
+    return fallback.data as Record<string, unknown> | null;
+  }
 
   if (error) {
     discussionLog("thread_lookup_failed", { threadId, code: error.code, message: error.message });
@@ -614,6 +633,7 @@ async function getThreadDetail(threadId: string, profile: Profile | null): Promi
       deleted_at: typeof reply.deleted_at === "string" ? reply.deleted_at : null,
       author: authorMap.get(authorId) || {
         user_id: authorId,
+        profile_id: null,
         display_name: authorId ? "Selah Ember Member" : "Deleted user",
         username: null,
       },
@@ -717,19 +737,40 @@ export async function getGroupThreads(groupId: string, filters: { q?: string; me
   }
 
   const admin = createAdminClient();
-  const initialResult = await admin
-    .from("discussion_threads")
-    .select("id,scope_type,community_id,group_id,author_id,title,body,category,is_pinned,created_at,updated_at,deleted_at")
-    .eq("scope_type", "group")
-    .eq("group_id", groupId);
+  const q = sanitizeSearchTerm(filters.q);
+  const member = sanitizeSearchTerm(filters.member);
+  const category = GROUP_DISCUSSION_CATEGORIES.includes(filters.category as (typeof GROUP_DISCUSSION_CATEGORIES)[number]) ? filters.category : "all";
+  const sort = filters.sort === "newest" || filters.sort === "oldest" ? filters.sort : "active";
+  const requestedPage = Math.max(1, Math.floor(filters.page || 1));
+  let authorIds: string[] | null = null;
+  if (member) {
+    const { data: authorRows, error: authorError } = await admin.from("profiles").select("user_id").or(`display_name.ilike.%${member}%,username.ilike.%${member}%`).not("user_id", "is", null).limit(500);
+    if (authorError) throw new Error(authorError.message);
+    authorIds = (authorRows || []).map((row) => String(row.user_id)).filter(Boolean);
+    if (authorIds.length === 0) return { group, state: "allowed", isSignedIn: true, isMember, role, threads: [], total: 0, page: 1, pageCount: 1, migrationRequired: false, canPin: role === "owner" || role === "leader" || profile.role === "platform_engineer" };
+  }
+  const runQuery = async (withOrganization: boolean, page: number) => {
+    const fields = `id,scope_type,community_id,group_id,author_id,title,body,${withOrganization ? "category,is_pinned," : ""}created_at,updated_at,deleted_at`;
+    let query = admin.from("discussion_threads").select(fields, { count: "exact" }).eq("scope_type", "group").eq("group_id", groupId).is("deleted_at", null);
+    if (q) query = query.or(`title.ilike.%${q}%,body.ilike.%${q}%`);
+    if (authorIds) query = query.in("author_id", authorIds);
+    if (withOrganization && category !== "all") query = query.eq("category", category);
+    if (withOrganization) query = query.order("is_pinned", { ascending: false });
+    const field = sort === "active" ? "updated_at" : "created_at";
+    query = query.order(field, { ascending: sort === "oldest" }).order("id", { ascending: sort === "oldest" });
+    return query.range((page - 1) * 10, page * 10 - 1);
+  };
+  const initialResult = await runQuery(true, requestedPage);
   let data = initialResult.data as unknown as Record<string, unknown>[] | null;
   let error = initialResult.error;
+  let total = initialResult.count || 0;
   let migrationRequired = false;
   if (error?.code === "42703") {
     migrationRequired = true;
-    const fallbackResult = await admin.from("discussion_threads").select("id,scope_type,community_id,group_id,author_id,title,body,created_at,updated_at,deleted_at").eq("scope_type", "group").eq("group_id", groupId);
+    const fallbackResult = await runQuery(false, requestedPage);
     data = fallbackResult.data as unknown as Record<string, unknown>[] | null;
     error = fallbackResult.error;
+    total = fallbackResult.count || 0;
   }
 
   if (error) {
@@ -743,13 +784,15 @@ export async function getGroupThreads(groupId: string, filters: { q?: string; me
     return { group, state: "allowed", isSignedIn: true, isMember, role, threads: [], total: 0, page: 1, pageCount: 1, migrationRequired, canPin: role === "owner" || role === "leader" || profile.role === "platform_engineer" };
   }
 
-  let threads = await normalizeThreads(data || []);
-  const q = filters.q?.trim().toLowerCase(); const member = filters.member?.trim().toLowerCase();
-  threads = threads.filter((thread) => (!q || `${thread.title} ${thread.body}`.toLowerCase().includes(q)) && (!member || `${thread.author.display_name} ${thread.author.username || ""}`.toLowerCase().includes(member)) && (!filters.category || filters.category === "all" || thread.category === filters.category));
-  const sort = filters.sort === "newest" || filters.sort === "oldest" ? filters.sort : "active";
-  threads.sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned) || (sort === "oldest" ? 1 : -1) * (new Date(sort === "active" ? a.updated_at : a.created_at).getTime() - new Date(sort === "active" ? b.updated_at : b.created_at).getTime()));
-  const total = threads.length; const page = Math.max(1, filters.page || 1); const pageCount = Math.max(1, Math.ceil(total / 10));
-  return { group, state: "allowed", isSignedIn: true, isMember, role, threads: threads.slice((page - 1) * 10, page * 10), total, page, pageCount, migrationRequired, canPin: role === "owner" || role === "leader" || profile.role === "platform_engineer" };
+  const pageCount = Math.max(1, Math.ceil(total / 10));
+  const page = Math.min(requestedPage, pageCount);
+  if (page !== requestedPage) {
+    const corrected = await runQuery(!migrationRequired, page);
+    if (corrected.error) throw new Error(corrected.error.message);
+    data = corrected.data as unknown as Record<string, unknown>[] | null;
+  }
+  const threads = await normalizeThreads(data || []);
+  return { group, state: "allowed", isSignedIn: true, isMember, role, threads, total, page, pageCount, migrationRequired, canPin: role === "owner" || role === "leader" || profile.role === "platform_engineer" };
 }
 
 export async function getDiscussionThread(threadId: string): Promise<DiscussionThreadData> {
@@ -854,7 +897,8 @@ export async function createGroupThread(formData: FormData) {
   const groupId = getFormString(formData, "group_id");
   const title = getFormString(formData, "title");
   const body = getFormString(formData, "body");
-  const category = getFormString(formData, "category") || "general";
+  const categoryInput = getFormString(formData, "category");
+  const category = GROUP_DISCUSSION_CATEGORIES.includes(categoryInput as (typeof GROUP_DISCUSSION_CATEGORIES)[number]) ? categoryInput : "general";
   const redirectPath = `/groups/${groupId}/discussions/new`;
 
   if (!groupId || !isUuid(groupId)) {
@@ -870,7 +914,7 @@ export async function createGroupThread(formData: FormData) {
   }
 
   const admin = createAdminClient();
-  const { data, error } = await admin
+  let { data, error } = await admin
     .from("discussion_threads")
     .insert({
       scope_type: "group",
@@ -883,8 +927,15 @@ export async function createGroupThread(formData: FormData) {
     .select("id")
     .single();
 
-  if (error) {
-    redirect(`${redirectPath}?message=${safeMessage(error.code === "42703" ? "Migration 0047 is required before categories can be saved." : error.message)}`);
+  let migrationRequired = false;
+  if (error?.code === "42703") {
+    migrationRequired = true;
+    const fallback = await admin.from("discussion_threads").insert({ scope_type: "group", group_id: groupId, author_id: profile.authUserId, title, body }).select("id").single();
+    data = fallback.data;
+    error = fallback.error;
+  }
+  if (error || !data) {
+    redirect(`${redirectPath}?message=${safeMessage(error?.message || "Discussion could not be created.")}`);
   }
 
   const threadId = String(data.id);
@@ -893,16 +944,20 @@ export async function createGroupThread(formData: FormData) {
   revalidatePath(`/groups/${groupId}/discussions`);
   revalidatePath(`/groups/${groupId}/discussions/${threadId}`);
   revalidatePath("/notifications");
-  redirect(`/groups/${groupId}/discussions?message=Thread created.`);
+  redirect(`/groups/${groupId}/discussions?message=${safeMessage(migrationRequired ? "Thread created as General. Apply migration 0047 to enable categories and pins." : "Thread created.")}`);
 }
 
 export async function toggleGroupThreadPin(formData: FormData) {
   const profile = await getCurrentProfile(); const threadId = getFormString(formData, "thread_id"); const groupId = getFormString(formData, "group_id"); const returnPath = safeReturnPath(getFormString(formData, "return_path"), `/groups/${groupId}/discussions`);
+  const withMessage = (message: string) => `${returnPath}${returnPath.includes("?") ? "&" : "?"}message=${safeMessage(message)}`;
+  if (!isUuid(threadId) || !isUuid(groupId)) redirect(withMessage("Discussion not found."));
   const access = await getGroupAccess(groupId);
-  if (profile.role !== "platform_engineer" && access.role !== "owner" && access.role !== "leader") redirect(`${returnPath}?message=You cannot pin discussions.`);
+  if (!access.isMember) redirect(withMessage("Discussion unavailable."));
+  if (profile.role !== "platform_engineer" && access.role !== "owner" && access.role !== "leader") redirect(withMessage("You cannot pin discussions."));
   const admin = createAdminClient(); const { data } = await admin.from("discussion_threads").select("is_pinned").eq("id", threadId).eq("group_id", groupId).maybeSingle();
+  if (!data) redirect(withMessage("Discussion not found."));
   const { error } = await admin.from("discussion_threads").update({ is_pinned: !data?.is_pinned }).eq("id", threadId).eq("group_id", groupId);
-  if (error) redirect(`${returnPath}?message=${safeMessage(error.code === "42703" ? "Migration 0047 is required for pinning." : "Could not update pin.")}`);
+  if (error) redirect(withMessage(error.code === "42703" ? "Migration 0047 is required for pinning." : "Could not update pin."));
   revalidatePath(returnPath); redirect(returnPath);
 }
 

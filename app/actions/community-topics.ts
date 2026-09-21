@@ -459,13 +459,17 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
     deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
     signed_url: null,
     author_name: null,
+    author_username: null,
+    author_profile_id: null,
     author_avatar_url: null,
+    topics: [],
     comment_count: 0,
     reaction_counts: { like: 0, pray: 0, fire: 0, laugh: 0 },
     viewer_reactions: [],
     can_delete: false,
     can_edit: false,
     is_pinned: false,
+    can_pin: false,
   };
 }
 
@@ -485,7 +489,7 @@ export async function getTopicCommunityPosts(topicId: string): Promise<Community
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("community_post_topics")
-    .select("community_posts:post_id(id,community_id,author_id,title,body,media_url,media_kind,storage_path,file_name,mime_type,size_bytes,is_published,created_at,updated_at,deleted_at)")
+    .select("topic:community_topics(slug,name),community_posts:post_id(id,community_id,author_id,title,body,media_url,media_kind,storage_path,file_name,mime_type,size_bytes,is_published,created_at,updated_at,deleted_at)")
     .eq("topic_id", topicId)
     .order("created_at", { ascending: false })
     .limit(25);
@@ -495,7 +499,10 @@ export async function getTopicCommunityPosts(topicId: string): Promise<Community
   }
 
   const posts = ((data || []) as unknown as Record<string, unknown>[])
-    .map((row) => row.community_posts as Record<string, unknown> | null)
+    .map((row): Record<string, unknown> | null => {
+      const post = row.community_posts as Record<string, unknown> | null;
+      return post ? { ...post, topic_links: [{ topic: row.topic as unknown }] } : null;
+    })
     .filter((post): post is Record<string, unknown> => Boolean(post && !post.deleted_at && post.is_published !== false))
     .map(mapPost);
   const [signedPosts, profiles] = await Promise.all([
@@ -510,6 +517,8 @@ export async function getTopicCommunityPosts(topicId: string): Promise<Community
     return {
       ...post,
       author_name: post.author_id ? profile?.display_name || "Member" : "Deleted user",
+      author_username: profile?.username || null,
+      author_profile_id: profile?.id || null,
       author_avatar_url: profile?.avatar_url || null,
       can_delete: canModerate || Boolean(currentUserId && post.author_id === currentUserId),
       can_edit: canModerate || Boolean(currentUserId && post.author_id === currentUserId),

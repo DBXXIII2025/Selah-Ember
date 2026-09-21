@@ -39,7 +39,14 @@ export default async function StudyRoomPage({ params, searchParams }: StudyRoomP
     notFound();
   }
 
-  const data = await getStudyRoomDetail(roomId);
+  const data = await getStudyRoomDetail(roomId, {
+    q: query.discussion_q,
+    member: query.discussion_member,
+    study: query.discussion_study,
+    saved: query.saved === "1",
+    sort: query.discussion_sort,
+    page: Math.max(1, Number(query.discussion_page) || 1),
+  });
   const inviteResults =
     query.section === "members" && query.invite_q && query.invite_q.trim().length >= 3 && data.viewer.canLead
       ? await searchStudyRoomInviteProfiles(roomId, query.invite_q)

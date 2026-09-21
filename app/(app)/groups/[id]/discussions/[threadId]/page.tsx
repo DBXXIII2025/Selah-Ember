@@ -9,6 +9,7 @@ import {
   getGroupThreads,
   reportDiscussionReply,
   reportDiscussionThread,
+  toggleGroupThreadPin,
 } from "@/app/actions/discussions";
 import { DiscussionBody } from "@/components/discussions/discussion-body";
 import { BackToLink } from "@/components/ui/app-ui";
@@ -92,6 +93,7 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
     threadData.role === "leader";
 
   const canReply = threadData.isMember && !thread.deleted_at;
+  const canPin = threadData.current_user_role === "platform_engineer" || threadData.role === "owner" || threadData.role === "leader";
 
   return (
     <section className="px-6 py-12 sm:px-10 lg:px-16">
@@ -106,10 +108,10 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
         <article className="mt-8 rounded-2xl border border-[#ead6c5] bg-white/75 p-8 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">Group thread</p>
+              <div className="flex flex-wrap gap-2"><span className="rounded-full bg-[#fff4e8] px-3 py-1 text-xs font-semibold capitalize text-[#8a3f1e]">{thread.category.replace("_", " ")}</span>{thread.is_pinned ? <span className="rounded-full bg-[#ffe2cb] px-3 py-1 text-xs font-semibold text-[#8a3f1e]">Pinned</span> : null}</div>
               <h1 className="mt-3 text-4xl font-semibold">{thread.deleted_at ? "Thread deleted" : thread.title}</h1>
               <p className="mt-3 text-sm text-[#715e54]">
-                <Link href={`/members/${thread.author.user_id}`} className="hover:text-[#a94720]">{thread.author.display_name}</Link> · {formatDate(thread.created_at)}
+                <Link href={thread.author.profile_id ? `/members/${thread.author.profile_id}` : "#"} className="hover:text-[#a94720]">{thread.author.display_name}{thread.author.username ? ` (@${thread.author.username})` : ""}</Link> · {formatDate(thread.created_at)}
               </p>
             </div>
             {!thread.deleted_at ? (
@@ -138,6 +140,7 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
               </button>
             </form>
           ) : null}
+          {!thread.deleted_at && canPin ? <form action={toggleGroupThreadPin} className="mt-4"><input type="hidden" name="thread_id" value={thread.id} /><input type="hidden" name="group_id" value={id} /><input type="hidden" name="return_path" value={returnPath} /><button className="text-sm font-semibold text-[#8a3f1e]">{thread.is_pinned ? "Unpin" : "Pin"} discussion</button></form> : null}
         </article>
 
         <div className="mt-8 space-y-4">
@@ -151,7 +154,7 @@ export default async function GroupDiscussionThreadPage({ params, searchParams }
               <article key={reply.id} className="rounded-2xl border border-[#ead6c5] bg-white/75 p-6 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <p className="text-sm font-semibold text-[#8a3f1e]">
-                    <Link href={`/members/${reply.author.user_id}`} className="hover:text-[#a94720]">{reply.author.display_name}</Link> · <span className="font-normal text-[#715e54]">{formatDate(reply.created_at)}</span>
+                    <Link href={reply.author.profile_id ? `/members/${reply.author.profile_id}` : "#"} className="hover:text-[#a94720]">{reply.author.display_name}{reply.author.username ? ` (@${reply.author.username})` : ""}</Link> · <span className="font-normal text-[#715e54]">{formatDate(reply.created_at)}</span>
                   </p>
                   {!reply.deleted_at ? (
                     <form action={reportDiscussionReply}>

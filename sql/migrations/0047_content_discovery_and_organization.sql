@@ -9,7 +9,10 @@ alter table public.discussion_threads
 do $$
 begin
   if not exists (
-    select 1 from pg_constraint where conname = 'discussion_threads_category_check'
+    select 1
+    from pg_constraint
+    where conname = 'discussion_threads_category_check'
+      and conrelid = 'public.discussion_threads'::regclass
   ) then
     alter table public.discussion_threads
       add constraint discussion_threads_category_check
@@ -44,7 +47,11 @@ declare
   actor_role text;
   group_role text;
 begin
-  if new.is_pinned is not distinct from old.is_pinned then
+  if tg_op = 'INSERT' and new.is_pinned = false then
+    return new;
+  end if;
+
+  if tg_op = 'UPDATE' and new.is_pinned is not distinct from old.is_pinned then
     return new;
   end if;
 
@@ -59,9 +66,11 @@ begin
     return new;
   end if;
 
-  if tg_table_name = 'discussion_threads' and old.scope_type = 'group' then
+  if tg_table_name = 'discussion_threads'
+     and case when tg_op = 'INSERT' then new.scope_type else old.scope_type end = 'group' then
     select role into group_role from public.group_memberships
-    where group_id = old.group_id and profile_id = actor_profile_id;
+    where group_id = case when tg_op = 'INSERT' then new.group_id else old.group_id end
+      and profile_id = actor_profile_id;
     if group_role in ('owner', 'leader') then
       return new;
     end if;
@@ -75,8 +84,16 @@ drop trigger if exists protect_community_post_pin_changes on public.community_po
 create trigger protect_community_post_pin_changes
 before update of is_pinned on public.community_posts
 for each row execute function public.protect_content_pin_changes();
+drop trigger if exists protect_community_post_pin_insert on public.community_posts;
+create trigger protect_community_post_pin_insert
+before insert on public.community_posts
+for each row execute function public.protect_content_pin_changes();
 
 drop trigger if exists protect_discussion_thread_pin_changes on public.discussion_threads;
 create trigger protect_discussion_thread_pin_changes
 before update of is_pinned on public.discussion_threads
+for each row execute function public.protect_content_pin_changes();
+drop trigger if exists protect_discussion_thread_pin_insert on public.discussion_threads;
+create trigger protect_discussion_thread_pin_insert
+before insert on public.discussion_threads
 for each row execute function public.protect_content_pin_changes();

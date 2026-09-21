@@ -38,13 +38,17 @@ export type CommunityPost = {
   deleted_at: string | null;
   signed_url: string | null;
   author_name: string | null;
+  author_username: string | null;
+  author_profile_id: string | null;
   author_avatar_url: string | null;
+  topics: Array<{ slug: string; name: string }>;
   comment_count: number;
   reaction_counts: Record<CommunityReaction, number>;
   viewer_reactions: CommunityReaction[];
   can_delete: boolean;
   can_edit: boolean;
   is_pinned: boolean;
+  can_pin: boolean;
 };
 
 export type CommunityBrowseResult = {
@@ -180,6 +184,26 @@ function emptyReactionCounts(): Record<CommunityReaction, number> {
   };
 }
 
+function sanitizeSearchTerm(value: string | undefined, maxLength = 100) {
+  return (value || "")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/[(),.\\"']/g, " ")
+    .replace(/[%_]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function normalizeTopicLinks(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((link) => {
+    const topic = (link as Record<string, unknown>).topic as Record<string, unknown> | null;
+    return typeof topic?.slug === "string" && typeof topic?.name === "string"
+      ? [{ slug: topic.slug, name: topic.name }]
+      : [];
+  });
+}
+
 function mapCommunity(row: Record<string, unknown>): CommunityRecord {
   return {
     id: String(row.id),
@@ -217,13 +241,17 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
     deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
     signed_url: null,
     author_name: null,
+    author_username: null,
+    author_profile_id: null,
     author_avatar_url: null,
+    topics: normalizeTopicLinks(row.topic_links),
     comment_count: typeof row.comment_count === "number" ? row.comment_count : Number(row.comment_count || 0),
     reaction_counts: emptyReactionCounts(),
     viewer_reactions: [],
     can_delete: false,
     can_edit: false,
     is_pinned: row.is_pinned === true,
+    can_pin: false,
   };
 }
 
@@ -235,51 +263,71 @@ export async function browseCommunityPosts(input: {
   page?: number;
 }): Promise<CommunityBrowseResult> {
   const auth = await getOptionalAuthAndProfile();
-  const page = Math.max(1, Math.floor(input.page || 1));
+  const requestedPage = Math.max(1, Math.floor(input.page || 1));
   const admin = createAdminClient();
-  const select = "id,community_id,author_id,title,body,media_url,media_kind,storage_path,file_name,mime_type,size_bytes,is_published,created_at,updated_at,deleted_at,is_pinned,topic_links:community_post_topics(topic:community_topics(slug))";
+  const q = sanitizeSearchTerm(input.q);
+  const member = sanitizeSearchTerm(input.member);
+  const topic = input.topic === "general" || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.topic || "") ? input.topic || "" : "";
+  const sort = input.sort === "oldest" ? "oldest" : input.sort === "newest" ? "newest" : "updated";
+  let authorIds: string[] | null = null;
+  if (member) {
+    const { data: memberRows, error: memberError } = await admin
+      .from("profiles")
+      .select("user_id")
+      .or(`display_name.ilike.%${member}%,username.ilike.%${member}%`)
+      .not("user_id", "is", null)
+      .limit(500);
+    if (memberError) throw new Error(memberError.message);
+    authorIds = (memberRows || []).map((row) => String(row.user_id)).filter(Boolean);
+    if (authorIds.length === 0) return { posts: [], total: 0, page: 1, pageCount: 1, migrationRequired: false };
+  }
+  const topicSelect = topic && topic !== "general"
+    ? "topic_links:community_post_topics!inner(topic:community_topics!inner(slug,name))"
+    : "topic_links:community_post_topics(topic:community_topics(slug,name))";
+  const baseSelect = `id,community_id,author_id,title,body,media_url,media_kind,storage_path,file_name,mime_type,size_bytes,is_published,created_at,updated_at,deleted_at,${topicSelect}`;
   let migrationRequired = false;
-  const initialResult = await admin.from("community_posts").select(select).eq("is_published", true).is("deleted_at", null);
+  const runQuery = async (withPins: boolean, page: number) => {
+    let query = admin.from("community_posts").select(`${baseSelect}${withPins ? ",is_pinned" : ""}`, { count: "exact" }).eq("is_published", true).is("deleted_at", null);
+    if (q) query = query.or(`title.ilike.%${q}%,body.ilike.%${q}%`);
+    if (authorIds) query = query.in("author_id", authorIds);
+    if (topic === "general") query = query.is("topic_links", null);
+    else if (topic) query = query.eq("topic_links.topic.slug", topic);
+    if (withPins) query = query.order("is_pinned", { ascending: false });
+    const field = sort === "updated" ? "updated_at" : "created_at";
+    query = query.order(field, { ascending: sort === "oldest" }).order("id", { ascending: sort === "oldest" });
+    return query.range((page - 1) * 10, page * 10 - 1);
+  };
+  const initialResult = await runQuery(true, requestedPage);
   let rows = (initialResult.data || []) as unknown as Record<string, unknown>[];
   let error = initialResult.error;
+  let total = initialResult.count || 0;
   if (error?.code === "42703") {
     migrationRequired = true;
-    const fallbackResult = await admin.from("community_posts").select(select.replace(",is_pinned", "")).eq("is_published", true).is("deleted_at", null);
+    const fallbackResult = await runQuery(false, requestedPage);
     rows = (fallbackResult.data || []) as unknown as Record<string, unknown>[];
     error = fallbackResult.error;
+    total = fallbackResult.count || 0;
   }
   if (error) throw new Error(error.message);
-
-  const profiles = await getDisplayProfiles(rows.map((row) => String(row.author_id || "")));
-  const profileRows = await admin.from("profiles").select("user_id,display_name,username").in("user_id", rows.map((row) => String(row.author_id || "")).filter(Boolean));
-  const profileSearch = new Map((profileRows.data || []).map((row) => [String(row.user_id), `${row.display_name || ""} ${row.username || ""}`.toLowerCase()]));
-  const q = input.q?.trim().toLowerCase();
-  const member = input.member?.trim().toLowerCase();
-  rows = rows.filter((row) => {
-    if (q && !`${row.title || ""} ${row.body || ""}`.toLowerCase().includes(q)) return false;
-    if (member && !(profileSearch.get(String(row.author_id)) || "").includes(member)) return false;
-    if (input.topic) {
-      const links = Array.isArray(row.topic_links) ? row.topic_links : [];
-      if (!links.some((link) => {
-        const topic = (link as Record<string, unknown>).topic as Record<string, unknown> | null;
-        return topic?.slug === input.topic;
-      })) return false;
-    }
-    return true;
+  const pageCount = Math.max(1, Math.ceil(total / 10));
+  const page = Math.min(requestedPage, pageCount);
+  if (page !== requestedPage) {
+    const corrected = await runQuery(!migrationRequired, page);
+    if (corrected.error) throw new Error(corrected.error.message);
+    rows = (corrected.data || []) as unknown as Record<string, unknown>[];
+  }
+  const userIds = rows.map((row) => String(row.author_id || "")).filter(Boolean);
+  const { data: profileRows, error: profileError } = userIds.length
+    ? await admin.from("profiles").select("id,user_id,display_name,username,avatar_url").in("user_id", userIds)
+    : { data: [], error: null };
+  if (profileError) throw new Error(profileError.message);
+  const profileMap = new Map((profileRows || []).map((row) => [String(row.user_id), row]));
+  let posts: CommunityPost[] = rows.map(mapPost).map((post) => {
+    const profile = profileMap.get(post.author_id);
+    return { ...post, author_name: profile?.display_name || profile?.username || "Member", author_username: profile?.username || null, author_profile_id: profile?.id || null, author_avatar_url: profile?.avatar_url || null, can_pin: auth?.profile.role === "platform_engineer" };
   });
-  const sort = input.sort === "oldest" ? "oldest" : input.sort === "newest" ? "newest" : "updated";
-  rows.sort((a, b) => {
-    const pin = Number(b.is_pinned === true) - Number(a.is_pinned === true);
-    if (pin) return pin;
-    const field = sort === "updated" ? "updated_at" : "created_at";
-    const delta = new Date(String(b[field])).getTime() - new Date(String(a[field])).getTime();
-    return sort === "oldest" ? -delta : delta;
-  });
-  const total = rows.length;
-  const pageRows = rows.slice((page - 1) * 10, page * 10);
-  let posts: CommunityPost[] = pageRows.map(mapPost).map((post) => ({ ...post, author_name: profiles.get(post.author_id)?.display_name || "Member", author_avatar_url: profiles.get(post.author_id)?.avatar_url || null }));
   posts = await signPosts(await addReactionState(await addCommentCounts(posts, auth?.user.id || null, auth?.profile.role === "platform_engineer"), auth?.user.id || null));
-  return { posts, total, page, pageCount: Math.max(1, Math.ceil(total / 10)), migrationRequired };
+  return { posts, total, page, pageCount, migrationRequired };
 }
 
 function mapComment(row: Record<string, unknown>, currentUserId: string | null, canModerate = false): CommunityPostComment {
@@ -339,6 +387,8 @@ async function hydratePostAuthors(posts: CommunityPost[]) {
     return {
       ...post,
       author_name: post.author_id ? profile?.display_name || "Member" : "Deleted user",
+      author_username: profile?.username || null,
+      author_profile_id: profile?.id || null,
       author_avatar_url: profile?.avatar_url || null,
     };
   });
@@ -516,28 +566,19 @@ async function loadPostRows(
   options: { onlyGeneral?: boolean; limit?: number } = {},
 ) {
   const admin = createAdminClient();
-  const postSelect = options.onlyGeneral
-    ? "id,community_id,author_id,title,body,media_url,media_kind,storage_path,file_name,mime_type,size_bytes,is_published,created_at,updated_at,deleted_at,topic_links:community_post_topics()"
-    : "id,community_id,author_id,title,body,media_url,media_kind,storage_path,file_name,mime_type,size_bytes,is_published,created_at,updated_at,deleted_at";
-  let query = admin
-    .from("community_posts")
-    .select(postSelect)
-    .eq("community_id", communityId)
-    .order("created_at", { ascending: false });
-
-  if (publishedOnly) {
-    query = query.eq("is_published", true).is("deleted_at", null);
-  }
-
-  if (options.onlyGeneral) {
-    query = query.is("topic_links", null);
-  }
-
-  if (options.limit) {
-    query = query.limit(options.limit);
-  }
-
-  const { data, error } = await query;
+  const postSelect = "id,community_id,author_id,title,body,media_url,media_kind,storage_path,file_name,mime_type,size_bytes,is_published,created_at,updated_at,deleted_at,topic_links:community_post_topics(topic:community_topics(slug,name))";
+  const runQuery = async (withPins: boolean) => {
+    let query = admin.from("community_posts").select(`${postSelect}${withPins ? ",is_pinned" : ""}`).eq("community_id", communityId);
+    if (publishedOnly) query = query.eq("is_published", true).is("deleted_at", null);
+    if (options.onlyGeneral) query = query.is("topic_links", null);
+    if (withPins) query = query.order("is_pinned", { ascending: false });
+    query = query.order("created_at", { ascending: false });
+    if (options.limit) query = query.limit(options.limit);
+    return query;
+  };
+  let result = await runQuery(true);
+  if (result.error?.code === "42703") result = await runQuery(false);
+  const { data, error } = result;
 
   if (error) {
     if (error.code === "42P01") {
@@ -644,16 +685,17 @@ export async function getOpenCommunityFeed(): Promise<OpenCommunityFeedResult> {
   }
 
   const currentUserId = auth?.user.id || null;
-  const posts = await hydratePostAuthors(
+  const hydratedPosts = await hydratePostAuthors(
     await addReactionState(
       await addCommentCounts(
-        await loadPostRows(community.id, true, { onlyGeneral: true, limit: 25 }),
+        await loadPostRows(community.id, true, { limit: 10 }),
         currentUserId,
         auth?.profile.role === "platform_engineer",
       ),
       currentUserId,
     ),
   );
+  const posts = hydratedPosts.map((post) => ({ ...post, can_pin: auth?.profile.role === "platform_engineer" }));
   return { community, posts, isSignedIn: Boolean(auth), isUnavailable: false };
 }
 
@@ -725,14 +767,22 @@ export async function getOpenCommunityPost(postId: string) {
   }
 
   const admin = createAdminClient();
-  const { data, error } = await admin
+  const initialPostResult = await admin
     .from("community_posts")
-    .select("id,community_id,author_id,title,body,media_url,media_kind,storage_path,file_name,mime_type,size_bytes,is_published,created_at,updated_at,deleted_at")
+    .select("id,community_id,author_id,title,body,media_url,media_kind,storage_path,file_name,mime_type,size_bytes,is_published,created_at,updated_at,deleted_at,is_pinned,topic_links:community_post_topics(topic:community_topics(slug,name))")
     .eq("id", postId)
     .eq("community_id", community.id)
     .eq("is_published", true)
     .is("deleted_at", null)
     .maybeSingle();
+  let data = initialPostResult.data as unknown as Record<string, unknown> | null;
+  let error = initialPostResult.error;
+
+  if (error?.code === "42703") {
+    const fallback = await admin.from("community_posts").select("id,community_id,author_id,title,body,media_url,media_kind,storage_path,file_name,mime_type,size_bytes,is_published,created_at,updated_at,deleted_at,topic_links:community_post_topics(topic:community_topics(slug,name))").eq("id", postId).eq("community_id", community.id).eq("is_published", true).is("deleted_at", null).maybeSingle();
+    data = fallback.data as unknown as Record<string, unknown> | null;
+    error = fallback.error;
+  }
 
   if (error) {
     throw new Error(error.message);
@@ -750,6 +800,7 @@ export async function getOpenCommunityPost(postId: string) {
       currentUserId,
     ),
   );
+  post.can_pin = canModerate;
   const { data: commentRows, error: commentsError } = await admin
     .from("community_post_comments")
     .select("id,post_id,author_id,body,created_at,updated_at,deleted_at")
@@ -1491,6 +1542,25 @@ export async function toggleOpenCommunityPostReactionState(input: {
   revalidatePath("/community");
   revalidatePath(returnTo);
   return { ok: true };
+}
+
+export async function toggleCommunityPostPin(formData: FormData) {
+  const { profile } = await getCurrentAuthAndProfile();
+  const postId = getFormString(formData, "post_id");
+  const returnTo = safeReturnPath(getFormString(formData, "return_to"), "/community/browse");
+  const withMessage = (message: string) => `${returnTo}${returnTo.includes("?") ? "&" : "?"}message=${encodeURIComponent(message)}`;
+  if (profile.role !== "platform_engineer") redirect(withMessage("Only platform engineers can pin Community posts."));
+  if (!/^[0-9a-f-]{36}$/i.test(postId)) redirect(withMessage("Post not found."));
+  const admin = createAdminClient();
+  const { data, error: readError } = await admin.from("community_posts").select("is_pinned").eq("id", postId).maybeSingle();
+  if (readError?.code === "42703") redirect(withMessage("Migration 0047 is required for Community post pinning."));
+  if (readError || !data) redirect(withMessage("Post not found."));
+  const { error } = await admin.from("community_posts").update({ is_pinned: !data.is_pinned }).eq("id", postId);
+  if (error) redirect(withMessage(error.code === "42703" ? "Migration 0047 is required for Community post pinning." : "The pin could not be updated."));
+  revalidatePath("/community");
+  revalidatePath("/community/browse");
+  revalidatePath(`/community/posts/${postId}`);
+  redirect(returnTo);
 }
 
 export async function deleteOpenCommunityPost(formData: FormData) {

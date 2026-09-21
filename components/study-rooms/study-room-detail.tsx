@@ -510,7 +510,7 @@ function NoteItem({ note, roomId, studies, archived, returnTo }: { note: StudyRo
         <div>
           <div className="flex flex-wrap gap-2"><ScopeBadge studyTitle={note.study_title} studyNumber={note.study_number} /></div>
           <h3 className="mt-3 break-words text-lg font-semibold">{note.title}</h3>
-          <ItemMeta author={note.author_name} authorId={note.author_user_id} createdAt={note.created_at} updatedAt={note.updated_at} />
+          <ItemMeta author={note.author_name} authorId={note.author_profile_id} createdAt={note.created_at} updatedAt={note.updated_at} />
         </div>
         <BookmarkButton roomId={roomId} targetType="note" targetId={note.id} isBookmarked={note.is_bookmarked} returnTo={returnTo} />
       </div>
@@ -540,10 +540,8 @@ function DiscussionsSection({ data, filters }: { data: StudyRoomDetailData; filt
   if (!room) return null;
   const archived = room.status === "archived";
   const returnTo = `/study-rooms/${room.id}?section=discussion`;
-  const source = filters.saved ? data.savedThreads : data.discussionThreads;
-  const query = filters.discussionQuery.toLowerCase(); const member = filters.discussionMember.toLowerCase();
-  const threads = source.filter((thread) => (!query || `${thread.title} ${thread.body}`.toLowerCase().includes(query)) && (!member || thread.author_name.toLowerCase().includes(member)) && (filters.discussionStudy === "all" || thread.study_id === filters.discussionStudy)).sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned) || (filters.discussionSort === "oldest" ? 1 : -1) * (new Date(a[filters.discussionSort === "active" ? "updated_at" : "created_at"]).getTime() - new Date(b[filters.discussionSort === "active" ? "updated_at" : "created_at"]).getTime()));
-  const pageCount = Math.max(1, Math.ceil(threads.length / 8)); const page = Math.min(filters.discussionPage, pageCount); const visibleThreads = threads.slice((page - 1) * 8, page * 8);
+  const threads = data.discussionThreads;
+  const pageHref = (page: number) => `${returnTo}&${new URLSearchParams({ ...(filters.discussionQuery ? { discussion_q: filters.discussionQuery } : {}), ...(filters.discussionMember ? { discussion_member: filters.discussionMember } : {}), ...(filters.discussionStudy !== "all" ? { discussion_study: filters.discussionStudy } : {}), ...(filters.discussionSort !== "active" ? { discussion_sort: filters.discussionSort } : {}), ...(filters.saved ? { saved: "1" } : {}), discussion_page: String(page) })}`;
 
   return (
     <div className="space-y-6">
@@ -557,15 +555,17 @@ function DiscussionsSection({ data, filters }: { data: StudyRoomDetailData; filt
             Saved threads only
           </label>
           <SubmitButton pendingLabel="Filtering..." variant="secondary">Apply</SubmitButton>
+          <Link href={returnTo} className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#d9b99d] px-5 text-sm font-semibold text-[#67564c]">Clear filters</Link>
         </form>
+        <p className="mt-5 text-sm text-[#67564c]">{data.discussionTotal} {data.discussionTotal === 1 ? "discussion" : "discussions"}</p>
         {threads.length === 0 ? (
           <EmptyState className="mt-5" icon={MessageSquareText} title="No discussions yet" description="Room members can start the first structured discussion." />
         ) : (
           <div className="mt-5 space-y-4">
-            {visibleThreads.map((thread) => <ThreadItem key={thread.id} thread={thread} roomId={room.id} studies={data.studies} archived={archived} canModerate={data.viewer.canModerate} returnTo={returnTo} />)}
+            {threads.map((thread) => <ThreadItem key={thread.id} thread={thread} roomId={room.id} studies={data.studies} archived={archived} canModerate={data.viewer.canModerate} returnTo={returnTo} />)}
           </div>
         )}
-        <nav aria-label="Study Room discussion pages" className="mt-6 flex justify-between">{page > 1 ? <Link href={`${returnTo}&discussion_page=${page - 1}`} className="font-semibold text-[#8a3f1e]">Previous</Link> : <span/>}{page < pageCount ? <Link href={`${returnTo}&discussion_page=${page + 1}`} className="font-semibold text-[#8a3f1e]">Next</Link> : null}</nav>
+        <nav aria-label="Study Room discussion pages" className="mt-6 grid grid-cols-3 items-center"><div>{data.discussionPage > 1 ? <Link href={pageHref(data.discussionPage - 1)} className="font-semibold text-[#8a3f1e]">Previous</Link> : null}</div><p className="text-center text-sm font-semibold text-[#67564c]">Page {data.discussionPage} of {data.discussionPageCount}</p><div className="text-right">{data.discussionPage < data.discussionPageCount ? <Link href={pageHref(data.discussionPage + 1)} className="font-semibold text-[#8a3f1e]">Next</Link> : null}</div></nav>
       </ContentCard>
       {data.viewer.isMember && !archived ? <ThreadForm roomId={room.id} studies={data.studies} returnTo={returnTo} /> : null}
     </div>
@@ -620,7 +620,7 @@ function ThreadItem({
             {thread.is_locked ? <Badge tone="neutral"><Lock aria-hidden="true" className="h-3 w-3" />Locked</Badge> : null}
           </div>
           <h3 className="mt-3 break-words text-lg font-semibold">{thread.title}</h3>
-          <ItemMeta author={thread.author_name} authorId={thread.author_user_id} createdAt={thread.created_at} updatedAt={thread.updated_at} />
+          <ItemMeta author={thread.author_name} authorId={thread.author_profile_id} createdAt={thread.created_at} updatedAt={thread.updated_at} />
         </div>
         <BookmarkButton roomId={roomId} targetType="thread" targetId={thread.id} isBookmarked={thread.is_bookmarked} returnTo={returnTo} />
       </div>
@@ -678,7 +678,7 @@ function ThreadItem({
 function ReplyItem({ reply, roomId, archived, returnTo }: { reply: StudyRoomDiscussionReply; roomId: string; archived: boolean; returnTo: string }) {
   return (
     <article id={`reply-${reply.id}`} className="rounded-xl border border-[#ead6c5] bg-[#fff8f0] p-4">
-      <ItemMeta author={reply.author_name} authorId={reply.author_user_id} createdAt={reply.created_at} updatedAt={reply.updated_at} />
+      <ItemMeta author={reply.author_name} authorId={reply.author_profile_id} createdAt={reply.created_at} updatedAt={reply.updated_at} />
       <p className="mt-3 whitespace-pre-line break-words text-sm leading-6 text-[#67564c]">{reply.body}</p>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {!archived && reply.canEdit ? (
@@ -804,7 +804,7 @@ function PrayerItem({ prayer, roomId, studies, archived, returnTo }: { prayer: S
         <ScopeBadge studyTitle={prayer.study_title} studyNumber={prayer.study_number} roomLabel="Room Prayer" studyLabel="Study Prayer" />
       </div>
       <h3 className="mt-3 break-words text-lg font-semibold">{prayer.title}</h3>
-      <ItemMeta author={prayer.author_name} authorId={prayer.author_user_id} createdAt={prayer.created_at} updatedAt={prayer.updated_at} />
+      <ItemMeta author={prayer.author_name} authorId={prayer.author_profile_id} createdAt={prayer.created_at} updatedAt={prayer.updated_at} />
       <p className="mt-3 whitespace-pre-line break-words text-sm leading-6 text-[#67564c]">{prayer.body}</p>
       {prayer.answered_update ? <p className="mt-3 rounded-xl bg-[#eef7ee] p-3 text-sm leading-6 text-[#386641]">Answered update: {prayer.answered_update}</p> : null}
       <div className="mt-5 flex flex-wrap gap-3">

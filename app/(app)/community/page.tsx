@@ -107,11 +107,11 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
         </section>
 
         <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <section aria-label="General Community" className="space-y-5">
+          <section aria-label="Recent Community activity" className="space-y-5">
             <SectionHeader
-              title="General Community"
-              description="Uncategorized posts remain here. Topic posts stay inside their topic spaces."
-              action={data.isSignedIn ? <ActionButton href="/community/new" variant="secondary">Create general post</ActionButton> : null}
+              title="Recent Community activity"
+              description="Recent Community activity, with pinned posts kept at the top."
+              action={<div className="flex flex-wrap gap-2"><ActionButton href="/community/browse">Browse all posts</ActionButton>{data.isSignedIn ? <ActionButton href="/community/new" variant="secondary">Create general post</ActionButton> : null}</div>}
             />
             {!data.community ? (
               <ContentCard as="div" className="bg-white/80">
@@ -128,8 +128,8 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
 
             {data.posts.length === 0 ? (
               <EmptyState
-                title="No General Community posts yet"
-                description="Topic posts are kept in their own spaces. Share here only when the post is not tied to one topic."
+                title="No Community posts yet"
+                description="Start the conversation with a post in General Community or one of the focused topics."
                 action={data.isSignedIn ? <ActionButton href="/community/new">Create general post</ActionButton> : <ActionButton href="/signin">Sign in to post</ActionButton>}
               />
             ) : (
@@ -139,6 +139,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                     post={post}
                     href={`/community/posts/${post.id}`}
                     editHref={post.can_edit ? `/community/posts/${post.id}/edit` : null}
+                    pinReturnTo="/community"
                   />
                   {post.can_delete ? (
                     <form action={deleteOpenCommunityPost}>
@@ -188,7 +189,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
 
             <Widget title="New members">
               {members.map((member) => (
-                <div key={member.id} className="flex items-center gap-3">
+                <Link key={member.id} href={`/members/${member.id}`} className="flex items-center gap-3 rounded-xl p-1 hover:bg-[#fff4e8]">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#ffe2cb] text-xs font-semibold text-[#8a3f1e]">
                     {member.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -201,7 +202,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                     <p className="text-sm font-semibold text-[#3b312b]">{member.display_name}</p>
                     <p className="text-xs text-[#715e54]">Joined {formatDate(member.created_at)}</p>
                   </div>
-                </div>
+                </Link>
               ))}
               {members.length === 0 ? (
                 <p className="text-sm text-[#67564c]">
