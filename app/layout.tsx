@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   },
   verification: {
     other: {
-      "ft-site-verification": "ft-0ce974cb016a4656806e7ecb5b9deb2c",
+      "ft-site-verification": "ft-cc659c4f360a4221b735be038499d222",
     },
   },
   openGraph: {
