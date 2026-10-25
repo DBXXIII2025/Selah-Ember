@@ -38,6 +38,11 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  verification: {
+    other: {
+      "ft-site-verification": "ft-0ce974cb016a4656806e7ecb5b9deb2c",
+    },
+  },
   openGraph: {
     title: "Selah Ember",
     description,
