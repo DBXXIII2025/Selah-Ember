@@ -6,7 +6,23 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const requestedNext = requestUrl.searchParams.get("next") || "/community";
-  const next = requestedNext.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/community";
+  // Allow only local paths; reject backslashes, control characters and
+  // encoded protocol-relative redirects.
+  const isSafeInternalPath = (value: string) => {
+    const safe = (path: string) =>
+      path.startsWith("/") &&
+      !path.startsWith("//") &&
+      !Array.from(path).some((character) => {
+        const code = character.charCodeAt(0);
+        return code === 92 || code < 32 || code === 127;
+      });
+    try {
+      return safe(value) && safe(decodeURIComponent(value));
+    } catch {
+      return false;
+    }
+  };
+  const next = isSafeInternalPath(requestedNext) ? requestedNext : "/community";
 
   if (code) {
     const supabase = await createClient();
