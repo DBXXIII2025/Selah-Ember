@@ -6,14 +6,18 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const requestedNext = requestUrl.searchParams.get("next") || "/community";
-  // Reject protocol-relative URLs, backslashes, control characters, and encoded
-  // variants before constructing a redirect destination.
+  // Allow only local paths; reject backslashes, control characters and
+  // encoded protocol-relative redirects.
   const isSafeInternalPath = (value: string) => {
-    if (!value.startsWith("/") || value.startsWith("//")) return false;
-    if (/[\\\\\\u0000-\\u001f\\u007f]/.test(value)) return false;
+    const safe = (path: string) =>
+      path.startsWith("/") &&
+      !path.startsWith("//") &&
+      !Array.from(path).some((character) => {
+        const code = character.charCodeAt(0);
+        return code === 92 || code < 32 || code === 127;
+      });
     try {
-      const decoded = decodeURIComponent(value);
-      return decoded.startsWith("/") && !decoded.startsWith("//") && !/[\\\\\\u0000-\\u001f\\u007f]/.test(decoded);
+      return safe(value) && safe(decodeURIComponent(value));
     } catch {
       return false;
     }
