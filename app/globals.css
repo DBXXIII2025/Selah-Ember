@@ -74,3 +74,26 @@ main:focus {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Modern layout primitives; original Selah Ember palette retained. */
+:root {
+  --surface: #fff8ed;
+  --surface-raised: #fff4df;
+  --muted-foreground: #67564c;
+  --radius-card: 1.25rem;
+  --shadow-card: 0 12px 32px rgba(33, 24, 20, .07);
+}
+.se-page { width: min(100% - 2rem, 76rem); margin-inline: auto; padding-block: clamp(1.5rem, 4vw, 3.5rem); }
+.se-page-header { display: grid; gap: .6rem; margin-bottom: clamp(1.5rem, 3vw, 2.5rem); }
+.se-page-title { font-size: clamp(1.85rem, 4vw, 3rem); line-height: 1.13; letter-spacing: -.035em; font-weight: 750; }
+.se-page-description { color: var(--muted-foreground); line-height: 1.7; max-width: 65ch; }
+.se-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1.25rem; }
+.se-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); padding: clamp(1rem, 2.5vw, 1.6rem); box-shadow: var(--shadow-card); }
+.se-card:hover { border-color: var(--ember); }
+.se-field { width: 100%; min-height: 2.75rem; border: 1px solid var(--line); background: white; color: var(--foreground); border-radius: .8rem; padding: .7rem .9rem; }
+.se-button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 2.75rem; border-radius: .8rem; padding: .65rem 1.1rem; font-weight: 650; background: var(--ember-deep); color: white; transition: background .18s ease, transform .18s ease; }
+.se-button:hover { background: #78391b; }
+.se-button-secondary { background: var(--cream); color: var(--charcoal); border: 1px solid var(--line); }
+.se-button-secondary:hover { background: var(--surface-raised); }
+@media (max-width: 640px) { .se-page { width: min(100% - 1.25rem, 76rem); } .se-card { border-radius: 1rem; } }
