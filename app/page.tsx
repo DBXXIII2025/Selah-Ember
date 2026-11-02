@@ -37,7 +37,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#f7ead7] text-[#211814]">
-      <section className="relative isolate flex min-h-screen items-center bg-[#151210] px-6 py-8 sm:px-10 lg:px-16">
+      <section className="relative isolate flex min-h-[min(90svh,820px)] items-center bg-[#151210] px-5 py-16 sm:px-10 lg:px-16">
         <Image
           src="/images/selah-ember-logo.png"
           alt=""
@@ -47,7 +47,7 @@ export default async function Home({ searchParams }: HomeProps) {
           priority
         />
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_22%_24%,rgba(217,120,52,0.3),transparent_30%),linear-gradient(90deg,rgba(21,18,16,0.98)_0%,rgba(21,18,16,0.86)_46%,rgba(21,18,16,0.58)_100%)]" />
-        <div className="mx-auto grid w-full max-w-7xl gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+        <div className="mx-auto grid w-full max-w-7xl gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div className="max-w-3xl">
             <BrandMark variant="light" />
             {message ? (
@@ -55,7 +55,7 @@ export default async function Home({ searchParams }: HomeProps) {
                 {message}
               </div>
             ) : null}
-            <h1 className="mt-10 max-w-4xl font-serif text-5xl font-semibold tracking-normal text-[#fff4df] sm:text-6xl lg:text-7xl">
+            <h1 className="mt-10 max-w-4xl font-serif text-4xl font-semibold leading-[1.12] tracking-tight text-[#fff4df] sm:text-6xl lg:text-7xl">
               An open faith community for prayer, groups, and fellowship
             </h1>
             <p className="mt-7 max-w-2xl text-lg leading-8 text-[#e8ccb0] sm:text-xl">
@@ -77,7 +77,7 @@ export default async function Home({ searchParams }: HomeProps) {
             </div>
           </div>
 
-          <div className="relative rounded-2xl border border-[#c8874d]/35 bg-[#211814]/82 p-8 text-[#fff4df] shadow-2xl shadow-black/40 backdrop-blur">
+          <div className="relative rounded-3xl border border-[#c8874d]/35 bg-[#211814]/82 p-6 sm:p-8 text-[#fff4df] shadow-2xl shadow-black/40 backdrop-blur">
             <div className="absolute right-8 top-8 h-16 w-16 rounded-full bg-[#d97834]/30 blur-xl" />
             <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#d8965c]">
               Fellowship rhythm
@@ -111,7 +111,7 @@ export default async function Home({ searchParams }: HomeProps) {
               return (
                 <article
                   key={pillar.title}
-                  className="rounded-xl border border-[#d9b58d] bg-[#fff8ed]/80 p-6 shadow-sm"
+                  className="rounded-3xl border border-[#d9b58d] bg-[#fff8ed]/80 p-6 shadow-[0_12px_32px_rgba(33,24,20,0.07)] transition duration-200 hover:-translate-y-1 hover:shadow-lg"
                 >
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#ffe2cb] text-[#b94f22]">
                     <Icon aria-hidden="true" className="h-5 w-5" />
