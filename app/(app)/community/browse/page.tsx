@@ -19,7 +19,15 @@ function url(params: Awaited<Props["searchParams"]>, page: number) {
 
 export default async function CommunityBrowsePage({ searchParams }: Props) {
   const params = await searchParams;
-  const [data, topics] = await Promise.all([browseCommunityPosts({ ...params, page: Number(params.page) || 1 }), getCommunityTopics()]);
+  const [postsResult, topicsResult] = await Promise.allSettled([
+    browseCommunityPosts({ ...params, page: Number(params.page) || 1 }),
+    getCommunityTopics(),
+  ]);
+  const isUnavailable = postsResult.status === "rejected";
+  const data = postsResult.status === "fulfilled"
+    ? postsResult.value
+    : { posts: [], total: 0, page: 1, pageCount: 1, migrationRequired: false };
+  const topics = topicsResult.status === "fulfilled" ? topicsResult.value : [];
   const currentPath = url(params, data.page);
   return <PageContainer className="py-10">
     <PageHeader eyebrow="Community" title="Browse Community posts" description="Find encouragement by keyword, member, or topic." bordered />
@@ -32,9 +40,10 @@ export default async function CommunityBrowsePage({ searchParams }: Props) {
       <div className="flex flex-wrap gap-3 md:col-span-4"><button className="rounded-full bg-[#a94720] px-5 py-2 font-semibold text-white">Apply filters</button><Link href="/community/browse" className="rounded-full border border-[#d9b99d] px-5 py-2 font-semibold text-[#67564c]">Clear filters</Link><Link href="/members" className="rounded-full border border-[#d9b99d] px-5 py-2 font-semibold text-[#67564c]">Find a member</Link></div>
     </form>
     {params.message ? <p className="mt-4 rounded-xl bg-[#fff4e8] p-4 text-sm text-[#8a3f1e]">{params.message}</p> : null}
+    {isUnavailable ? <p role="status" className="mt-4 rounded-xl border border-[#d9b99d] bg-[#fff4e8] p-4 text-sm text-[#8a3f1e]">Community posts are temporarily unavailable. Please try again shortly.</p> : null}
     {data.migrationRequired ? <p className="mt-4 rounded-xl bg-[#fff4e8] p-4 text-sm text-[#8a3f1e]">Migration 0047 is required to display pinned posts. Browsing remains available.</p> : null}
-    <p className="mt-6 text-sm text-[#67564c]">{data.total} {data.total === 1 ? "post" : "posts"}</p>
-    <div className="mt-4 space-y-5">{data.posts.length ? data.posts.map((post) => <CommunityPostDisplay key={post.id} post={post} href={`/community/posts/${post.id}`} editHref={post.can_edit ? `/community/posts/${post.id}/edit` : null} pinReturnTo={currentPath} />) : <EmptyState title="No posts found" description="Try broadening your filters." />}</div>
-    <nav aria-label="Community results pages" className="mt-8 grid grid-cols-3 items-center"><div>{data.page > 1 ? <Link href={url(params, data.page - 1)} className="font-semibold text-[#8a3f1e]">Previous</Link> : null}</div><p className="text-center text-sm font-semibold text-[#67564c]">Page {data.page} of {data.pageCount}</p><div className="text-right">{data.page < data.pageCount ? <Link href={url(params, data.page + 1)} className="font-semibold text-[#8a3f1e]">Next</Link> : null}</div></nav>
+    {!isUnavailable ? <p className="mt-6 text-sm text-[#67564c]">{data.total} {data.total === 1 ? "post" : "posts"}</p> : null}
+    {!isUnavailable ? <div className="mt-4 space-y-5">{data.posts.length ? data.posts.map((post) => <CommunityPostDisplay key={post.id} post={post} href={`/community/posts/${post.id}`} editHref={post.can_edit ? `/community/posts/${post.id}/edit` : null} pinReturnTo={currentPath} />) : <EmptyState title="No posts found" description="Try broadening your filters." />}</div> : null}
+    {!isUnavailable ? <nav aria-label="Community results pages" className="mt-8 grid grid-cols-3 items-center"><div>{data.page > 1 ? <Link href={url(params, data.page - 1)} className="font-semibold text-[#8a3f1e]">Previous</Link> : null}</div><p className="text-center text-sm font-semibold text-[#67564c]">Page {data.page} of {data.pageCount}</p><div className="text-right">{data.page < data.pageCount ? <Link href={url(params, data.page + 1)} className="font-semibold text-[#8a3f1e]">Next</Link> : null}</div></nav> : null}
   </PageContainer>;
 }
