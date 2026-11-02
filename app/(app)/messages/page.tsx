@@ -31,7 +31,7 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
 
   return (
     <PageContainer>
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-6xl">
         <PageHeader
           eyebrow="Messages"
           title="Direct messages"
@@ -43,7 +43,7 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
           <FormNotice className="mt-6">{params.message}</FormNotice>
         ) : null}
 
-        <ContentCard as="section" className="mt-8 bg-white/70">
+        <ContentCard as="section" className="mt-8 bg-white/85">
           <form className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <input type="hidden" name="view" value={view} />
             <SearchInput name="q" defaultValue={params.q || ""} label="Search conversations" placeholder="Search conversations" />
@@ -64,13 +64,13 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
             action={view === "active" ? <ActionButton href="/messages/new">Start a conversation</ActionButton> : undefined}
           />
         ) : (
-          <div className="mt-10 space-y-4">
+          <div className="mt-8 grid gap-3">
             {conversations.map((conversation) => (
               <ContentCard key={conversation.id} className="bg-white/70">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
-                      <Link href={`/messages/${conversation.id}`} className="text-xl font-semibold hover:text-[#b94f22]">
+                      <Link href={`/messages/${conversation.id}`} className="text-lg font-semibold hover:text-[#b94f22] sm:text-xl">
                         {conversationTitle(
                           conversation.participants.filter(
                             (participant) => participant.user_id !== conversation.current_user_id,
