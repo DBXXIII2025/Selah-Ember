@@ -93,7 +93,7 @@ export function PageContainer({
   className?: string;
 }>) {
   return (
-    <section className={cn("px-5 py-10 sm:px-8 sm:py-12 lg:px-16", className)}>
+    <section className={cn("px-5 py-10 sm:px-8 sm:py-14 lg:px-16 lg:py-16", className)}>
       <div className={cn("mx-auto", size === "medium" ? "max-w-4xl" : "max-w-7xl")}>{children}</div>
     </section>
   );
@@ -128,7 +128,7 @@ export function PageHeader({
             {eyebrow}
           </p>
         ) : null}
-        <h1 className={cn("text-3xl font-semibold tracking-[-0.02em] sm:text-4xl", eyebrow && "mt-3")}>{title}</h1>
+        <h1 className={cn("text-3xl font-semibold leading-tight tracking-[-0.035em] sm:text-4xl lg:text-[2.75rem]", eyebrow && "mt-3")}>{title}</h1>
         {description ? <div className="mt-4 max-w-2xl leading-7 text-[#67564c]">{description}</div> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
@@ -168,7 +168,7 @@ export function ContentCard({
   as?: "article" | "section" | "div";
 }>) {
   return (
-    <Tag className={cn("rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm sm:p-6", className)}>
+    <Tag className={cn("rounded-3xl border border-[#ead6c5] bg-white/80 p-5 shadow-[0_12px_32px_rgba(33,24,20,0.07)] sm:p-7", className)}>
       {children}
     </Tag>
   );
@@ -188,7 +188,7 @@ export function EmptyState({
   className?: string;
 }>) {
   return (
-    <div className={cn("rounded-2xl border border-dashed border-[#d79568] bg-white/65 px-5 py-10 text-center sm:p-10", className)}>
+    <div className={cn("rounded-3xl border border-dashed border-[#d79568] bg-white/65 px-5 py-10 text-center sm:p-10", className)}>
       {Icon ? (
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#ffe2cb] text-[#b94f22]">
           <Icon aria-hidden="true" className="h-5 w-5" />
