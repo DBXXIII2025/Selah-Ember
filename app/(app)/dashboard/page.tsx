@@ -51,7 +51,7 @@ export default async function DashboardPage() {
         <ActionButton href="/profile" variant="secondary">Edit profile</ActionButton>
       </div>
 
-      <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {dashboardCards.map((card) => (
           <StatCard
             key={card.title}
