@@ -61,7 +61,7 @@ export default async function PlatformMessagesPage({ searchParams }: PlatformMes
         ) : null}
 
         <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
-          <ContentCard as="section" className="bg-white/70">
+          <ContentCard as="section" className="bg-white/85">
             <SectionHeader title={<span className="flex items-center gap-3"><MessageCircle aria-hidden="true" className="h-5 w-5 text-[#b94f22]" />Inbox</span>} />
             {data.conversations.length === 0 ? (
               <EmptyState className="mt-6" icon={MessageCircle} title="No support conversations yet" description="Search for a user and start the first conversation." />
@@ -97,7 +97,7 @@ export default async function PlatformMessagesPage({ searchParams }: PlatformMes
             )}
           </ContentCard>
 
-          <ContentCard as="section" className="h-fit bg-white/70">
+          <ContentCard as="section" className="h-fit bg-white/85">
             <SectionHeader title="Start conversation" description="Find a user before opening a support thread." />
             <form className="mt-5">
               <SearchInput name="q" defaultValue={params.q || ""} label="Search users" placeholder="Search users" />
