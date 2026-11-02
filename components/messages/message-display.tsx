@@ -107,8 +107,8 @@ export function MessageDisplay({
   return (
     <ContentCard
       className={cn(
-        "group w-fit max-w-[94%] rounded-2xl p-4 sm:max-w-[82%]",
-        isOwn ? "ml-auto border-[#e5b08c] bg-[#fff8ef]" : "mr-auto bg-white",
+        "group w-fit max-w-[90%] rounded-3xl p-4 shadow-sm sm:max-w-[72%]",
+        isOwn ? "ml-auto rounded-br-md border-[#e5b08c] bg-[#fff0df]" : "mr-auto rounded-bl-md bg-white",
       )}
     >
       <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-center sm:gap-5">
