@@ -29,7 +29,7 @@ export default async function PrayerPage({ searchParams }: PrayerPageProps) {
           action={<ActionButton href="/prayer/new">Create request</ActionButton>}
         />
         ) : (
-          <div className="mt-10 grid gap-5 lg:grid-cols-2">
+          <div className="mt-10 grid gap-6 lg:grid-cols-2">
             {requests.map((request) => (
               <ContentCard key={request.id}>
                 <div className="flex flex-wrap items-center gap-3">
