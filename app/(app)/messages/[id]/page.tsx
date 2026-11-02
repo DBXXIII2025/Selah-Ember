@@ -59,7 +59,8 @@ export default async function ConversationPage({ params, searchParams }: Convers
       .join(" - ") || "Participants unavailable";
 
   return (
-    <PageContainer size="medium">
+    <PageContainer size="wide" className="lg:py-10">
+      <div className="mx-auto max-w-5xl">
       <DetailHeader
         backHref="/messages"
         backLabel="Go back to Messages"
@@ -73,11 +74,11 @@ export default async function ConversationPage({ params, searchParams }: Convers
           <FormNotice className="mt-6">{query.message}</FormNotice>
         ) : null}
 
-        <ContentCard as="section" className="mt-8 bg-white/60 p-4 sm:p-5">
+        <ContentCard as="section" className="mt-6 min-h-[42vh] bg-[#fffaf3] p-3 sm:p-6">
           {conversation.messages.length === 0 ? (
             <EmptyState title="No messages yet" description="Send the first message in this conversation." />
           ) : (
-            <div className="space-y-3">
+            <div className="flex flex-col gap-3" role="log" aria-label="Conversation messages">
               {conversation.messages.map((message) => {
                 const sender = conversation.participants.find((participant) => participant.user_id === message.sender_id);
 
@@ -112,7 +113,8 @@ export default async function ConversationPage({ params, searchParams }: Convers
           )}
         </ContentCard>
 
-        <MessageComposer conversationId={conversation.id} />
+        <div className="sticky bottom-0 z-10 -mx-2 bg-[#f7ead7]/95 px-2 pb-3 pt-2 backdrop-blur-sm sm:static sm:bg-transparent sm:p-0"><MessageComposer conversationId={conversation.id} /></div>
+      </div>
     </PageContainer>
   );
 }
