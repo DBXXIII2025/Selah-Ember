@@ -543,21 +543,21 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                       </dl>
                       {report.details ? <p className="mt-4 break-words rounded-xl bg-[#fff8f0] p-3 text-[#67564c]">{report.details}</p> : null}
                       <div className="mt-5 grid gap-3 md:grid-cols-3">
-                        <form action={reviewStudyRoomReport} className="rounded-xl border border-[#ead6c5] bg-white/70 p-3">
+                        <form action={reviewStudyRoomReport} className="rounded-xl border border-[#ead6c5] bg-white/85 p-3">
                           {Object.entries(hiddenFields).map(([name, value]) => (
                             <input key={name} type="hidden" name={name} value={value} />
                           ))}
                           <input type="hidden" name="status" value="reviewed" />
                           <ActionButton type="submit" size="sm" variant="secondary">Mark reviewed</ActionButton>
                         </form>
-                        <form action={reviewStudyRoomReport} className="rounded-xl border border-[#ead6c5] bg-white/70 p-3">
+                        <form action={reviewStudyRoomReport} className="rounded-xl border border-[#ead6c5] bg-white/85 p-3">
                           {Object.entries(hiddenFields).map(([name, value]) => (
                             <input key={name} type="hidden" name={name} value={value} />
                           ))}
                           <input type="hidden" name="status" value="resolved" />
                           <ActionButton type="submit" size="sm" variant="secondary">Resolve</ActionButton>
                         </form>
-                        <form action={reviewStudyRoomReport} className="rounded-xl border border-[#ead6c5] bg-white/70 p-3">
+                        <form action={reviewStudyRoomReport} className="rounded-xl border border-[#ead6c5] bg-white/85 p-3">
                           {Object.entries(hiddenFields).map(([name, value]) => (
                             <input key={name} type="hidden" name={name} value={value} />
                           ))}
