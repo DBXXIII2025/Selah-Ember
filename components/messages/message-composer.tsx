@@ -169,7 +169,7 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
   }
 
   return (
-    <form action={sendDirectMessage} encType="multipart/form-data" className="mt-6">
+    <form action={sendDirectMessage} encType="multipart/form-data" className="mt-4">
       <input type="hidden" name="conversation_id" value={conversationId} />
       <input type="hidden" name="link_url" value={selectedLink} />
       {returnTo ? <input type="hidden" name="return_to" value={returnTo} /> : null}
@@ -214,7 +214,7 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
         </div>
       ) : null}
 
-      <div className="relative rounded-2xl border border-[#d8bea3] bg-white/85 p-3 shadow-lg shadow-[#2f1608]/5 transition focus-within:border-[#a94720] focus-within:shadow-[#a94720]/15">
+      <div className="relative rounded-3xl border border-[#d8bea3] bg-white/95 p-3 shadow-lg shadow-[#2f1608]/5 transition focus-within:border-[#a94720] focus-within:shadow-[#a94720]/15">
         <label className="sr-only" htmlFor="message-body">
           Message
         </label>
@@ -224,10 +224,10 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
           name="body"
           value={body}
           onChange={(event) => setBody(event.target.value)}
-          rows={4}
+          rows={2}
           maxLength={5000}
-          placeholder="Write a message..."
-          className="min-h-28 w-full resize-none rounded-xl border-0 bg-transparent px-3 pb-14 pt-2 leading-7 text-[#2f2722] outline-none placeholder:text-[#9a8170]"
+          placeholder="Write a thoughtful message…"
+          className="min-h-20 w-full resize-y rounded-xl border-0 bg-transparent px-3 pb-14 pt-2 leading-7 text-[#2f2722] outline-none placeholder:text-[#9a8170]"
         />
 
         <input
