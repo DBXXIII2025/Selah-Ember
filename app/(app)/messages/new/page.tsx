@@ -28,7 +28,7 @@ export default async function NewMessagePage({ searchParams }: NewMessagePagePro
           <FormNotice className="mt-6">{params.message}</FormNotice>
         ) : null}
 
-        <ContentCard as="section" className="mt-10 bg-white/70">
+        <ContentCard as="section" className="mt-10 bg-white/85">
           <form>
             <SearchInput name="q" defaultValue={params.q || ""} label="Search people" placeholder="Search by name or username" />
             <ActionButton type="submit" className="mt-4">Search</ActionButton>
@@ -40,7 +40,7 @@ export default async function NewMessagePage({ searchParams }: NewMessagePagePro
             <EmptyState icon={Search} title="No people found" description="Try a display name, username, or optional faith-community name." />
           ) : (
             users.map((user) => (
-              <ContentCard key={user.user_id} className="bg-white/70">
+              <ContentCard key={user.user_id} className="bg-white/85">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <h2 className="text-xl font-semibold">{user.display_name}</h2>
