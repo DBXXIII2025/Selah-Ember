@@ -34,7 +34,7 @@ export default async function EventsPage() {
           action={<ActionButton href="/events/new">Create event</ActionButton>}
         />
         ) : (
-          <div className="mt-10 grid gap-5 lg:grid-cols-2">
+          <div className="mt-10 grid gap-6 lg:grid-cols-2">
             {events.map((event) => (
               <ContentCard key={event.id}>
                 <div className="flex flex-wrap items-center gap-3">
