@@ -27,7 +27,7 @@ export default async function GroupsPage() {
           action={<ActionButton href="/groups/new">Create group</ActionButton>}
         />
         ) : (
-          <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {groups.map((group) => (
               <ContentCard key={group.id}>
                 <div className="flex items-start justify-between gap-4">
