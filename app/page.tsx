@@ -37,7 +37,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#f7ead7] text-[#211814]">
-      <section className="relative isolate flex min-h-[min(90svh,820px)] items-center bg-[#151210] px-5 py-16 sm:px-10 lg:px-16">
+      <section className="relative isolate flex items-center bg-[#151210] px-5 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24">
         <Image
           src="/images/selah-ember-logo.png"
           alt=""
@@ -47,21 +47,21 @@ export default async function Home({ searchParams }: HomeProps) {
           priority
         />
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_22%_24%,rgba(217,120,52,0.3),transparent_30%),linear-gradient(90deg,rgba(21,18,16,0.98)_0%,rgba(21,18,16,0.86)_46%,rgba(21,18,16,0.58)_100%)]" />
-        <div className="mx-auto grid w-full max-w-7xl gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-          <div className="max-w-3xl">
+        <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(19rem,0.85fr)] lg:items-center lg:gap-16">
+          <div className="max-w-2xl">
             <BrandMark variant="light" />
             {message ? (
               <div role="status" className="mt-8 inline-flex rounded-full border border-[#d8965c]/45 bg-[#fff4df]/12 px-4 py-2 text-sm font-semibold text-[#fff4df]">
                 {message}
               </div>
             ) : null}
-            <h1 className="mt-10 max-w-4xl font-serif text-4xl font-semibold leading-[1.12] tracking-tight text-[#fff4df] sm:text-6xl lg:text-7xl">
+            <h1 className="mt-8 max-w-2xl font-serif text-[clamp(2.65rem,5vw,4.6rem)] font-semibold leading-[1.06] tracking-[-0.045em] text-[#fff4df]">
               An open faith community for prayer, groups, and fellowship
             </h1>
-            <p className="mt-7 max-w-2xl text-lg leading-8 text-[#e8ccb0] sm:text-xl">
+            <p className="mt-6 max-w-xl text-base leading-7 text-[#e8ccb0] sm:text-lg">
               A warm, modern home for encouragement, prayer, Bible study, events, and meaningful connection.
             </p>
-            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+            <div className="mt-8 flex flex-wrap gap-3">
               <a
                 href="/signup"
                 className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#a94720] px-6 py-3 text-base font-semibold text-white shadow-lg shadow-[#a94720]/25 transition hover:bg-[#8f3518]"
@@ -94,8 +94,8 @@ export default async function Home({ searchParams }: HomeProps) {
         </div>
       </section>
 
-      <section id="groups" className="bg-[#f7ead7] px-6 py-20 sm:px-10 lg:px-16">
-        <div className="mx-auto max-w-7xl">
+      <section id="groups" className="bg-[#f7ead7] px-5 py-14 sm:px-8 sm:py-16 lg:px-12">
+        <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9b4d25]">
               Gather with intention
@@ -104,20 +104,20 @@ export default async function Home({ searchParams }: HomeProps) {
               A foundation for shared spiritual life
             </h2>
           </div>
-          <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {fellowshipPillars.map((pillar) => {
               const Icon = pillar.icon;
 
               return (
                 <article
                   key={pillar.title}
-                  className="rounded-3xl border border-[#d9b58d] bg-[#fff8ed]/80 p-6 shadow-[0_12px_32px_rgba(33,24,20,0.07)] transition duration-200 hover:-translate-y-1 hover:shadow-lg"
+                  className="rounded-2xl border border-[#d9b58d] bg-[#fff8ed]/80 p-5 shadow-[0_12px_32px_rgba(33,24,20,0.07)] transition duration-200 hover:-translate-y-1 hover:shadow-lg"
                 >
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#ffe2cb] text-[#b94f22]">
                     <Icon aria-hidden="true" className="h-5 w-5" />
                   </div>
-                  <h3 className="mt-6 text-xl font-semibold text-[#211b17]">{pillar.title}</h3>
-                  <p className="mt-3 leading-7 text-[#67564c]">{pillar.description}</p>
+                  <h3 className="mt-4 text-lg font-semibold text-[#211b17]">{pillar.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[#67564c]">{pillar.description}</p>
                 </article>
               );
             })}
