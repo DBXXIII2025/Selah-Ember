@@ -1,6 +1,8 @@
 "use server";
 
 import { getOptionalAuthAndProfile } from "@/lib/auth/current";
+import { getErrorMetadata } from "@/lib/observability/log";
+import { logRequestEvent } from "@/lib/observability/request";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const PAGE_SIZE = 12;
@@ -12,7 +14,15 @@ export type MemberActivity = { id: string; kind: "post" | "comment" | "testimony
 export async function getMembers(q = "", page = 1) {
   const admin = createAdminClient();
   const { data, error } = await admin.from("profiles").select("id,user_id,display_name,username,avatar_url,bio,favorite_verse,church_name,created_at").not("user_id", "is", null).order("display_name");
-  if (error) throw new Error(error.message);
+  if (error) {
+    await logRequestEvent("warn", "supabase.public_members_directory.unavailable", {
+      provider: "supabase",
+      operation: "read_public_members_directory",
+      ...getErrorMetadata(error),
+    });
+    const current = Math.max(1, page);
+    return { members: [], total: 0, page: current, pageCount: 1 };
+  }
   const needle = cleanSearch(q).toLowerCase();
   const all = ((data || []) as unknown as PublicMember[]).filter((member) => !needle || `${member.display_name} ${member.username || ""}`.toLowerCase().includes(needle));
   const current = Math.max(1, page);

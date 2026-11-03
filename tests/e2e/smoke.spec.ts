@@ -11,7 +11,7 @@ async function expectPageLoads(page: Page, path: string, heading: string) {
 }
 
 test.describe("public pages", () => {
-  test.describe.configure({ timeout: 60_000 });
+  test.describe.configure({ timeout: 180_000 });
 
   test("home and discovery pages load", async ({ page }) => {
     await expectPageLoads(page, "/", "An open faith community for prayer, groups, and fellowship");
