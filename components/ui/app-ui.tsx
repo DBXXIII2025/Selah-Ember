@@ -15,7 +15,7 @@ const actionStyles = {
 };
 
 export const formControlClassName =
-  "mt-2 w-full rounded-xl border border-[#d9c1ad] bg-white px-4 py-3 text-[#211814] outline-none transition placeholder:text-[#9a8172] focus-visible:border-[#a94720] focus-visible:ring-4 focus-visible:ring-[#a94720]/10 disabled:cursor-not-allowed disabled:bg-[#f3ece4] disabled:text-[#715e54]";
+  "mt-2 w-full min-w-0 rounded-xl border border-[#d9c1ad] bg-white px-4 py-3 text-[#211814] outline-none transition placeholder:text-[#9a8172] focus-visible:border-[#a94720] focus-visible:ring-4 focus-visible:ring-[#a94720]/10 disabled:cursor-not-allowed disabled:bg-[#f3ece4] disabled:text-[#715e54]";
 
 type ActionButtonProps = {
   children: ReactNode;
@@ -344,7 +344,7 @@ export function FormSection({
 }
 
 export function FormField({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
-  return <div className={cn("block", className)}>{children}</div>;
+  return <div className={cn("block min-w-0", className)}>{children}</div>;
 }
 
 export function FormLabel({
