@@ -77,20 +77,24 @@ export default async function Home({ searchParams }: HomeProps) {
             </div>
           </div>
 
-          <div className="relative rounded-3xl border border-[#c8874d]/35 bg-[#211814]/82 p-6 sm:p-8 text-[#fff4df] shadow-2xl shadow-black/40 backdrop-blur">
-            <div className="absolute right-8 top-8 h-16 w-16 rounded-full bg-[#d97834]/30 blur-xl" />
-            <p className="text-sm font-medium uppercase tracking-[0.22em] text-[#d8965c]">
-              Fellowship rhythm
+          <aside className="overflow-hidden rounded-2xl border border-[#c8874d]/35 bg-[#211814]/90 p-6 text-[#fff4df] shadow-2xl shadow-black/25 sm:p-7">
+            <p className="text-xs font-bold uppercase tracking-[0.17em] text-[#d8965c]">Your community, your pace</p>
+            <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight">A place to belong.</h2>
+            <p className="mt-3 max-w-sm text-sm leading-6 text-[#e8ccb0]">
+              Find encouragement, share what matters, and grow in faith together.
             </p>
-            <div className="mt-10">
-              <div>
-                <p className="font-serif text-4xl font-semibold">Prayer circle</p>
-                <p className="mt-3 text-[#ead6c5]">
-                  Requests, praises, and prayerful care gathered in a quiet shared space.
-                </p>
-              </div>
-            </div>
-          </div>
+            <nav aria-label="Explore Selah Ember" className="mt-6 divide-y divide-[#d8965c]/20 border-t border-[#d8965c]/20">
+              <a href="/community" className="group flex items-center justify-between gap-3 py-4 text-sm font-semibold transition hover:text-[#f4ad72]">
+                Explore the community <span aria-hidden="true" className="text-lg">→</span>
+              </a>
+              <a href="/discover/groups" className="group flex items-center justify-between gap-3 py-4 text-sm font-semibold transition hover:text-[#f4ad72]">
+                Find a study group <span aria-hidden="true" className="text-lg">→</span>
+              </a>
+              <a href="/prayer" className="group flex items-center justify-between gap-3 py-4 text-sm font-semibold transition hover:text-[#f4ad72]">
+                Join in prayer <span aria-hidden="true" className="text-lg">→</span>
+              </a>
+            </nav>
+          </aside>
         </div>
       </section>
 
