@@ -38,8 +38,8 @@ export function BibleReaderShell({
   const selected = fontSizes.find((size) => size.id === fontSize) || fontSizes[0];
 
   return (
-    <section className="mx-auto mt-6 max-w-4xl" aria-label="Bible reader">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ead6c5] bg-white/75 px-4 py-3">
+    <section className="mt-4" aria-label="Bible reader">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#f8ecdf] px-3 py-2 sm:px-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-[#3b312b]">
           <Type aria-hidden="true" className="h-4 w-4" />
           Text size
@@ -63,7 +63,7 @@ export function BibleReaderShell({
           ))}
         </div>
       </div>
-      <div className={cn("space-y-1 rounded-2xl border border-[#ead6c5] bg-[#fffdf9] px-4 py-2 text-[#211814] shadow-sm sm:px-7 sm:py-3", selected.className)}>
+      <div className={cn("space-y-0 text-[#211814]", selected.className)}>
         {children}
       </div>
     </section>
@@ -123,7 +123,7 @@ export function BibleVerseShareTools({
         type="button"
         onClick={shareVerse}
         disabled={isPending}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#d9b99d] bg-white px-3 py-2 text-sm font-semibold text-[#3b312b] transition hover:bg-[#fff4e8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#a94720]/20 disabled:opacity-60"
+        className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[#d9b99d] bg-white px-3 py-1.5 text-xs font-semibold text-[#3b312b] transition hover:bg-[#fff4e8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#a94720]/20 disabled:opacity-60"
       >
         <Share2 aria-hidden="true" className="h-4 w-4" />
         <span>Share</span>
