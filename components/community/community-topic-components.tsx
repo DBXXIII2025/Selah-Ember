@@ -13,18 +13,18 @@ import { SubmitButton } from "@/components/ui/submit-button";
 
 export function TopicGrid({ topics }: Readonly<{ topics: CommunityTopic[] }>) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {topics.map((topic) => (
         <Link
           key={topic.id}
           href={`/community/topics/${topic.slug}`}
-          className="group rounded-2xl border border-[#ead6c5] bg-white/75 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#d79568] hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#a94720]/20"
+          className="group rounded-xl border border-[#ead6c5] bg-white/80 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#d79568] hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#a94720]/20"
         >
           <div className="flex items-start justify-between gap-3">
-            <h2 className="text-lg font-semibold text-[#2f2722] group-hover:text-[#8a3f1e]">{topic.name}</h2>
+            <h2 className="text-base font-semibold leading-snug text-[#2f2722] group-hover:text-[#8a3f1e]">{topic.name}</h2>
             {topic.is_sensitive ? <Badge tone="neutral">Sensitive</Badge> : null}
           </div>
-          {topic.description ? <p className="mt-3 line-clamp-3 text-sm leading-6 text-[#67564c]">{topic.description}</p> : null}
+          {topic.description ? <p className="mt-2 line-clamp-2 text-sm leading-5 text-[#67564c]">{topic.description}</p> : null}
         </Link>
       ))}
     </div>
