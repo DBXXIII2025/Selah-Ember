@@ -10,6 +10,7 @@ import {
   toggleBibleHighlight,
 } from "@/app/actions/bible";
 import { BibleReaderShell, BibleVerseShareTools } from "@/components/bible/bible-reader-client";
+import { BiblePassagePanel } from "@/components/bible/bible-passage-panel";
 import { ActionButton, Badge, ContentCard, FormField, FormLabel, PageContainer, formControlClassName } from "@/components/ui/app-ui";
 import {
   getAdjacentBibleChapter,
@@ -266,7 +267,7 @@ export default async function BiblePage({ searchParams }: BiblePageProps) {
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[#67564c]">A peaceful place to read, reflect, bookmark, and study at your own pace.</p>
       </div>
       <div className="grid items-start gap-6 xl:grid-cols-[16.5rem_minmax(0,1fr)] xl:gap-8">
-        <aside aria-label="Bible navigation" className="rounded-2xl border border-[#ead6c5] bg-white/75 p-4 sm:p-5 xl:sticky xl:top-24">
+        <BiblePassagePanel>
           <div className="mb-5">
             <h2 className="text-base font-bold text-[#211814]">Find a passage</h2>
             <p className="mt-1 text-xs leading-5 text-[#67564c]">Choose a translation, book, chapter, or search Scripture.</p>
@@ -312,7 +313,7 @@ export default async function BiblePage({ searchParams }: BiblePageProps) {
           </FormField>
           <ActionButton type="submit" className="mt-2 w-full">Open</ActionButton>
         </form>
-        </aside>
+        </BiblePassagePanel>
         <div className="min-w-0">
           <SearchResults results={searchResults} query={searchQuery} />
           <section aria-label="Scripture chapter" className="mx-auto max-w-[56rem] overflow-hidden rounded-2xl border border-[#ead6c5] bg-[#fffdf9] px-4 py-6 shadow-sm sm:px-8 sm:py-8">
