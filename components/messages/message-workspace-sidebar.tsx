@@ -37,9 +37,9 @@ export function MessageWorkspaceSidebar({ conversations, activeId, view = "activ
           </Link>
         </div>
         <form action="/messages" method="get" role="search" className="flex items-center gap-2 rounded-xl border border-[#dec8b5] bg-white/90 px-3">
-          <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-[#8a7367]" />
+          <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-[#67564c]" />
           <label htmlFor="conversation-search" className="sr-only">Search conversations</label>
-          <input id="conversation-search" type="search" name="q" defaultValue={query} placeholder="Search conversations" className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-[#211814] outline-none placeholder:text-[#8a7367]" />
+          <input id="conversation-search" type="search" name="q" defaultValue={query} placeholder="Search conversations" className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-[#211814] outline-none placeholder:text-[#67564c]" />
           <input type="hidden" name="view" value={view} />
           <button type="submit" className="rounded-md px-2 py-1 text-xs font-semibold text-[#8a3f1e] hover:bg-[#fff1e3]">Go</button>
         </form>
@@ -75,7 +75,7 @@ export function MessageWorkspaceSidebar({ conversations, activeId, view = "activ
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="truncate text-sm font-semibold text-[#2c211b]">{title}</span>
-                    <time className="shrink-0 text-[10px] text-[#8a7367]">{timeFor(conversation.updated_at)}</time>
+                    <time className="shrink-0 text-[10px] text-[#67564c]">{timeFor(conversation.updated_at)}</time>
                   </div>
                   <div className="mt-1 flex items-center gap-2">
                     <p className="min-w-0 flex-1 truncate text-xs text-[#67564c]">{conversation.latest_message?.deleted_at ? "Message deleted" : conversation.latest_message?.body || "Start the conversation"}</p>
@@ -85,7 +85,7 @@ export function MessageWorkspaceSidebar({ conversations, activeId, view = "activ
               </Link>
               <form action={view === "archived" ? unarchiveConversation : archiveConversation} className="mr-2 mt-3 shrink-0">
                 <input type="hidden" name="conversation_id" value={conversation.id} />
-                <button type="submit" aria-label={`${view === "archived" ? "Unarchive" : "Archive"} ${title}`} title={view === "archived" ? "Unarchive conversation" : "Archive conversation"} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[#8a7367] transition hover:bg-[#ead5c3] hover:text-[#8a3f1e]">
+                <button type="submit" aria-label={`${view === "archived" ? "Unarchive" : "Archive"} ${title}`} title={view === "archived" ? "Unarchive conversation" : "Archive conversation"} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[#67564c] transition hover:bg-[#ead5c3] hover:text-[#8a3f1e]">
                   {view === "archived" ? <ArchiveRestore aria-hidden="true" className="h-4 w-4" /> : <Archive aria-hidden="true" className="h-4 w-4" />}
                 </button>
               </form>
@@ -94,7 +94,7 @@ export function MessageWorkspaceSidebar({ conversations, activeId, view = "activ
         })}
       </nav>
       <div className="border-t border-[#e6cbb6] p-3">
-        <p className="text-center text-[11px] text-[#806a5f]">Private conversations with Selah Ember members</p>
+        <p className="text-center text-[11px] text-[#67564c]">Private conversations with Selah Ember members</p>
       </div>
     </aside>
   );
