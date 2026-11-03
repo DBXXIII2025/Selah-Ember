@@ -215,15 +215,35 @@ function BibleVerseRow({
   const href = getBibleVerseHref(reference);
 
   return (
-    <article id={`verse-${reference.bookId}-${reference.chapter}-${verse.number}`} className={cn("scroll-mt-28 rounded-2xl p-3", highlight && highlightClasses[highlight])}>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <p className="max-w-4xl">
-          <sup className="mr-2 align-super text-sm font-bold text-[#9b4d25]">{verse.number}</sup>
+    <article
+      id={`verse-${reference.bookId}-${reference.chapter}-${verse.number}`}
+      className={cn("scroll-mt-28 border-b border-[#ead6c5] px-1 py-4 last:border-b-0 sm:px-2", highlight && highlightClasses[highlight])}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <p className="min-w-0 max-w-[68ch] flex-1">
+          <sup className="mr-2 align-super text-xs font-bold text-[#9b4d25]">{verse.number}</sup>
           <span>{verse.text}</span>
         </p>
-        <BibleVerseShareTools reference={label} text={verse.text} href={href} />
+        <div className="shrink-0 self-start">
+          <BibleVerseShareTools reference={label} text={verse.text} href={href} />
+        </div>
       </div>
-      <VerseStateForms reference={reference} isBookmarked={isBookmarked} isFavorite={isFavorite} highlight={highlight} note={note} />
+      <details className="mt-2">
+        <summary className="inline-flex min-h-9 cursor-pointer items-center rounded-lg px-2 text-xs font-semibold text-[#8a3f1e] transition hover:bg-[#fff1df]">
+          {isBookmarked || isFavorite || highlight || note ? "Saved verse · " : ""}
+          Bookmark, highlight & notes
+          <span aria-hidden="true" className="ml-2 text-base">+</span>
+        </summary>
+        <div className="pb-2">
+          <VerseStateForms
+            reference={reference}
+            isBookmarked={isBookmarked}
+            isFavorite={isFavorite}
+            highlight={highlight}
+            note={note}
+          />
+        </div>
+      </details>
     </article>
   );
 }
@@ -260,8 +280,8 @@ export default async function BiblePage({ searchParams }: BiblePageProps) {
         bordered
       />
 
-      <ContentCard as="section" className="mt-8">
-        <form className="grid gap-4 lg:grid-cols-[1fr_1fr_0.7fr_1.2fr_auto] lg:items-end" method="get">
+      <ContentCard as="section" className="mt-6">
+        <form className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_0.6fr_1.2fr_auto]" method="get">
           <FormField>
             <FormLabel htmlFor="translation">Translation</FormLabel>
             <select id="translation" name="translation" defaultValue={translationId} className={formControlClassName}>

@@ -15,7 +15,7 @@ const actionStyles = {
 };
 
 export const formControlClassName =
-  "mt-2 w-full rounded-xl border border-[#d9c1ad] bg-white px-4 py-3 text-[#211814] outline-none transition placeholder:text-[#9a8172] focus-visible:border-[#a94720] focus-visible:ring-4 focus-visible:ring-[#a94720]/10 disabled:cursor-not-allowed disabled:bg-[#f3ece4] disabled:text-[#715e54]";
+  "mt-2 w-full min-w-0 rounded-xl border border-[#d9c1ad] bg-white px-4 py-3 text-[#211814] outline-none transition placeholder:text-[#9a8172] focus-visible:border-[#a94720] focus-visible:ring-4 focus-visible:ring-[#a94720]/10 disabled:cursor-not-allowed disabled:bg-[#f3ece4] disabled:text-[#715e54]";
 
 type ActionButtonProps = {
   children: ReactNode;
@@ -93,8 +93,8 @@ export function PageContainer({
   className?: string;
 }>) {
   return (
-    <section className={cn("px-5 py-10 sm:px-8 sm:py-14 lg:px-16 lg:py-16", className)}>
-      <div className={cn("mx-auto", size === "medium" ? "max-w-4xl" : "max-w-7xl")}>{children}</div>
+    <section className={cn("px-4 py-7 sm:px-6 sm:py-10 lg:px-8 lg:py-12", className)}>
+      <div className={cn("mx-auto", size === "medium" ? "max-w-3xl" : "max-w-6xl")}>{children}</div>
     </section>
   );
 }
@@ -117,7 +117,7 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "flex flex-col justify-between gap-5 sm:flex-row sm:items-end",
+        "flex flex-col justify-between gap-4 md:flex-row md:items-end",
         bordered && "border-b border-[#d9b99d] pb-8",
         className,
       )}
@@ -128,8 +128,8 @@ export function PageHeader({
             {eyebrow}
           </p>
         ) : null}
-        <h1 className={cn("text-3xl font-semibold leading-tight tracking-[-0.035em] sm:text-4xl lg:text-[2.75rem]", eyebrow && "mt-3")}>{title}</h1>
-        {description ? <div className="mt-4 max-w-2xl leading-7 text-[#67564c]">{description}</div> : null}
+        <h1 className={cn("text-[1.85rem] font-semibold leading-[1.15] tracking-[-0.035em] sm:text-[2.15rem] lg:text-[2.375rem]", eyebrow && "mt-3")}>{title}</h1>
+        {description ? <div className="mt-3 max-w-2xl text-sm leading-6 text-[#67564c] sm:text-base">{description}</div> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </header>
@@ -148,7 +148,7 @@ export function SectionHeader({
   className?: string;
 }>) {
   return (
-    <div className={cn("flex items-start justify-between gap-4", className)}>
+    <div className={cn("flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between", className)}>
       <div>
         <h2 className="text-lg font-semibold sm:text-xl">{title}</h2>
         {description ? <p className="mt-1 text-sm leading-6 text-[#67564c]">{description}</p> : null}
@@ -168,7 +168,7 @@ export function ContentCard({
   as?: "article" | "section" | "div";
 }>) {
   return (
-    <Tag className={cn("rounded-3xl border border-[#ead6c5] bg-white/80 p-5 shadow-[0_12px_32px_rgba(33,24,20,0.07)] sm:p-7", className)}>
+    <Tag className={cn("rounded-2xl border border-[#ead6c5] bg-white/85 p-4 shadow-[0_8px_24px_rgba(33,24,20,0.04)] sm:p-5", className)}>
       {children}
     </Tag>
   );
@@ -315,10 +315,10 @@ export function FormShell({
   className?: string;
 }>) {
   return (
-    <ContentCard as="section" className={cn("mx-auto w-full max-w-3xl p-5 sm:p-8", className)}>
+    <ContentCard as="section" className={cn("mx-auto w-full max-w-3xl p-5 sm:p-6", className)}>
       <h2 className="text-xl font-semibold tracking-[-0.01em] sm:text-2xl">{title}</h2>
       {description ? <div className="mt-3 max-w-2xl leading-7 text-[#67564c]">{description}</div> : null}
-      <div className="mt-7">{children}</div>
+      <div className="mt-5">{children}</div>
     </ContentCard>
   );
 }
@@ -344,7 +344,7 @@ export function FormSection({
 }
 
 export function FormField({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
-  return <div className={cn("block", className)}>{children}</div>;
+  return <div className={cn("block min-w-0", className)}>{children}</div>;
 }
 
 export function FormLabel({
@@ -428,7 +428,7 @@ export function DetailHeader({
 
 export function DetailHero({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
   return (
-    <ContentCard as="article" className={cn("p-5 sm:p-8", className)}>
+    <ContentCard as="article" className={cn("p-5 sm:p-6", className)}>
       {children}
     </ContentCard>
   );

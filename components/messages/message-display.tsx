@@ -14,7 +14,7 @@ function MessageBody({ body, deleted }: Readonly<{ body: string; deleted?: boole
   const parts = body.split(urlPattern);
 
   return (
-    <p className="mt-3 whitespace-pre-wrap break-words leading-7 text-[#3b312b]">
+    <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[#3b312b] sm:text-base">
       {parts.map((part, index) => {
         if (urlPattern.test(part)) {
           urlPattern.lastIndex = 0;
@@ -107,7 +107,7 @@ export function MessageDisplay({
   return (
     <ContentCard
       className={cn(
-        "group w-fit max-w-[90%] rounded-3xl p-4 shadow-sm sm:max-w-[72%]",
+        "group w-fit max-w-[92%] rounded-2xl p-3 shadow-sm sm:max-w-[76%] sm:p-4",
         isOwn ? "ml-auto rounded-br-md border-[#e5b08c] bg-[#fff0df]" : "mr-auto rounded-bl-md bg-white",
       )}
     >
@@ -120,7 +120,7 @@ export function MessageDisplay({
       </div>
       <MessageBody body={body} deleted={deleted} />
       {!deleted ? <MessageAttachments attachments={attachments} /> : null}
-      {!deleted && children ? <div className="mt-3">{children}</div> : null}
+      {!deleted && children ? <div className="mt-2">{children}</div> : null}
     </ContentCard>
   );
 }

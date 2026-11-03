@@ -49,18 +49,18 @@ export default async function ConversationPage({ params, searchParams }: Convers
   }
 
   await markConversationRead(id);
-  const title = conversation.participants.map((participant) => participant.display_name).join(", ") || "Direct message";
+  const title = conversation.participants.filter((participant) => participant.user_id !== conversation.current_user_id).map((participant) => participant.display_name).join(", ") || "Direct message";
   const otherParticipant = conversation.participants.find(
     (participant) => participant.user_id !== conversation.current_user_id,
   );
-  const participantLabels =
-    conversation.participants
-      .map((participant) => participant.username ? `@${participant.username}` : participant.user_id)
-      .join(" - ") || "Participants unavailable";
+  const participantLabels = conversation.participants
+    .filter((participant) => participant.user_id !== conversation.current_user_id)
+    .map((participant) => participant.username ? `@${participant.username}` : participant.display_name)
+    .join(", ") || "Private conversation";
 
   return (
-    <PageContainer size="wide" className="lg:py-10">
-      <div className="mx-auto max-w-5xl">
+    <PageContainer size="wide" className="lg:py-8">
+      <div className="mx-auto max-w-4xl">
       <DetailHeader
         backHref="/messages"
         backLabel="Go back to Messages"
@@ -74,7 +74,7 @@ export default async function ConversationPage({ params, searchParams }: Convers
           <FormNotice className="mt-6">{query.message}</FormNotice>
         ) : null}
 
-        <ContentCard as="section" className="mt-6 min-h-[42vh] bg-[#fffaf3] p-3 sm:p-6">
+        <ContentCard as="section" className="mt-4 min-h-[14rem] max-h-[min(60vh,38rem)] overflow-y-auto bg-[#fffaf3] p-3 sm:p-5">
           {conversation.messages.length === 0 ? (
             <EmptyState title="No messages yet" description="Send the first message in this conversation." />
           ) : (
@@ -113,7 +113,7 @@ export default async function ConversationPage({ params, searchParams }: Convers
           )}
         </ContentCard>
 
-        <div className="sticky bottom-0 z-10 -mx-2 bg-[#f7ead7]/95 px-2 pb-3 pt-2 backdrop-blur-sm sm:static sm:bg-transparent sm:p-0"><MessageComposer conversationId={conversation.id} /></div>
+        <div className="sticky bottom-0 z-10 -mx-2 bg-[#f7ead7]/95 px-2 pb-2 pt-1 backdrop-blur-sm sm:static sm:bg-transparent sm:p-0"><MessageComposer conversationId={conversation.id} /></div>
       </div>
     </PageContainer>
   );
