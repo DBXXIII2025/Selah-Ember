@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
-export function MessageScrollRegion({ children }: Readonly<{ children: ReactNode }>) {
+export function MessageScrollRegion({ children, lastMessageId }: Readonly<{ children: ReactNode; lastMessageId: string }>) {
   const regionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const region = regionRef.current;
     if (region) region.scrollTop = region.scrollHeight;
-  }, []);
+  }, [lastMessageId]);
 
   return (
     <div ref={regionRef} role="log" aria-label="Conversation messages" aria-live="off" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-8">
