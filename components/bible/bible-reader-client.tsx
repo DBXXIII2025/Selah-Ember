@@ -7,9 +7,9 @@ import type { BibleReference } from "@/lib/bible/types";
 import { cn } from "@/lib/utils/cn";
 
 const fontSizes = [
-  { id: "comfortable", label: "Comfortable", className: "text-lg leading-9" },
-  { id: "large", label: "Large", className: "text-xl leading-10" },
-  { id: "compact", label: "Compact", className: "text-base leading-8" },
+  { id: "comfortable", label: "Comfortable", className: "text-[1.05rem] leading-8" },
+  { id: "large", label: "Large", className: "text-xl leading-9" },
+  { id: "compact", label: "Compact", className: "text-base leading-7" },
 ] as const;
 
 type FontSize = (typeof fontSizes)[number]["id"];
@@ -38,8 +38,8 @@ export function BibleReaderShell({
   const selected = fontSizes.find((size) => size.id === fontSize) || fontSizes[0];
 
   return (
-    <section className="mt-6" aria-label="Bible reader">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#ead6c5] bg-white/70 p-3">
+    <section className="mx-auto mt-6 max-w-4xl" aria-label="Bible reader">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ead6c5] bg-white/75 px-4 py-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-[#3b312b]">
           <Type aria-hidden="true" className="h-4 w-4" />
           Text size
@@ -52,7 +52,7 @@ export function BibleReaderShell({
               aria-pressed={fontSize === size.id}
               onClick={() => setFontSize(size.id)}
               className={cn(
-                "min-h-11 rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#a94720]/20",
+                "min-h-9 rounded-full border px-3 py-1.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#a94720]/20",
                 fontSize === size.id
                   ? "border-[#a94720] bg-[#a94720] text-white"
                   : "border-[#d9b99d] bg-white text-[#3b312b] hover:bg-[#fff4e8]",
@@ -63,7 +63,7 @@ export function BibleReaderShell({
           ))}
         </div>
       </div>
-      <div className={cn("space-y-7 rounded-2xl border border-[#ead6c5] bg-[#fffdf9] p-5 text-[#211814] shadow-sm sm:p-8", selected.className)}>
+      <div className={cn("space-y-1 rounded-2xl border border-[#ead6c5] bg-[#fffdf9] px-4 py-2 text-[#211814] shadow-sm sm:px-7 sm:py-3", selected.className)}>
         {children}
       </div>
     </section>
@@ -114,7 +114,7 @@ export function BibleVerseShareTools({
         type="button"
         onClick={copyVerse}
         disabled={isPending}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#d9b99d] bg-white px-3 py-2 text-sm font-semibold text-[#3b312b] transition hover:bg-[#fff4e8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#a94720]/20 disabled:opacity-60"
+        className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[#d9b99d] bg-white px-3 py-1.5 text-xs font-semibold text-[#3b312b] transition hover:bg-[#fff4e8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#a94720]/20 disabled:opacity-60"
       >
         {copied ? <Check aria-hidden="true" className="h-4 w-4" /> : <Copy aria-hidden="true" className="h-4 w-4" />}
         <span>{copied ? "Copied" : "Copy"}</span>
