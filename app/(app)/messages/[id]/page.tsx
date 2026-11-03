@@ -63,7 +63,7 @@ export default async function ConversationPage({ params, searchParams }: Convers
             <ConversationToolsMenu conversationId={conversation.id} otherParticipant={otherParticipant} />
           </header>
           {query.message ? <div className="px-4 pt-3"><FormNotice>{query.message}</FormNotice></div> : null}
-          <MessageScrollRegion>
+          <MessageScrollRegion lastMessageId={conversation.messages[conversation.messages.length - 1]?.id || ""}>
             {conversation.messages.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center text-center">
                 <MessageCircle aria-hidden="true" className="h-9 w-9 text-[#b98261]" />
