@@ -1,28 +1,12 @@
-import { Archive, Inbox, MessageCircle, Plus } from "lucide-react";
+import { MessageCircle, Plus } from "lucide-react";
 import Link from "next/link";
-import { archiveConversation, getConversations, unarchiveConversation } from "@/app/actions/messages";
-import { ActionButton, Badge, ContentCard, EmptyState, FormNotice, PageContainer, PageHeader, SearchInput } from "@/components/ui/app-ui";
-import { SubmitButton } from "@/components/ui/submit-button";
+import { getConversations } from "@/app/actions/messages";
+import { MessageWorkspaceSidebar } from "@/components/messages/message-workspace-sidebar";
+import { FormNotice } from "@/components/ui/app-ui";
 
 type MessagesPageProps = {
-  searchParams: Promise<{
-    message?: string;
-    q?: string;
-    view?: string;
-  }>;
+  searchParams: Promise<{ message?: string; q?: string; view?: string }>;
 };
-
-function formatMessageDate(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function conversationTitle(participants: Awaited<ReturnType<typeof getConversations>>[number]["participants"]) {
-  const others = participants.filter((participant) => participant.display_name);
-  return others.map((participant) => participant.display_name).join(", ") || "Direct message";
-}
 
 export default async function MessagesPage({ searchParams }: MessagesPageProps) {
   const params = await searchParams;
@@ -30,81 +14,25 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
   const conversations = await getConversations({ search: params.q || "", view });
 
   return (
-    <PageContainer>
-      <div className="mx-auto max-w-5xl">
-        <PageHeader
-          eyebrow="Messages"
-          title="Direct messages"
-          description="Private one-on-one conversations with people on Selah Ember."
-          action={<ActionButton href="/messages/new"><Plus aria-hidden="true" className="h-4 w-4" />New message</ActionButton>}
-        />
-
-        {params.message ? (
-          <FormNotice className="mt-6">{params.message}</FormNotice>
-        ) : null}
-
-        <ContentCard as="section" className="mt-6 bg-white/85">
-          <form className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <input type="hidden" name="view" value={view} />
-            <SearchInput name="q" defaultValue={params.q || ""} label="Search conversations" placeholder="Search conversations" />
-            <ActionButton type="submit">Search</ActionButton>
-          </form>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <ActionButton href={`/messages${params.q ? `?q=${encodeURIComponent(params.q)}` : ""}`} variant={view === "active" ? "primary" : "secondary"} size="sm"><Inbox aria-hidden="true" className="h-4 w-4" />Active</ActionButton>
-            <ActionButton href={`/messages?view=archived${params.q ? `&q=${encodeURIComponent(params.q)}` : ""}`} variant={view === "archived" ? "primary" : "secondary"} size="sm"><Archive aria-hidden="true" className="h-4 w-4" />Archived</ActionButton>
+    <section aria-label="Private messages" className="px-3 py-3 sm:px-5 sm:py-5 lg:px-8">
+      <div className="mx-auto grid min-h-[calc(100svh-8rem)] max-w-[90rem] overflow-hidden rounded-2xl border border-[#e6cbb6] bg-[#fffdf9] shadow-[0_18px_55px_rgba(33,24,20,0.07)] lg:grid-cols-[19rem_minmax(0,1fr)]">
+        <MessageWorkspaceSidebar conversations={conversations} view={view} query={params.q || ""} />
+        <div className="hidden min-h-[35rem] flex-col lg:flex">
+          {params.message ? <div className="p-5"><FormNotice>{params.message}</FormNotice></div> : null}
+          <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#f5e5d5] text-[#a94720]">
+              <MessageCircle aria-hidden="true" className="h-8 w-8" />
+            </div>
+            <h2 className="mt-6 font-serif text-3xl font-semibold tracking-tight text-[#211814]">Your conversations, in one place</h2>
+            <p className="mt-3 max-w-md text-sm leading-7 text-[#67564c]">
+              Choose a conversation from the sidebar or start a new message. A quieter space for meaningful connection.
+            </p>
+            <Link href="/messages/new" className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#a94720] px-5 text-sm font-semibold text-white transition hover:bg-[#8d3818]">
+              <Plus aria-hidden="true" className="h-4 w-4" /> New message
+            </Link>
           </div>
-        </ContentCard>
-
-        {conversations.length === 0 ? (
-          <EmptyState
-            className="mt-10"
-            icon={MessageCircle}
-            title={view === "archived" ? "No archived conversations" : "No messages yet"}
-            description={view === "archived" ? "Archived conversations will appear here." : "Start a direct conversation when you need to follow up privately."}
-            action={view === "active" ? <ActionButton href="/messages/new">Start a conversation</ActionButton> : undefined}
-          />
-        ) : (
-          <div className="mt-5 grid gap-3">
-            {conversations.map((conversation) => (
-              <ContentCard key={conversation.id} className="bg-white/85">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Link href={`/messages/${conversation.id}`} className="text-lg font-semibold hover:text-[#b94f22] sm:text-xl">
-                        {conversationTitle(
-                          conversation.participants.filter(
-                            (participant) => participant.user_id !== conversation.current_user_id,
-                          ),
-                        )}
-                      </Link>
-                      {conversation.unread_count > 0 ? (
-                        <Badge tone="solid">{conversation.unread_count} unread</Badge>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-sm leading-6 text-[#67564c]">
-                      {conversation.latest_message
-                        ? conversation.latest_message.deleted_at
-                          ? "Message deleted"
-                          : conversation.latest_message.body
-                        : "No messages yet"}
-                    </p>
-                  </div>
-                  <p className="text-sm text-[#8a3f1e]">{formatMessageDate(conversation.updated_at)}</p>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-3 border-t border-[#ead6c5] pt-4">
-                  <ActionButton href={`/messages/${conversation.id}`} variant="secondary" size="sm">Open</ActionButton>
-                  <form action={view === "archived" ? unarchiveConversation : archiveConversation}>
-                    <input type="hidden" name="conversation_id" value={conversation.id} />
-                    <SubmitButton variant="secondary" pendingLabel={view === "archived" ? "Restoring…" : "Archiving…"} className="px-4 py-2">
-                      {view === "archived" ? "Unarchive" : "Archive"}
-                    </SubmitButton>
-                  </form>
-                </div>
-              </ContentCard>
-            ))}
-          </div>
-        )}
+        </div>
       </div>
-    </PageContainer>
+    </section>
   );
 }
