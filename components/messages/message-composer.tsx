@@ -227,7 +227,7 @@ export function MessageComposer({ conversationId, returnTo }: MessageComposerPro
           rows={2}
           maxLength={5000}
           placeholder="Message…"
-          className="min-h-[4.5rem] max-h-44 w-full resize-y rounded-xl border-0 bg-transparent px-3 pb-12 pt-2 text-sm leading-6 sm:text-base text-[#2f2722] outline-none placeholder:text-[#9a8170]"
+          className="min-h-[4.5rem] max-h-44 w-full resize-y rounded-xl border-0 bg-transparent px-3 pb-12 pt-2 text-sm leading-6 sm:text-base text-[#2f2722] outline-none placeholder:text-[#715e54]"
         />
 
         <input
