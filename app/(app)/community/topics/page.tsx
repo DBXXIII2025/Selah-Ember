@@ -4,10 +4,6 @@ import { CommunityTopicPicker } from "@/components/community/community-topic-pic
 import { PageContainer, PageHeader } from "@/components/ui/app-ui";
 import { getCommunityTopics } from "@/app/actions/community-topics";
 
-type CommunityTopicsPageProps = {
-  searchParams: Promise<{ q?: string }>;
-};
-
 export const metadata: Metadata = {
   title: "Community Topics",
   description: "Find focused Christian community spaces for what you are walking through.",
@@ -15,7 +11,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function CommunityTopicsPage({ searchParams }: CommunityTopicsPageProps) {
+export default async function CommunityTopicsPage() {
   const topics = await getCommunityTopics();
 
   return (
