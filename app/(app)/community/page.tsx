@@ -101,13 +101,13 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                 description="General Community is still available below."
               />
             ) : (
-              <TopicGrid topics={topics} />
+              <><TopicGrid topics={topics.slice(0, 8)} />{topics.length > 8 ? <p className="mt-3 text-sm text-[#67564c]">Showing a selection of topics. <Link className="font-semibold text-[#8a3f1e] underline underline-offset-4" href="/community/topics">Browse all {topics.length} topics</Link></p> : null}</>
             )}
           </div>
         </section>
 
-        <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <section aria-label="Recent Community activity" className="space-y-5">
+        <div className="mt-8 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_19rem]">
+          <section aria-label="Recent Community activity" className="space-y-4">
             <SectionHeader
               title="Recent Community activity"
               description="Recent Community activity, with pinned posts kept at the top."
@@ -140,6 +140,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                     href={`/community/posts/${post.id}`}
                     editHref={post.can_edit ? `/community/posts/${post.id}/edit` : null}
                     pinReturnTo="/community"
+                    compact
                   />
                   {post.can_delete ? (
                     <form action={deleteOpenCommunityPost}>
