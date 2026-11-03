@@ -120,8 +120,8 @@ export function MessageDisplay({
           {!deleted ? <MessageAttachments attachments={attachments} /> : null}
         </div>
         <div className={cn("mt-1.5 flex flex-wrap items-center gap-3 px-2", isOwn ? "justify-end" : "justify-start")}>
-          <time className="text-[11px] text-[#806a5f]">{timestamp}</time>
-          {deliveryLabel ? <span className="text-[11px] text-[#806a5f]">{deliveryLabel}</span> : null}
+          <time className="text-[11px] text-[#67564c]">{timestamp}</time>
+          {deliveryLabel ? <span className="text-[11px] text-[#67564c]">{deliveryLabel}</span> : null}
           {!deleted && children ? (
             <details className="relative text-xs">
               <summary className="cursor-pointer rounded-md px-1 font-semibold text-[#8a3f1e] hover:text-[#a94720]">Actions</summary>
