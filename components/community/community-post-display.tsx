@@ -24,7 +24,7 @@ function wasEdited(post: CommunityPost) {
 }
 
 
-function Media({ post }: Readonly<{ post: CommunityPost }>) {
+function Media({ post, compact = false }: Readonly<{ post: CommunityPost; compact?: boolean }>) {
   if (post.media_kind === "link" && post.media_url) {
     return (
       <div className="rounded-xl border border-[#ead6c5] bg-[#fffaf4] p-4">
@@ -41,7 +41,7 @@ function Media({ post }: Readonly<{ post: CommunityPost }>) {
 
   if (post.media_kind === "image" && post.signed_url) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={post.signed_url} alt="" className="mt-4 max-h-[32rem] w-full rounded-xl object-cover" />;
+    return <img src={post.signed_url} alt="" className={compact ? "mt-3 max-h-48 w-full rounded-xl object-cover" : "mt-4 max-h-[32rem] w-full rounded-xl object-cover"} />;
   }
 
   if (post.media_kind === "video" && post.signed_url) {
@@ -50,7 +50,7 @@ function Media({ post }: Readonly<{ post: CommunityPost }>) {
         controls
         preload="metadata"
         src={post.signed_url}
-        className="mt-4 max-h-[32rem] w-full rounded-xl border border-[#ead6c5]"
+        className={compact ? "mt-3 max-h-48 w-full rounded-xl border border-[#ead6c5]" : "mt-4 max-h-[32rem] w-full rounded-xl border border-[#ead6c5]"}
       />
     );
   }
@@ -109,7 +109,7 @@ export function CommunityPostDisplay({ post, href, editHref, compact = false, pi
       {post.body ? <p className={`mt-3 whitespace-pre-wrap text-sm leading-6 text-[#3b312b] sm:text-base ${compact ? "line-clamp-4" : ""}`}>{post.body}</p> : null}
       {compact && href && post.body ? <Link href={href} className="mt-2 inline-flex text-sm font-semibold text-[#8a3f1e] underline-offset-4 hover:underline">Read full post</Link> : null}
       {post.topics.length ? <div className="mt-4 flex flex-wrap gap-2">{post.topics.map((topic) => <Link key={topic.slug} href={`/community/browse?topic=${encodeURIComponent(topic.slug)}`} className="rounded-full bg-[#fff4e8] px-3 py-1 text-xs font-semibold text-[#8a3f1e]">{topic.name}</Link>)}</div> : <Link href="/community/browse?topic=general" className="mt-4 inline-flex rounded-full bg-[#fff4e8] px-3 py-1 text-xs font-semibold text-[#8a3f1e]">General Community</Link>}
-      {!compact ? <div className="mt-4"><Media post={post} /></div> : null}
+      <div className="mt-3"><Media post={post} compact={compact} /></div>
       {post.deleted_at ? <p className="mt-4 text-sm font-semibold text-[#8a3f1e]">Deleted</p> : null}
       {!post.is_published ? <p className="mt-4 text-sm font-semibold text-[#8a3f1e]">Draft</p> : null}
       <div className="mt-5 flex flex-wrap items-center gap-2">
