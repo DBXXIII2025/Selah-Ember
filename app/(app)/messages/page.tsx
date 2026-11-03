@@ -31,7 +31,7 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
 
   return (
     <PageContainer>
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-5xl">
         <PageHeader
           eyebrow="Messages"
           title="Direct messages"
@@ -43,7 +43,7 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
           <FormNotice className="mt-6">{params.message}</FormNotice>
         ) : null}
 
-        <ContentCard as="section" className="mt-8 bg-white/85">
+        <ContentCard as="section" className="mt-6 bg-white/85">
           <form className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <input type="hidden" name="view" value={view} />
             <SearchInput name="q" defaultValue={params.q || ""} label="Search conversations" placeholder="Search conversations" />
@@ -64,9 +64,9 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
             action={view === "active" ? <ActionButton href="/messages/new">Start a conversation</ActionButton> : undefined}
           />
         ) : (
-          <div className="mt-8 grid gap-3">
+          <div className="mt-5 grid gap-3">
             {conversations.map((conversation) => (
-              <ContentCard key={conversation.id} className="bg-white/70">
+              <ContentCard key={conversation.id} className="bg-white/85">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
@@ -81,7 +81,7 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
                         <Badge tone="solid">{conversation.unread_count} unread</Badge>
                       ) : null}
                     </div>
-                    <p className="mt-2 line-clamp-2 text-[#67564c]">
+                    <p className="mt-1 line-clamp-2 text-sm leading-6 text-[#67564c]">
                       {conversation.latest_message
                         ? conversation.latest_message.deleted_at
                           ? "Message deleted"
