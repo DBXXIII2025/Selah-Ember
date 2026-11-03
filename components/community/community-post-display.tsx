@@ -62,7 +62,7 @@ export function CommunityPostDisplay({ post, href, editHref, compact = false, pi
   const title = post.title || "Community post";
 
   return (
-    <article className="rounded-2xl border border-[#ead6c5] bg-white/80 p-5 shadow-sm">
+    <article className="rounded-2xl border border-[#ead6c5] bg-white/85 p-4 shadow-sm sm:p-5">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div className="flex gap-3">
           <Link href={post.author_profile_id ? `/members/${post.author_profile_id}` : "#"} aria-label={`View ${post.author_name || "member"}'s profile`} className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#ffe2cb] text-sm font-semibold text-[#8a3f1e]">
@@ -106,11 +106,10 @@ export function CommunityPostDisplay({ post, href, editHref, compact = false, pi
         </div>
       </div>
 
-      {post.body ? <p className="mt-4 whitespace-pre-wrap leading-7 text-[#3b312b]">{post.body}</p> : null}
+      {post.body ? <p className={`mt-3 whitespace-pre-wrap text-sm leading-6 text-[#3b312b] sm:text-base ${compact ? "line-clamp-4" : ""}`}>{post.body}</p> : null}
+      {compact && href && post.body ? <Link href={href} className="mt-2 inline-flex text-sm font-semibold text-[#8a3f1e] underline-offset-4 hover:underline">Read full post</Link> : null}
       {post.topics.length ? <div className="mt-4 flex flex-wrap gap-2">{post.topics.map((topic) => <Link key={topic.slug} href={`/community/browse?topic=${encodeURIComponent(topic.slug)}`} className="rounded-full bg-[#fff4e8] px-3 py-1 text-xs font-semibold text-[#8a3f1e]">{topic.name}</Link>)}</div> : <Link href="/community/browse?topic=general" className="mt-4 inline-flex rounded-full bg-[#fff4e8] px-3 py-1 text-xs font-semibold text-[#8a3f1e]">General Community</Link>}
-      <div className="mt-4">
-        <Media post={post} />
-      </div>
+      {!compact ? <div className="mt-4"><Media post={post} /></div> : null}
       {post.deleted_at ? <p className="mt-4 text-sm font-semibold text-[#8a3f1e]">Deleted</p> : null}
       {!post.is_published ? <p className="mt-4 text-sm font-semibold text-[#8a3f1e]">Draft</p> : null}
       <div className="mt-5 flex flex-wrap items-center gap-2">
