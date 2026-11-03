@@ -10,7 +10,8 @@ import {
   toggleBibleHighlight,
 } from "@/app/actions/bible";
 import { BibleReaderShell, BibleVerseShareTools } from "@/components/bible/bible-reader-client";
-import { ActionButton, Badge, ContentCard, FormField, FormLabel, PageContainer, PageHeader, formControlClassName } from "@/components/ui/app-ui";
+import { BiblePassagePanel } from "@/components/bible/bible-passage-panel";
+import { ActionButton, Badge, ContentCard, FormField, FormLabel, PageContainer, formControlClassName } from "@/components/ui/app-ui";
 import {
   getAdjacentBibleChapter,
   getBibleBook,
@@ -128,7 +129,7 @@ function VerseStateForms({
   note?: string;
 }>) {
   return (
-    <div className="mt-4 space-y-3 text-base leading-6">
+    <div className="mt-3 space-y-3 text-sm leading-6">
       <div className="flex flex-wrap gap-2">
         <form action={toggleBibleBookmark}>
           <HiddenReferenceFields reference={reference} />
@@ -215,33 +216,20 @@ function BibleVerseRow({
   const href = getBibleVerseHref(reference);
 
   return (
-    <article
-      id={`verse-${reference.bookId}-${reference.chapter}-${verse.number}`}
-      className={cn("scroll-mt-28 border-b border-[#ead6c5] px-1 py-4 last:border-b-0 sm:px-2", highlight && highlightClasses[highlight])}
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <p className="min-w-0 max-w-[68ch] flex-1">
-          <sup className="mr-2 align-super text-xs font-bold text-[#9b4d25]">{verse.number}</sup>
-          <span>{verse.text}</span>
-        </p>
-        <div className="shrink-0 self-start">
-          <BibleVerseShareTools reference={label} text={verse.text} href={href} />
-        </div>
-      </div>
-      <details className="mt-2">
-        <summary className="inline-flex min-h-9 cursor-pointer items-center rounded-lg px-2 text-xs font-semibold text-[#8a3f1e] transition hover:bg-[#fff1df]">
-          {isBookmarked || isFavorite || highlight || note ? "Saved verse · " : ""}
-          Bookmark, highlight & notes
-          <span aria-hidden="true" className="ml-2 text-base">+</span>
+    <article id={`verse-${reference.bookId}-${reference.chapter}-${verse.number}`}
+      className={cn("group scroll-mt-28 border-b border-[#e9ddcf] px-1 py-3 last:border-b-0 sm:py-4", highlight && highlightClasses[highlight])}>
+      <p className="max-w-[69ch] font-serif text-[#30251f]">
+        <sup className="mr-2 align-super font-sans text-xs font-bold text-[#9b4d25]">{verse.number}</sup>
+        <span>{verse.text}</span>
+      </p>
+      <details className="mt-1">
+        <summary className="inline-flex min-h-8 cursor-pointer items-center gap-2 rounded-lg px-2 text-xs font-semibold text-[#956a4f] transition hover:bg-[#f8e7d6] hover:text-[#8a3f1e]">
+          {isBookmarked || isFavorite || highlight || note ? "Saved · " : ""}
+          Verse tools <span aria-hidden="true">⌄</span>
         </summary>
-        <div className="pb-2">
-          <VerseStateForms
-            reference={reference}
-            isBookmarked={isBookmarked}
-            isFavorite={isFavorite}
-            highlight={highlight}
-            note={note}
-          />
+        <div className="mt-2 rounded-xl border border-[#ead6c5] bg-[#fff9f1] p-3 sm:p-4">
+          <BibleVerseShareTools reference={label} text={verse.text} href={href} />
+          <VerseStateForms reference={reference} isBookmarked={isBookmarked} isFavorite={isFavorite} highlight={highlight} note={note} />
         </div>
       </details>
     </article>
@@ -272,16 +260,19 @@ export default async function BiblePage({ searchParams }: BiblePageProps) {
   const translation = translations.find((candidate) => candidate.id === translationId) || translations[0];
 
   return (
-    <PageContainer size="wide">
-      <PageHeader
-        eyebrow="Bible"
-        title="Bible"
-        description="Read Scripture, search passages, and keep private bookmarks, highlights, favorites, and verse notes."
-        bordered
-      />
-
-      <ContentCard as="section" className="mt-6">
-        <form className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_0.6fr_1.2fr_auto]" method="get">
+    <PageContainer className="py-5 sm:py-8">
+      <div className="mb-7 border-b border-[#dfc6ad] pb-5">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#9b4d25]">Scripture library</p>
+        <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight text-[#211814] sm:text-4xl">The Bible</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#67564c]">A peaceful place to read, reflect, bookmark, and study at your own pace.</p>
+      </div>
+      <div className="grid items-start gap-6 xl:grid-cols-[16.5rem_minmax(0,1fr)] xl:gap-8">
+        <BiblePassagePanel>
+          <div className="mb-5">
+            <h2 className="text-base font-bold text-[#211814]">Find a passage</h2>
+            <p className="mt-1 text-xs leading-5 text-[#67564c]">Choose a translation, book, chapter, or search Scripture.</p>
+          </div>
+          <form className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1" method="get">
           <FormField>
             <FormLabel htmlFor="translation">Translation</FormLabel>
             <select id="translation" name="translation" defaultValue={translationId} className={formControlClassName}>
@@ -320,56 +311,34 @@ export default async function BiblePage({ searchParams }: BiblePageProps) {
               className={formControlClassName}
             />
           </FormField>
-          <ActionButton type="submit" className="mt-2 lg:mb-0.5">Open</ActionButton>
+          <ActionButton type="submit" className="mt-2 w-full">Open</ActionButton>
         </form>
-      </ContentCard>
-
-      <SearchResults results={searchResults} query={searchQuery} />
-
-      <section className="mt-8">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <div className="flex flex-wrap gap-2">
-              <Badge tone="solid">{translation.abbreviation}</Badge>
-              <Badge tone="neutral">{book.testament === "OT" ? "Old Testament" : "New Testament"}</Badge>
+        </BiblePassagePanel>
+        <div className="min-w-0">
+          <SearchResults results={searchResults} query={searchQuery} />
+          <section aria-label="Scripture chapter" className="mx-auto max-w-[56rem] overflow-hidden rounded-2xl border border-[#ead6c5] bg-[#fffdf9] px-4 py-6 shadow-sm sm:px-8 sm:py-8">
+            <div className="flex flex-col gap-5 border-b border-[#ead6c5] pb-5 sm:flex-row sm:items-end sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone="solid">{translation.abbreviation}</Badge>
+                  <Badge tone="neutral">{book.testament === "OT" ? "Old Testament" : "New Testament"}</Badge>
+                </div>
+                <h2 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-[#211814] sm:text-[2.75rem]">{book.name} {chapterNumber}</h2>
+                <p className="mt-1 text-xs text-[#67564c]">Chapter {chapterNumber} of {chapterCount}</p>
+              </div>
+              <nav className="flex flex-wrap gap-2" aria-label="Chapter navigation">
+                {previousChapter ? <ActionButton href={getBibleChapterHref(previousChapter)} variant="secondary" size="sm"><ChevronLeft aria-hidden="true" className="h-4 w-4" />Previous</ActionButton> : null}
+                {nextChapter ? <ActionButton href={getBibleChapterHref(nextChapter)} variant="secondary" size="sm">Next<ChevronRight aria-hidden="true" className="h-4 w-4" /></ActionButton> : null}
+              </nav>
             </div>
-            <h2 className="mt-4 text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">
-              {book.name} {chapterNumber}
-            </h2>
-            <p className="mt-2 text-sm text-[#67564c]">
-              Chapter {chapterNumber} of {chapterCount}
-            </p>
-          </div>
-          <nav className="flex flex-wrap gap-3" aria-label="Chapter navigation">
-            {previousChapter ? (
-              <ActionButton href={getBibleChapterHref(previousChapter)} variant="secondary">
-                <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-                Previous
-              </ActionButton>
-            ) : null}
-            {nextChapter ? (
-              <ActionButton href={getBibleChapterHref(nextChapter)} variant="secondary">
-                Next
-                <ChevronRight aria-hidden="true" className="h-4 w-4" />
-              </ActionButton>
-            ) : null}
-          </nav>
-        </div>
-        <div
-          className="mt-5 h-2 overflow-hidden rounded-full bg-[#ead6c5]"
-          role="progressbar"
-          aria-label="Chapter reading progress"
-          aria-valuemin={1}
-          aria-valuemax={chapterCount}
-          aria-valuenow={chapterNumber}
-          aria-valuetext={`Chapter ${chapterNumber} of ${chapterCount}`}
-        >
-          <div className="h-full rounded-full bg-[#a94720]" style={{ width: `${Math.max(2, Math.round((chapterNumber / chapterCount) * 100))}%` }} />
-        </div>
-
-        <BibleReaderShell reference={{ translationId, bookId, chapter: chapterNumber }}>
+            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#f0e0d1]" role="progressbar"
+              aria-label="Chapter reading progress" aria-valuemin={1} aria-valuemax={chapterCount} aria-valuenow={chapterNumber}
+              aria-valuetext={`Chapter ${chapterNumber} of ${chapterCount}`}>
+              <div className="h-full rounded-full bg-[#a94720]" style={{ width: `${Math.max(2, Math.round((chapterNumber / chapterCount) * 100))}%` }} />
+            </div>
+            <BibleReaderShell reference={{ translationId, bookId, chapter: chapterNumber }}>
           {chapter.paragraphs.map((paragraph, paragraphIndex) => (
-            <div key={`${paragraph.type}-${paragraphIndex}`} className="space-y-3">
+            <div key={`${paragraph.type}-${paragraphIndex}`} className="space-y-0">
               {paragraph.verses.map((verse) => {
                 const verseReference = { translationId, bookId, chapter: chapterNumber, verse: verse.number };
                 const key = getBibleReferenceKey(verseReference);
@@ -390,16 +359,17 @@ export default async function BiblePage({ searchParams }: BiblePageProps) {
             </div>
           ))}
         </BibleReaderShell>
-
-        <ContentCard as="section" className="mt-8">
-          <h2 className="text-lg font-semibold">Translation license</h2>
-          {translations.filter((translation) => translation.id === translationId).map((translation) => (
+            <details className="mt-8 border-t border-[#ead6c5] pt-5">
+              <summary className="cursor-pointer text-xs font-semibold text-[#8a3f1e]">Translation attribution and license</summary>
+              <div className="mt-3 text-xs leading-6 text-[#67564c]">{translations.filter((translation) => translation.id === translationId).map((translation) => (
             <p key={translation.id} className="mt-3 text-sm leading-6 text-[#67564c]">
               {translation.name} ({translation.abbreviation}) is provided by {translation.publisher}. {translation.license} {translation.attribution}
             </p>
-          ))}
-        </ContentCard>
-      </section>
+          ))}</div>
+            </details>
+          </section>
+        </div>
+      </div>
     </PageContainer>
   );
 }

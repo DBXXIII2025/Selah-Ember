@@ -56,14 +56,8 @@ export default async function CommunityTopicPage({ params, searchParams }: Topic
       {query.message ? <FormNotice className="mt-6 max-w-2xl">{query.message}</FormNotice> : null}
       {topic.is_sensitive ? <SensitiveTopicNotice /> : null}
 
-      <div className="mt-8 space-y-8">
-        <ContentCard as="section">
-          <SectionHeader title="Scripture" description="Curated references from Selah Ember's existing Bible translations." />
-          <div className="mt-5">
-            <ScriptureList scriptures={scriptures} />
-          </div>
-        </ContentCard>
-
+      <div className="mt-7 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="min-w-0 space-y-8">
         <section>
           <SectionHeader
             title="Community"
@@ -85,6 +79,7 @@ export default async function CommunityTopicPage({ params, searchParams }: Topic
           </div>
         </section>
 
+
         <section>
           <SectionHeader
             title="Personal Testimonies"
@@ -102,6 +97,23 @@ export default async function CommunityTopicPage({ params, searchParams }: Topic
           </div>
         </section>
 
+
+        <ContentCard as="section">
+          <SectionHeader title="Share" description="Choose the kind of contribution that fits what you want to offer." />
+          <div className="mt-5">
+            <ShareActions topic={topic} />
+          </div>
+        </ContentCard>
+        </div>
+        <aside aria-label="Topic resources" className="min-w-0 space-y-4 xl:sticky xl:top-24">
+        <ContentCard as="section">
+          <SectionHeader title="Scripture" description="Curated references from Selah Ember's existing Bible translations." />
+          <div className="mt-5">
+            <ScriptureList scriptures={scriptures} />
+          </div>
+        </ContentCard>
+
+
         <ContentCard as="section">
           <SectionHeader title="Prayer" description="Use Selah Ember's existing Prayer space for requests connected to this topic." action={<ActionButton href="/prayer/new" size="sm" variant="secondary">New prayer</ActionButton>} />
           <div className="mt-5 space-y-3">
@@ -113,12 +125,7 @@ export default async function CommunityTopicPage({ params, searchParams }: Topic
           </div>
         </ContentCard>
 
-        <ContentCard as="section">
-          <SectionHeader title="Share" description="Choose the kind of contribution that fits what you want to offer." />
-          <div className="mt-5">
-            <ShareActions topic={topic} />
-          </div>
-        </ContentCard>
+        </aside>
       </div>
     </PageContainer>
   );

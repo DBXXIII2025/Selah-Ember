@@ -11,7 +11,7 @@ import { getDiscoverStudyGroupsForPublicPage } from "@/app/actions/groups";
 import { getVisiblePrayerRequests } from "@/app/actions/prayer";
 import { CommunityPostDisplay } from "@/components/community/community-post-display";
 import { CommunityTabs } from "@/components/community/community-tabs";
-import { TopicGrid } from "@/components/community/community-topic-components";
+import { CommunityTopicPicker } from "@/components/community/community-topic-picker";
 import { ActionButton, ContentCard, EmptyState, PageContainer, PageHeader, SectionHeader } from "@/components/ui/app-ui";
 
 type CommunityPageProps = {
@@ -68,7 +68,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
   const upcomingEvents = events.slice(0, 3);
 
   return (
-    <PageContainer className="py-10">
+    <PageContainer className="py-6 sm:py-8">
       <PageHeader
         eyebrow="Community"
         title="Selah Ember Community"
@@ -88,29 +88,21 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           </div>
         ) : null}
 
-        <section aria-label="Community topics" className="mt-8">
-          <SectionHeader
-            title="Find a topic"
-            description="Start with the issue you are dealing with. Topic spaces keep posts, testimonies, prayer, and Scripture focused."
-            action={<ActionButton href="/community/topics" variant="secondary">View topics</ActionButton>}
-          />
-          <div className="mt-5">
-            {topics.length === 0 ? (
-              <EmptyState
-                title="Topics are temporarily unavailable"
-                description="General Community is still available below."
-              />
-            ) : (
-              <><TopicGrid topics={topics.slice(0, 8)} />{topics.length > 8 ? <p className="mt-3 text-sm text-[#67564c]">Showing a selection of topics. <Link className="font-semibold text-[#8a3f1e] underline underline-offset-4" href="/community/topics">Browse all {topics.length} topics</Link></p> : null}</>
-            )}
+        <section aria-label="Community topics" className="mt-6 rounded-2xl border border-[#e9d3bf] bg-white/75 px-4 py-5 sm:px-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="max-w-lg">
+              <h2 className="text-lg font-semibold text-[#211814]">Browse discussions by topic</h2>
+              <p className="mt-1 text-sm leading-6 text-[#67564c]">One place to find faith-centered conversations that matter to you.</p>
+            </div>
+            <CommunityTopicPicker topics={topics} />
           </div>
         </section>
 
-        <div className="mt-8 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_19rem]">
+        <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_17.5rem]">
           <section aria-label="Recent Community activity" className="space-y-4">
             <SectionHeader
               title="Recent Community activity"
-              description="Recent Community activity, with pinned posts kept at the top."
+              description="Recent conversations and shared encouragement."
               action={<div className="flex flex-wrap gap-2"><ActionButton href="/community/browse">Browse all posts</ActionButton>{data.isSignedIn ? <ActionButton href="/community/new" variant="secondary">Create general post</ActionButton> : null}</div>}
             />
             {!data.community ? (
