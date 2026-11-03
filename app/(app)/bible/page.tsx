@@ -128,7 +128,7 @@ function VerseStateForms({
   note?: string;
 }>) {
   return (
-    <div className="mt-4 space-y-3 text-base leading-6">
+    <div className="mt-3 space-y-3 text-sm leading-6">
       <div className="flex flex-wrap gap-2">
         <form action={toggleBibleBookmark}>
           <HiddenReferenceFields reference={reference} />
