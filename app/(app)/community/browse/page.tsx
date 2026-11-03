@@ -124,7 +124,7 @@ export default async function CommunityBrowsePage({ searchParams }: Props) {
               <Link href="/members" className="rounded-lg border border-[#d9b99d] bg-white px-3 py-2.5 text-center text-sm font-semibold text-[#8a3f1e]">Find members</Link>
             </div>
           </div>
-          <p className="px-2 text-xs leading-5 text-[#806a5f]">Be thoughtful, kind, and respectful when sharing in the community.</p>
+          <p className="px-2 text-xs leading-5 text-[#67564c]">Be thoughtful, kind, and respectful when sharing in the community.</p>
         </aside>
       </div>
     </PageContainer>
