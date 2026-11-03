@@ -28,13 +28,13 @@ function EmptyValue({ children }: Readonly<{ children: React.ReactNode }>) {
 
 export function ProfileForm({ profile, message }: ProfileFormProps) {
   return (
-    <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-      <aside>
+    <div className="grid items-start gap-5 lg:grid-cols-[minmax(16rem,0.75fr)_minmax(0,1.25fr)]">
+      <aside className="lg:sticky lg:top-24">
         <DetailHero>
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#b94f22]">
           Your profile
         </p>
-        <div className="mt-6 flex items-center gap-4">
+        <div className="mt-4 flex items-center gap-3">
           {profile.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -55,7 +55,7 @@ export function ProfileForm({ profile, message }: ProfileFormProps) {
           </div>
         </div>
 
-        <dl className="mt-8 space-y-5 text-sm">
+        <dl className="mt-6 space-y-4 border-t border-[#ead6c5] pt-5 text-sm">
           <div>
             <dt className="font-semibold text-[#3b312b]">Bio</dt>
             <dd className="mt-1 leading-6 text-[#67564c]">
@@ -74,12 +74,6 @@ export function ProfileForm({ profile, message }: ProfileFormProps) {
               {profile.church_name || <EmptyValue>Add a faith community if you would like.</EmptyValue>}
             </dd>
           </div>
-          <div>
-            <dt className="font-semibold text-[#3b312b]">Profile photo</dt>
-            <dd className="mt-1 break-words leading-6 text-[#67564c]">
-              {profile.avatar_url ? "Uploaded" : <EmptyValue>No profile photo added yet.</EmptyValue>}
-            </dd>
-          </div>
         </dl>
         </DetailHero>
       </aside>
@@ -87,7 +81,7 @@ export function ProfileForm({ profile, message }: ProfileFormProps) {
       <FormShell className="max-w-none" title="Edit profile" description="Keep your community presence simple and personal.">
         {message ? <FormNotice className="mb-6">{message}</FormNotice> : null}
 
-        <form action={uploadCurrentUserAvatar} className="rounded-xl border border-[#ead6c5] bg-[#fffaf4] p-4 sm:p-5">
+        <form action={uploadCurrentUserAvatar} className="rounded-xl border border-[#ead6c5] bg-[#fffaf4] p-4">
           <FormField>
             <FormLabel htmlFor="profile-avatar">Profile photo</FormLabel>
             <input
@@ -102,7 +96,7 @@ export function ProfileForm({ profile, message }: ProfileFormProps) {
           <SubmitButton variant="secondary" pendingLabel="Uploading…" className="mt-4">Upload photo</SubmitButton>
         </form>
 
-        <form action={updateCurrentUserProfile} className="mt-8">
+        <form action={updateCurrentUserProfile} className="mt-6">
           <FormSection title="Public information">
           <FormField>
             <FormLabel htmlFor="profile-display-name" required>Display name</FormLabel>
