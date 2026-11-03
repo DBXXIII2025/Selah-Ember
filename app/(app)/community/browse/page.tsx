@@ -42,7 +42,7 @@ export default async function CommunityBrowsePage({ searchParams }: Props) {
     <PageContainer className="py-6 sm:py-8">
       <PageHeader
         eyebrow="Community"
-        title="Discussion board"
+        title="Browse Community posts"
         description="Explore real conversations, find encouragement, and take part in a topic that matters to you."
         bordered
         action={<ActionButton href="/community/new">Start a discussion</ActionButton>}
