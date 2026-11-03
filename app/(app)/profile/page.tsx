@@ -19,7 +19,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         description="Shape the profile others see across prayer, groups, and community life."
       />
 
-      <div className="mt-10">
+      <div className="mt-6">
         <ProfileForm profile={profile} message={params.message} />
       </div>
     </PageContainer>
